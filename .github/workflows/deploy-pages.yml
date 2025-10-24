@@ -1,0 +1,61 @@
+name: Deploy Frontend to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install workspace dependencies
+        working-directory: .
+        run: npm ci
+
+      - name: Build frontend
+        run: |
+          # Create dist directory with our proper app
+          mkdir -p dist
+          cp index.html dist/index.html
+          cp app-main.js dist/
+          cp app.js dist/
+          cp -r i18n dist/
+          cp -r assets dist/ || true
+          cp -r icons dist/ || true
+          cp manifest.webmanifest dist/ || true
+          cp registerSW.js dist/ || true
+          cp sw.js dist/ || true
+
+          # Fix paths for GitHub Pages (updated repo name)
+          sed -i 's|src="app-main.js"|src="/RoamWise/app-main.js"|g' dist/index.html
+          sed -i 's|src="app.js"|src="/RoamWise/app.js"|g' dist/index.html
+          sed -i 's|href="manifest.webmanifest"|href="/RoamWise/manifest.webmanifest"|g' dist/index.html
+          sed -i 's|href="icons/icon-192.png"|href="/RoamWise/icons/icon-192.png"|g' dist/index.html
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./frontend/dist
