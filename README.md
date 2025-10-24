@@ -239,6 +239,36 @@ npm run clean && npm install
 - **Data**: Mount `routing/` directory
 - **Command**: `osrm-routed /data/israel-and-palestine-latest.osrm`
 
+## 🔄 CI/CD
+
+GitHub Actions workflows are configured for automated testing and deployment:
+
+### Workflows
+
+- **CI - Monorepo** (`.github/workflows/ci.yml`)
+  - Runs on: Pull requests and pushes to `main`
+  - Actions: Lint, type check, unit tests, build all components
+  - Matrix: Frontend and backend tests run in parallel
+
+- **Deploy Frontend to GitHub Pages** (`.github/workflows/deploy-pages.yml`)
+  - Runs on: Push to `main` (changes to `frontend/**`)
+  - Actions: Build and deploy frontend to https://galsened.github.io/RoamWise/
+  - Trigger: Automatic on merge
+
+- **E2E Tests** (`.github/workflows/e2e.yml`)
+  - Runs on: Pull requests (changes to `frontend/**`)
+  - Actions: Playwright E2E tests against GitHub Pages
+  - Browser: Chromium
+
+- **Secret Scan** (`.github/workflows/secret-scan.yml`)
+  - Runs on: All pull requests and pushes to `main`
+  - Actions: Gitleaks secret detection
+  - Blocks: Merges with detected secrets
+
+### Status Badges
+
+Check the [Actions tab](https://github.com/GalSened/RoamWise/actions) for workflow status and logs.
+
 ## 🐛 Troubleshooting
 
 ### Git LFS issues

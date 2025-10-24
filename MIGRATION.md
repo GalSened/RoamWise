@@ -105,6 +105,19 @@ Implemented npm workspaces for unified dependency management:
 - Verified localhost references are appropriate for local dev
 - Created this migration guide
 
+## Critical Issue Resolved: Git LFS Large Files
+
+During the initial migration, GitHub rejected pushes despite LFS tracking being configured. The issue was that `git lfs migrate import` created LFS pointer files in commits but left the original large binary blobs in `.git/objects/` (355MB of routing files).
+
+**Solution**: Reinitialized the repository with a clean approach:
+1. Removed `.git` directory completely: `rm -rf .git`
+2. Initialized fresh repository: `git init && git lfs install`
+3. Configured LFS tracking before any commits
+4. Created initial commit with all files
+5. Result: Large files stored only in `.git/lfs/` (209MB), objects database minimal (2.2MB)
+
+This ensured LFS pointer files were in the very first commit, with no large blobs ever entering the git object database. Push to GitHub succeeded with 658MB of LFS objects uploaded successfully.
+
 ## Path Changes
 
 ### Development URLs (unchanged for local dev)
@@ -235,13 +248,66 @@ If needed, the original repositories are still available:
 - `RoamWise-proxy-WX/.backup/`
 - Original repos can be restored from GitHub
 
+## Archiving Old Repositories (Optional)
+
+To archive the old separate repositories on GitHub:
+
+1. **Add deprecation notice**: Update each old repo's README with:
+   ```markdown
+   # ⚠️ DEPRECATED - This repository has been consolidated into the RoamWise monorepo
+
+   This repository is no longer actively maintained. All development has moved to:
+   https://github.com/GalSened/RoamWise
+
+   The monorepo contains:
+   - frontend/ (formerly RoamWise-frontend-WX)
+   - backend/ (formerly roamwise-backend-v2)
+   - proxy/ (formerly RoamWise-proxy-WX)
+   - ai/ (formerly RoamWise-PersonalAI)
+   - routing/ (formerly roamwise-routing-osrm)
+   ```
+
+2. **Archive on GitHub**: For each repository:
+   - Go to Settings → General → Danger Zone
+   - Click "Archive this repository"
+   - Confirm the action
+   - Archived repos become read-only and show a notice
+
+3. **Repositories to archive**:
+   - ✅ `GalSened/RoamWise-frontend-WX`
+   - ✅ `GalSened/roamwise-backend-v2`
+   - ✅ `GalSened/RoamWise-proxy-WX`
+   - ✅ `GalSened/RoamWise-PersonalAI` (if it exists on GitHub)
+   - ✅ `GalSened/roamwise-routing-osrm` (if it exists on GitHub)
+
 ## Next Steps
 
 1. ✅ Push monorepo to GitHub
-2. ⏳ Set up GitHub Actions for monorepo CI/CD
-3. ⏳ Archive old repositories on GitHub
+2. ✅ Set up GitHub Actions for monorepo CI/CD
+3. ⏳ Archive old repositories on GitHub (optional)
 4. ⏳ Update deployment pipelines to use monorepo
 5. ⏳ Update team documentation and wiki
+
+## GitHub Actions Workflows
+
+The following workflows are now active:
+
+- **CI - Monorepo** (`ci.yml`): Runs on all PRs and pushes to main
+  - Lints and type-checks frontend
+  - Runs unit tests for frontend and backend
+  - Builds all components (frontend, backend, AI)
+
+- **Deploy Frontend to GitHub Pages** (`deploy-pages.yml`): Deploys frontend on push to main
+  - Only triggers on changes to `frontend/**`
+  - Deploys to https://galsened.github.io/RoamWise/
+
+- **E2E Tests** (`e2e.yml`): Runs Playwright E2E tests
+  - Only triggers on changes to `frontend/**`
+  - Tests against GitHub Pages deployment
+
+- **Secret Scan** (`secret-scan.yml`): Scans for committed secrets
+  - Runs on all PRs and pushes to main
+  - Uses Gitleaks for secret detection
 
 ## Questions?
 
