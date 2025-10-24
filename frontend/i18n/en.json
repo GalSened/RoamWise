@@ -1,0 +1,10 @@
+{
+  "planner.start_from": "Start from",
+  "planner.my_location": "📍 My location",
+  "planner.my_hotel": "🏨 My hotel",
+  "planner.hotel_name": "Hotel name",
+  "planner.destination": "Destination (optional)",
+  "planner.near_radius": "Nearby radius (km)",
+  "planner.detour_minutes": "Along-route max detour (min)",
+  "planner.plan_day": "Plan Day"
+}

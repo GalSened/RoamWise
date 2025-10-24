@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="en" dir="ltr" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RoamWise — AI-Powered Travel Planner</title>
+  <meta name="description" content="Smart travel planning with o3-mini AI integration">
+  
+  <!-- PWA -->
+  <meta name="theme-color" content="#0066cc">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* Base styles */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body { 
+      font-family: 'Rubik', system-ui, sans-serif;
+      background: #f8fafc;
+      line-height: 1.6;
+    }
+    
+    /* App layout */
+    .app-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* Header */
+    .app-header {
+      background: white;
+      padding: 1rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #0066cc;
+    }
+    
+    .theme-toggle {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0.5rem;
+      border-radius: 50%;
+    }
+
+    .lang-toggle {
+      background: none;
+      border: 2px solid transparent;
+      font-size: 1.25rem;
+      cursor: pointer;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      transition: all 0.2s;
+      opacity: 0.6;
+    }
+
+    .lang-toggle:hover {
+      opacity: 1;
+      border-color: #e2e8f0;
+    }
+
+    .lang-toggle.active {
+      opacity: 1;
+      border-color: #0066cc;
+      background: #f0f9ff;
+    }
+
+    /* Main content */
+    .app-main {
+      flex: 1;
+      padding: 2rem 1rem 5rem 1rem;
+      overflow-y: auto;
+    }
+    
+    .app-view {
+      display: none;
+    }
+    
+    .app-view.active {
+      display: block;
+    }
+    
+    /* Search view */
+    .view-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    .view-header h1 {
+      font-size: 2rem;
+      color: #1e293b;
+      margin-bottom: 0.5rem;
+    }
+    
+    .search-form {
+      max-width: 600px;
+      margin: 0 auto 2rem;
+    }
+    
+    .search-input-group {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    
+    .search-input {
+      flex: 1;
+      padding: 1rem;
+      border: 2px solid #e2e8f0;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    
+    .search-input:focus {
+      border-color: #0066cc;
+    }
+    
+    .search-btn {
+      background: #0066cc;
+      color: white;
+      border: none;
+      padding: 1rem 2rem;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .search-btn:hover {
+      background: #0052a3;
+    }
+    
+    .search-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    
+    .quick-categories {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    .category-btn {
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      padding: 0.5rem 1rem;
+      border-radius: 2rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .category-btn:hover {
+      background: #e2e8f0;
+    }
+    
+    /* Search results */
+    .search-results {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    .search-result {
+      background: white;
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .search-result h3 {
+      color: #1e293b;
+      margin-bottom: 0.5rem;
+    }
+    
+    .result-rating {
+      color: #64748b;
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+    }
+    
+    .ai-reason {
+      background: #f0f9ff;
+      padding: 0.75rem;
+      border-radius: 0.25rem;
+      margin-top: 0.5rem;
+      font-size: 0.875rem;
+      color: #0369a1;
+    }
+    
+    /* Trip planning */
+    .trip-form {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    .form-group {
+      margin-bottom: 2rem;
+    }
+    
+    .form-group label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+      color: #1e293b;
+    }
+    
+    .duration-options {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    
+    .duration-option {
+      background: #f1f5f9;
+      border: 2px solid #e2e8f0;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .duration-option.selected {
+      background: #0066cc;
+      color: white;
+      border-color: #0066cc;
+    }
+    
+    .interests-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.5rem;
+    }
+    
+    .interest-option {
+      background: #f1f5f9;
+      border: 2px solid #e2e8f0;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    
+    .interest-option.selected {
+      background: #0066cc;
+      color: white;
+      border-color: #0066cc;
+    }
+    
+    .budget-slider {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    
+    .budget-slider input {
+      flex: 1;
+    }
+    
+    .budget-display {
+      font-weight: 600;
+      color: #0066cc;
+      font-size: 1.25rem;
+    }
+    
+    .generate-btn {
+      width: 100%;
+      background: #0066cc;
+      color: white;
+      border: none;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      font-size: 1.1rem;
+      font-weight: 500;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+    
+    .trip-results {
+      max-width: 800px;
+      margin: 2rem auto 0;
+    }
+    
+    .trip-result {
+      background: white;
+      border-radius: 0.5rem;
+      padding: 2rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .trip-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    
+    .trip-stat {
+      text-align: center;
+      padding: 1rem;
+      background: #f8fafc;
+      border-radius: 0.5rem;
+    }
+    
+    .stat-label {
+      display: block;
+      font-size: 0.875rem;
+      color: #64748b;
+      margin-bottom: 0.25rem;
+    }
+    
+    .stat-value {
+      font-weight: 600;
+      color: #1e293b;
+      font-size: 1.1rem;
+    }
+    
+    /* Navigation */
+    .bottom-nav {
+      display: flex !important;
+      background: white;
+      box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+      padding: 0.5rem;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .nav-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      padding: 0.75rem 0.5rem;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+      transition: color 0.2s;
+      color: #64748b;
+    }
+    
+    .nav-btn.active {
+      color: #0066cc;
+    }
+    
+    .nav-icon {
+      font-size: 1.25rem;
+    }
+    
+    .nav-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    
+    /* AI Assistant */
+    .ai-interface {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    .voice-section {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    .voice-btn {
+      background: linear-gradient(135deg, #0066cc, #3b82f6);
+      color: white;
+      border: none;
+      padding: 2rem;
+      border-radius: 1rem;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0 auto;
+      transition: transform 0.2s;
+    }
+    
+    .voice-btn:hover {
+      transform: scale(1.05);
+    }
+    
+    .voice-icon {
+      font-size: 2rem;
+    }
+    
+    .voice-text {
+      font-weight: 500;
+    }
+    
+    .quick-actions {
+      margin-top: 2rem;
+    }
+    
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+    }
+    
+    .action-btn {
+      background: white;
+      border: 2px solid #e2e8f0;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+    
+    .action-btn:hover {
+      border-color: #0066cc;
+      color: #0066cc;
+    }
+    
+    /* Responsive design */
+    @media (max-width: 768px) {
+      .app-main {
+        padding: 1rem 0.5rem;
+      }
+      
+      .search-input-group {
+        flex-direction: column;
+      }
+      
+      .duration-options {
+        justify-content: center;
+      }
+      
+      .interests-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    
+    /* Force visibility - override any external CSS */
+    .app-view.active {
+      display: block !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      transform: none !important;
+    }
+    
+    #searchView {
+      display: block !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-brand">
+        <span>🧭</span>
+        <span>RoamWise</span>
+      </div>
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <button id="langHe" class="lang-toggle" data-testid="lang-he" data-lang="he" title="עברית">🇮🇱</button>
+        <button id="langEn" class="lang-toggle active" data-testid="lang-en" data-lang="en" title="English">🇬🇧</button>
+        <button id="themeToggle" class="theme-toggle">🌓</button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="app-main">
+      <!-- Search View -->
+      <section id="searchView" class="app-view active" data-view="search">
+        <div class="view-header">
+          <h1>🔍 Find Places</h1>
+          <p>Discover amazing places with AI-powered recommendations</p>
+        </div>
+        
+        <div class="search-form">
+          <div class="search-input-group">
+            <input 
+              type="text" 
+              id="freeText" 
+              placeholder="What are you looking for?"
+              class="search-input"
+            >
+            <button id="searchBtn" class="search-btn">Search</button>
+          </div>
+          
+          <div class="quick-categories">
+            <button class="category-btn" data-category="restaurant">🍽️ Food</button>
+            <button class="category-btn" data-category="attraction">🏛️ Sights</button>
+            <button class="category-btn" data-category="shopping">🛍️ Shopping</button>
+            <button class="category-btn" data-category="entertainment">🎯 Fun</button>
+          </div>
+        </div>
+        
+        <div id="list" class="search-results">
+          <div class="search-result">
+            <h3>🔍 Ready to Search</h3>
+            <p>Enter what you're looking for above and our AI will find personalized recommendations!</p>
+            <div class="result-rating">🤖 Powered by o3-mini Personal AI</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Trip Planning View -->
+      <section id="tripView" class="app-view" data-view="trip">
+        <div class="view-header">
+          <h1>🗺️ Plan Your Trip</h1>
+          <p>AI-powered trip planning with personalized recommendations</p>
+        </div>
+        
+        <div class="trip-form">
+          <div class="form-group">
+            <label>Trip Duration</label>
+            <div class="duration-options">
+              <button class="duration-option" data-duration="2">2 hours</button>
+              <button class="duration-option selected" data-duration="8">Full day</button>
+              <button class="duration-option" data-duration="16">Weekend</button>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label>Interests (max 4)</label>
+            <div class="interests-grid">
+              <button class="interest-option" data-interest="food">🍽️ Food</button>
+              <button class="interest-option" data-interest="nature">🌿 Nature</button>
+              <button class="interest-option" data-interest="culture">🏛️ Culture</button>
+              <button class="interest-option" data-interest="shopping">🛍️ Shopping</button>
+              <button class="interest-option" data-interest="entertainment">🎯 Entertainment</button>
+              <button class="interest-option" data-interest="relaxation">😌 Relaxation</button>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label>Budget per person</label>
+            <div class="budget-slider">
+              <input type="range" id="budgetRange" min="50" max="1000" value="300">
+              <div class="budget-display">$<span id="budgetAmount">300</span></div>
+            </div>
+          </div>
+          
+          <button id="generateTripBtn" class="generate-btn">
+            🤖 Generate Smart Trip
+          </button>
+        </div>
+        
+        <div id="enhancedTripDisplay" class="trip-results">
+          <div class="trip-result">
+            <h3>🗺️ AI Trip Planning</h3>
+            <p>Configure your preferences above and generate a personalized itinerary!</p>
+            <div class="trip-summary">
+              <div class="trip-stat">
+                <span class="stat-label">AI Model:</span>
+                <span class="stat-value">o3-mini</span>
+              </div>
+              <div class="trip-stat">
+                <span class="stat-label">Status:</span>
+                <span class="stat-value">Ready</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- AI Assistant View -->
+      <section id="aiView" class="app-view" data-view="ai">
+        <div class="view-header">
+          <h1>🤖 AI Assistant</h1>
+          <p>Voice-powered travel companion</p>
+        </div>
+        
+        <div class="ai-interface">
+          <div class="voice-section">
+            <button id="voiceBtn" class="voice-btn">
+              <span class="voice-icon">🎤</span>
+              <span class="voice-text">Press & Hold to Speak</span>
+            </button>
+            <div id="voiceStatus" class="voice-status"></div>
+            <div id="voiceResponse" class="voice-response"></div>
+          </div>
+          
+          <div class="quick-actions">
+            <h3>Quick Actions</h3>
+            <div class="action-grid">
+              <button class="action-btn" data-action="find-food">Find Food</button>
+              <button class="action-btn" data-action="weather">Check Weather</button>
+              <button class="action-btn" data-action="navigate">Get Directions</button>
+              <button class="action-btn" data-action="recommend">Recommendations</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Profile View -->
+      <section id="profileView" class="app-view" data-view="profile">
+        <div class="view-header">
+          <h1>👤 Profile</h1>
+          <p>Your travel preferences and history</p>
+        </div>
+        
+        <div class="profile-content">
+          <div class="trip-result">
+            <h3>Your Stats</h3>
+            <div class="trip-summary">
+              <div class="trip-stat">
+                <span class="stat-label">Trips Planned</span>
+                <span class="stat-value">0</span>
+              </div>
+              <div class="trip-stat">
+                <span class="stat-label">Places Visited</span>
+                <span class="stat-value">0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-view="search">
+        <span class="nav-icon">🔍</span>
+        <span class="nav-label">Search</span>
+      </button>
+      <button class="nav-btn" data-view="ai">
+        <span class="nav-icon">🤖</span>
+        <span class="nav-label">AI</span>
+      </button>
+      <button class="nav-btn" data-view="trip">
+        <span class="nav-icon">🗺️</span>
+        <span class="nav-label">Trip</span>
+      </button>
+      <button class="nav-btn" data-view="profile">
+        <span class="nav-icon">👤</span>
+        <span class="nav-label">Profile</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- JavaScript -->
+  <script type="module" src="app-main.js"></script>
+  
+  <!-- Inline navigation fix for immediate functionality -->
+  <script>
+    console.log('Navigation fallback loading...');
+    
+    // Simple navigation function
+    function setupNavigation() {
+      console.log('Setting up navigation fallback...');
+      
+      const navButtons = document.querySelectorAll('.nav-btn');
+      const views = document.querySelectorAll('.app-view');
+      
+      console.log('Found nav buttons:', navButtons.length);
+      console.log('Found views:', views.length);
+      
+      // Function to show a specific view
+      function showView(viewName) {
+        console.log('Showing view:', viewName);
+        
+        // Hide all views
+        views.forEach(view => {
+          view.classList.remove('active');
+          view.style.display = 'none';
+        });
+        
+        // Show target view
+        const targetView = document.querySelector(`[data-view="${viewName}"]`);
+        if (targetView) {
+          targetView.classList.add('active');
+          targetView.style.display = 'block';
+          console.log('View activated:', viewName);
+        } else {
+          console.error('View not found:', viewName);
+        }
+        
+        // Update navigation buttons
+        navButtons.forEach(button => {
+          button.classList.remove('active');
+          if (button.getAttribute('data-view') === viewName) {
+            button.classList.add('active');
+          }
+        });
+      }
+      
+      // Add click listeners to navigation buttons
+      navButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          const targetView = button.getAttribute('data-view');
+          console.log('Navigation clicked:', targetView);
+          showView(targetView);
+        });
+      });
+      
+      // Show search view by default
+      showView('search');
+    }
+    
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupNavigation);
+    } else {
+      setupNavigation();
+    }
+  </script>
+</body>
+</html>

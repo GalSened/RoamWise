@@ -1,0 +1,13 @@
+runtime: nodejs20
+
+env_variables:
+  NODE_ENV: production
+  PORT: 8080
+  GOOGLE_CLOUD_PROJECT_ID: premium-hybrid-473405-g7
+  OPENAI_MODEL: o3-mini
+
+automatic_scaling:
+  min_instances: 0
+  max_instances: 5
+
+instance_class: F2

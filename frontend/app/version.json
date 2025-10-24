@@ -1,0 +1,21 @@
+{
+  "version": "2.0.0",
+  "buildDate": "2024-09-28T06:15:00Z",
+  "features": [
+    "🌤️ Weather-aware trip planning with real-time forecasts",
+    "🎨 Complete dark mode with theme persistence", 
+    "🗺️ In-app navigation with turn-by-turn directions",
+    "🎤 Advanced voice AI for natural trip planning",
+    "⚡ Provider-based architecture for easy integrations",
+    "📱 Enhanced PWA with offline support",
+    "🔄 Automatic update system with release notes"
+  ],
+  "fixes": [
+    "Fixed theme flashing on app load",
+    "Improved search → map navigation flow",
+    "Enhanced voice recognition accuracy",
+    "Better error handling for offline scenarios",
+    "Optimized route calculation performance"
+  ],
+  "breaking": []
+}

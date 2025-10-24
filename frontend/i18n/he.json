@@ -1,0 +1,10 @@
+{
+  "planner.start_from": "נקודת התחלה",
+  "planner.my_location": "📍 המיקום שלי",
+  "planner.my_hotel": "🏨 המלון שלי",
+  "planner.hotel_name": "שם המלון",
+  "planner.destination": "יעד (לא חובה)",
+  "planner.near_radius": "רדיוס בקרבת ההתחלה (ק\"מ)",
+  "planner.detour_minutes": "עיקוף מירבי לאורך המסלול (דק׳)",
+  "planner.plan_day": "תכנן יום"
+}

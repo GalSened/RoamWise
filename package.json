@@ -1,0 +1,54 @@
+{
+  "name": "roamwise-monorepo",
+  "version": "2.0.0",
+  "description": "RoamWise Travel App - Unified Monorepo",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend",
+    "proxy",
+    "ai"
+  ],
+  "scripts": {
+    "install:all": "npm install",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:proxy": "npm run start --workspace=proxy",
+    "dev:ai": "npm run dev --workspace=ai",
+    "dev": "npm run dev:frontend & npm run dev:backend & npm run dev:proxy & npm run dev:ai",
+    "build:frontend": "npm run build --workspace=frontend",
+    "build:backend": "npm run build --workspace=backend",
+    "build:ai": "npm run build --workspace=ai",
+    "build": "npm run build:frontend && npm run build:backend && npm run build:ai",
+    "start:frontend": "npm run preview --workspace=frontend",
+    "start:backend": "npm run start --workspace=backend",
+    "start:proxy": "npm run start --workspace=proxy",
+    "start:ai": "npm run start --workspace=ai",
+    "start": "npm run start:backend & npm run start:proxy & npm run start:ai",
+    "test:frontend": "npm run test --workspace=frontend",
+    "test": "npm run test:frontend",
+    "test:e2e": "npm run test:e2e --workspace=frontend",
+    "lint": "npm run lint --workspace=frontend",
+    "typecheck": "npm run typecheck --workspace=frontend",
+    "clean": "rm -rf node_modules frontend/node_modules backend/node_modules proxy/node_modules ai/node_modules",
+    "clean:build": "rm -rf frontend/dist backend/dist ai/dist"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/galsened/RoamWise.git"
+  },
+  "keywords": [
+    "travel",
+    "ai",
+    "routing",
+    "osrm",
+    "pwa",
+    "monorepo"
+  ],
+  "author": "RoamWise Team",
+  "license": "MIT"
+}

@@ -1,0 +1,26 @@
+# Code Owners for RoamWise Frontend
+# These owners will be requested for review when someone opens a PR that modifies code in these paths
+
+# Core application files
+/index.html @galsened
+/app-main.js @galsened
+/app.js @galsened
+
+# Source code
+/src/** @galsened
+
+# Backend integration
+/backend/** @galsened
+
+# CI/CD and infrastructure
+/.github/** @galsened
+/deploy.sh @galsened
+/deploy-commands.sh @galsened
+
+# Configuration files
+/package.json @galsened
+/playwright.config.ts @galsened
+
+# Security and documentation
+/SECURITY.md @galsened
+/CHANGELOG.md @galsened
