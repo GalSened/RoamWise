@@ -155,12 +155,20 @@ RoamWise/
 - **Tool**: Gitleaks
 - **Status**: Active, scans passing
 
-## Next Steps (Optional)
+## Post-Migration Actions
 
-1. **Archive old repositories on GitHub**:
-   - Add deprecation notice to READMEs
-   - Archive each old repo via Settings → Danger Zone
-   - Repos: RoamWise-frontend-WX, roamwise-backend-v2, RoamWise-proxy-WX
+### ✅ Completed
+
+1. **Archived old repositories on GitHub**:
+   - ✅ Added deprecation notices (DEPRECATION.md) to all old repos
+   - ✅ Updated READMEs with warning banners linking to monorepo
+   - ✅ Archived repositories via GitHub API:
+     - `GalSened/RoamWise-frontend-WX` - Archived
+     - `GalSened/roamwise-backend-v2` - Archived
+     - `GalSened/RoamWise-proxy-WX` - Archived
+   - All old repos are now read-only with clear migration paths
+
+### 📋 Recommended (Optional)
 
 2. **Update deployment pipelines**:
    - Configure Cloud Run deployments for monorepo structure

@@ -273,12 +273,14 @@ To archive the old separate repositories on GitHub:
    - Confirm the action
    - Archived repos become read-only and show a notice
 
-3. **Repositories to archive**:
-   - ✅ `GalSened/RoamWise-frontend-WX`
-   - ✅ `GalSened/roamwise-backend-v2`
-   - ✅ `GalSened/RoamWise-proxy-WX`
-   - ✅ `GalSened/RoamWise-PersonalAI` (if it exists on GitHub)
-   - ✅ `GalSened/roamwise-routing-osrm` (if it exists on GitHub)
+3. **Repositories archived** (October 24, 2025):
+   - ✅ `GalSened/RoamWise-frontend-WX` - **ARCHIVED**
+   - ✅ `GalSened/roamwise-backend-v2` - **ARCHIVED**
+   - ✅ `GalSened/RoamWise-proxy-WX` - **ARCHIVED**
+   - ⚠️ `GalSened/RoamWise-PersonalAI` - Not found on GitHub
+   - ⚠️ `GalSened/roamwise-routing-osrm` - Not found on GitHub
+
+   All archived repositories include DEPRECATION.md with migration instructions.
 
 ## Next Steps
 
