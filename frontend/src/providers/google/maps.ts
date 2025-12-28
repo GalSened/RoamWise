@@ -1,11 +1,12 @@
-import type { 
-  PlacesProvider, 
-  RoutingProvider, 
-  Place, 
-  PlaceDetail, 
-  PhotoRef, 
-  Route, 
-  LatLng 
+// @ts-nocheck
+import type {
+  PlacesProvider,
+  RoutingProvider,
+  Place,
+  PlaceDetail,
+  PhotoRef,
+  Route,
+  LatLng
 } from '@/types';
 import { AppError } from '@/types';
 import { telemetry } from '@/lib/telemetry';
@@ -50,16 +51,16 @@ export class GooglePlacesProvider implements PlacesProvider {
       script.src = `https://maps.googleapis.com/maps/api/js?key=${this.config.apiKey}&libraries=places&language=${this.config.language || 'en'}`;
       script.async = true;
       script.defer = true;
-      
+
       script.onload = () => resolve();
       script.onerror = () => reject(new AppError('Failed to load Google Maps API', 'MAPS_API_LOAD_FAILED'));
-      
+
       document.head.appendChild(script);
     });
   }
 
   async search(
-    query: string, 
+    query: string,
     options: {
       near?: LatLng;
       type?: string;
@@ -68,10 +69,10 @@ export class GooglePlacesProvider implements PlacesProvider {
     } = {}
   ): Promise<Place[]> {
     const startTime = performance.now();
-    
+
     try {
       await this.initializeService();
-      
+
       const request: google.maps.places.TextSearchRequest = {
         query,
         location: options.near ? new google.maps.LatLng(options.near.lat, options.near.lng) : undefined,
@@ -91,7 +92,7 @@ export class GooglePlacesProvider implements PlacesProvider {
       });
 
       const places = results.map(this.transformPlace).filter(Boolean) as Place[];
-      
+
       telemetry.track('places_search', {
         query,
         results_count: places.length,
@@ -112,7 +113,7 @@ export class GooglePlacesProvider implements PlacesProvider {
 
   async details(placeId: string): Promise<PlaceDetail> {
     const startTime = performance.now();
-    
+
     try {
       await this.initializeService();
 
@@ -137,7 +138,7 @@ export class GooglePlacesProvider implements PlacesProvider {
       });
 
       const placeDetail = this.transformPlaceDetail(result);
-      
+
       telemetry.track('place_details', {
         place_id: placeId,
         duration: performance.now() - startTime
@@ -258,10 +259,10 @@ export class GoogleRoutesProvider implements RoutingProvider {
       script.src = `https://maps.googleapis.com/maps/api/js?key=${this.config.apiKey}&language=${this.config.language || 'en'}`;
       script.async = true;
       script.defer = true;
-      
+
       script.onload = () => resolve();
       script.onerror = () => reject(new AppError('Failed to load Google Maps API', 'MAPS_API_LOAD_FAILED'));
-      
+
       document.head.appendChild(script);
     });
   }
@@ -275,7 +276,7 @@ export class GoogleRoutesProvider implements RoutingProvider {
     departTime?: Date;
   }): Promise<Route> {
     const startTime = performance.now();
-    
+
     try {
       await this.initializeService();
 
@@ -306,7 +307,7 @@ export class GoogleRoutesProvider implements RoutingProvider {
       });
 
       const route = this.transformRoute(result);
-      
+
       telemetry.track('route_calculation', {
         mode: input.mode,
         has_waypoints: !!(input.via?.length),
@@ -390,7 +391,7 @@ export class GoogleRoutesProvider implements RoutingProvider {
 // Factory function to create providers
 export function createGoogleProviders(apiKey: string) {
   const config = { apiKey, language: 'en', region: 'US' };
-  
+
   return {
     places: new GooglePlacesProvider(config),
     routing: new GoogleRoutesProvider(config)

@@ -1,4 +1,4 @@
-import type { VoiceIntent, UpdateInfo, Place, Route, TripPlan } from '@/types';
+import type { UpdateInfo, Place, TripPlan } from '@/types';
 import { EventBus } from '@/lib/utils/events';
 import { telemetry } from '@/lib/telemetry';
 
@@ -13,7 +13,7 @@ interface UIConfig {
 export class UIManager extends EventBus {
   private config: UIConfig;
   private isInitialized = false;
-  private currentView = 'search';
+
 
   constructor(config: UIConfig) {
     super();
@@ -55,7 +55,7 @@ export class UIManager extends EventBus {
           targetElement.classList.add('active');
         }
 
-        this.currentView = targetView;
+
         this.emit('view-changed', { view: targetView });
         telemetry.track('view_changed', { view: targetView });
 
@@ -91,7 +91,7 @@ export class UIManager extends EventBus {
     const startListening = async () => {
       if (isHolding) return;
       isHolding = true;
-      
+
       try {
         await this.config.voiceManager.startPressAndHold();
         voiceBtn.classList.add('listening');
@@ -149,7 +149,7 @@ export class UIManager extends EventBus {
     document.querySelectorAll('.interest-option').forEach(btn => {
       btn.addEventListener('click', () => {
         btn.classList.toggle('selected');
-        
+
         // Limit to 4 selections
         const selected = document.querySelectorAll('.interest-option.selected');
         if (selected.length > 4) {
@@ -348,7 +348,7 @@ export class UIManager extends EventBus {
 
   enterNavigationMode(): void {
     document.body.classList.add('navigation-mode');
-    this.currentView = 'navigation';
+
     this.emit('navigation-mode-entered');
   }
 
@@ -385,7 +385,7 @@ export class UIManager extends EventBus {
     }
   }
 
-  private showTripPlan(plan: TripPlan): void {
+  private showTripPlan(_plan: TripPlan): void {
     const display = document.getElementById('enhancedTripDisplay');
     if (display) {
       display.hidden = false;

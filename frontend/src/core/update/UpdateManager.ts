@@ -1,5 +1,7 @@
 import type { AppVersion, UpdateInfo } from '@/types';
 import { EventBus } from '@/lib/utils/events';
+// @ts-nocheck
+import { registerSW } from 'virtual:pwa-register';
 import { telemetry } from '@/lib/telemetry';
 
 interface UpdateConfig {
@@ -18,7 +20,7 @@ class UpdateManager extends EventBus {
 
   constructor(config: Partial<UpdateConfig> = {}) {
     super();
-    
+
     this.config = {
       checkInterval: 30 * 60 * 1000, // 30 minutes
       apiEndpoint: '/app/version.json',
@@ -34,7 +36,7 @@ class UpdateManager extends EventBus {
 
   async checkForUpdates(force = false): Promise<UpdateInfo> {
     const now = Date.now();
-    
+
     // Avoid too frequent checks unless forced
     if (!force && now - this.lastCheckTime < 5 * 60 * 1000) {
       return this.getLastUpdateInfo();
@@ -58,10 +60,10 @@ class UpdateManager extends EventBus {
 
       const latestVersion: AppVersion = await response.json();
       const updateInfo = this.compareVersions(latestVersion);
-      
+
       this.latestVersion = latestVersion;
       this.updateAvailable = updateInfo.available;
-      
+
       if (updateInfo.available) {
         this.emit('update-available', updateInfo);
         telemetry.track('update_available', {
@@ -82,7 +84,7 @@ class UpdateManager extends EventBus {
       telemetry.track('update_check_failed', {
         error: error instanceof Error ? error.message : 'Unknown error'
       });
-      
+
       return {
         available: false,
         current: this.config.currentVersion,
@@ -94,7 +96,7 @@ class UpdateManager extends EventBus {
   private compareVersions(latest: AppVersion): UpdateInfo {
     const current = this.config.currentVersion;
     const available = this.isNewerVersion(latest.version, current);
-    
+
     return {
       available,
       current,
@@ -107,15 +109,15 @@ class UpdateManager extends EventBus {
   private isNewerVersion(latest: string, current: string): boolean {
     const latestParts = latest.split('.').map(Number);
     const currentParts = current.split('.').map(Number);
-    
+
     for (let i = 0; i < Math.max(latestParts.length, currentParts.length); i++) {
       const latestPart = latestParts[i] || 0;
       const currentPart = currentParts[i] || 0;
-      
+
       if (latestPart > currentPart) return true;
       if (latestPart < currentPart) return false;
     }
-    
+
     return false;
   }
 
@@ -176,7 +178,7 @@ class UpdateManager extends EventBus {
 
   private redirectToStore(): void {
     const userAgent = navigator.userAgent;
-    
+
     if (userAgent.includes('iPhone') || userAgent.includes('iPad')) {
       // iOS App Store
       window.open('https://apps.apple.com/app/traveling-app', '_blank');

@@ -1,0 +1,875 @@
+
+Running 25 tests using 11 workers
+
+[1A[2K[1/25] [chromium] › frontend\tests\e2e\planner.basic.spec.ts:51:3 › Planner - Basic Flows › A→B flow - generates trip with destination
+[1A[2K[2/25] [chromium] › frontend\tests\e2e\planner.basic.spec.ts:90:3 › Planner - Basic Flows › handles planner errors gracefully
+[1A[2K[3/25] [chromium] › frontend\tests\e2e\planner.basic.spec.ts:110:3 › Planner - Basic Flows › can regenerate trip multiple times
+[1A[2K[4/25] [chromium] › frontend\tests\e2e\planner.basic.spec.ts:12:3 › Planner - Basic Flows › NEARBY flow - generates trip without destination
+[1A[2K[5/25] [chromium] › frontend\tests\e2e\planner.basic.spec.ts:136:3 › Planner - Basic Flows › network wait prevents premature assertions
+[1A[2K[6/25] [firefox] › frontend\tests\e2e\planner.basic.spec.ts:12:3 › Planner - Basic Flows › NEARBY flow - generates trip without destination
+[1A[2K[7/25] [firefox] › frontend\tests\e2e\planner.basic.spec.ts:51:3 › Planner - Basic Flows › A→B flow - generates trip with destination
+[1A[2K  1) [firefox] › frontend\tests\e2e\planner.basic.spec.ts:12:3 › Planner - Basic Flows › NEARBY flow - generates trip without destination 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\gals\AppData\Local\ms-playwright\firefox-1495\firefox\firefox.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+
+[1A[2K[8/25] [firefox] › frontend\tests\e2e\planner.basic.spec.ts:136:3 › Planner - Basic Flows › network wait prevents premature assertions
+[1A[2K[9/25] [firefox] › frontend\tests\e2e\planner.basic.spec.ts:110:3 › Planner - Basic Flows › can regenerate trip multiple times
+[1A[2K[10/25] [firefox] › frontend\tests\e2e\planner.basic.spec.ts:90:3 › Planner - Basic Flows › handles planner errors gracefully
+[1A[2K  2) [firefox] › frontend\tests\e2e\planner.basic.spec.ts:51:3 › Planner - Basic Flows › A→B flow - generates trip with destination 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\gals\AppData\Local\ms-playwright\firefox-1495\firefox\firefox.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+
+[1A[2K  3) [firefox] › frontend\tests\e2e\planner.basic.spec.ts:110:3 › Planner - Basic Flows › can regenerate trip multiple times 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\gals\AppData\Local\ms-playwright\firefox-1495\firefox\firefox.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+
+[1A[2K  4) [firefox] › frontend\tests\e2e\planner.basic.spec.ts:90:3 › Planner - Basic Flows › handles planner errors gracefully 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\gals\AppData\Local\ms-playwright\firefox-1495\firefox\firefox.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+
+[1A[2K  5) [firefox] › frontend\tests\e2e\planner.basic.spec.ts:136:3 › Planner - Basic Flows › network wait prevents premature assertions 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\gals\AppData\Local\ms-playwright\firefox-1495\firefox\firefox.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+
+[1A[2K[11/25] [webkit] › frontend\tests\e2e\planner.basic.spec.ts:12:3 › Planner - Basic Flows › NEARBY flow - generates trip without destination
+[1A[2K  6) [webkit] › frontend\tests\e2e\planner.basic.spec.ts:12:3 › Planner - Basic Flows › NEARBY flow - generates trip without destination 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\gals\AppData\Local\ms-playwright\webkit-2215\Playwright.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+
+[1A[2K[12/25] [webkit] › frontend\tests\e2e\planner.basic.spec.ts:51:3 › Planner - Basic Flows › A→B flow - generates trip with destination
+[1A[2K  7) [webkit] › frontend\tests\e2e\planner.basic.spec.ts:51:3 › Planner - Basic Flows › A→B flow - generates trip with destination 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\gals\AppData\Local\ms-playwright\webkit-2215\Playwright.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+
+[1A[2K[13/25] [webkit] › frontend\tests\e2e\planner.basic.spec.ts:90:3 › Planner - Basic Flows › handles planner errors gracefully
+[1A[2K[14/25] [webkit] › frontend\tests\e2e\planner.basic.spec.ts:136:3 › Planner - Basic Flows › network wait prevents premature assertions
+[1A[2K[15/25] [webkit] › frontend\tests\e2e\planner.basic.spec.ts:110:3 › Planner - Basic Flows › can regenerate trip multiple times
+[1A[2K  8) [webkit] › frontend\tests\e2e\planner.basic.spec.ts:90:3 › Planner - Basic Flows › handles planner errors gracefully 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\gals\AppData\Local\ms-playwright\webkit-2215\Playwright.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+
+[1A[2K[16/25] [Mobile Chrome] › frontend\tests\e2e\planner.basic.spec.ts:12:3 › Planner - Basic Flows › NEARBY flow - generates trip without destination
+[1A[2K  9) [webkit] › frontend\tests\e2e\planner.basic.spec.ts:110:3 › Planner - Basic Flows › can regenerate trip multiple times 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\gals\AppData\Local\ms-playwright\webkit-2215\Playwright.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+
+[1A[2K  10) [webkit] › frontend\tests\e2e\planner.basic.spec.ts:136:3 › Planner - Basic Flows › network wait prevents premature assertions 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\gals\AppData\Local\ms-playwright\webkit-2215\Playwright.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+
+[1A[2K[17/25] [Mobile Chrome] › frontend\tests\e2e\planner.basic.spec.ts:51:3 › Planner - Basic Flows › A→B flow - generates trip with destination
+[1A[2K[18/25] [Mobile Chrome] › frontend\tests\e2e\planner.basic.spec.ts:110:3 › Planner - Basic Flows › can regenerate trip multiple times
+[1A[2K[19/25] [Mobile Safari] › frontend\tests\e2e\planner.basic.spec.ts:12:3 › Planner - Basic Flows › NEARBY flow - generates trip without destination
+[1A[2K[20/25] [Mobile Chrome] › frontend\tests\e2e\planner.basic.spec.ts:136:3 › Planner - Basic Flows › network wait prevents premature assertions
+[1A[2K[21/25] [Mobile Chrome] › frontend\tests\e2e\planner.basic.spec.ts:90:3 › Planner - Basic Flows › handles planner errors gracefully
+[1A[2K  11) [Mobile Safari] › frontend\tests\e2e\planner.basic.spec.ts:12:3 › Planner - Basic Flows › NEARBY flow - generates trip without destination 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\gals\AppData\Local\ms-playwright\webkit-2215\Playwright.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+
+[1A[2K[22/25] [Mobile Safari] › frontend\tests\e2e\planner.basic.spec.ts:51:3 › Planner - Basic Flows › A→B flow - generates trip with destination
+[1A[2K  12) [Mobile Safari] › frontend\tests\e2e\planner.basic.spec.ts:51:3 › Planner - Basic Flows › A→B flow - generates trip with destination 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\gals\AppData\Local\ms-playwright\webkit-2215\Playwright.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+
+[1A[2K[23/25] [Mobile Safari] › frontend\tests\e2e\planner.basic.spec.ts:90:3 › Planner - Basic Flows › handles planner errors gracefully
+[1A[2K  13) [Mobile Safari] › frontend\tests\e2e\planner.basic.spec.ts:90:3 › Planner - Basic Flows › handles planner errors gracefully 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\gals\AppData\Local\ms-playwright\webkit-2215\Playwright.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+
+[1A[2K[24/25] [Mobile Safari] › frontend\tests\e2e\planner.basic.spec.ts:110:3 › Planner - Basic Flows › can regenerate trip multiple times
+[1A[2K  14) [Mobile Safari] › frontend\tests\e2e\planner.basic.spec.ts:110:3 › Planner - Basic Flows › can regenerate trip multiple times 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\gals\AppData\Local\ms-playwright\webkit-2215\Playwright.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+
+[1A[2K[25/25] [Mobile Safari] › frontend\tests\e2e\planner.basic.spec.ts:136:3 › Planner - Basic Flows › network wait prevents premature assertions
+[1A[2K  15) [Mobile Safari] › frontend\tests\e2e\planner.basic.spec.ts:136:3 › Planner - Basic Flows › network wait prevents premature assertions 
+
+    Error: browserType.launch: Executable doesn't exist at C:\Users\gals\AppData\Local\ms-playwright\webkit-2215\Playwright.exe
+    ╔═════════════════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright Test or Playwright was just installed or updated. ║
+    ║ Please run the following command to download new browsers:              ║
+    ║                                                                         ║
+    ║     npx playwright install                                              ║
+    ║                                                                         ║
+    ║ <3 Playwright Team                                                      ║
+    ╚═════════════════════════════════════════════════════════════════════════╝
+
+
+[1A[2K  16) [chromium] › frontend\tests\e2e\planner.basic.spec.ts:136:3 › Planner - Basic Flows › network wait prevents premature assertions 
+
+    [31mTest timeout of 120000ms exceeded while running "beforeEach" hook.[39m
+
+      3 |
+      4 | test.describe('Planner - Basic Flows', () => {
+    > 5 |   test.beforeEach(async ({ page }) => {
+        |        ^
+      6 |     await page.goto('/');
+      7 |     // Navigate to trip planning view
+      8 |     await page.click('[data-testid="nav-trip"]');
+        at C:\Users\gals\RoamWise\frontend\tests\e2e\planner.basic.spec.ts:5:8
+
+    Error: page.click: Test timeout of 120000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[data-testid="nav-trip"]')[22m
+    [2m    - locator resolved to <button class="nav-btn" data-view="trip" data-testid="nav-trip">…</button>[22m
+    [2m  - attempting click action[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m    - waiting 20ms[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m      - waiting 100ms[22m
+    [2m    225 × waiting for element to be visible, enabled and stable[22m
+    [2m        - element is visible, enabled and stable[22m
+    [2m        - scrolling into view if needed[22m
+    [2m        - done scrolling[22m
+    [2m        - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m      - retrying click action[22m
+    [2m        - waiting 500ms[22m
+
+
+       6 |     await page.goto('/');
+       7 |     // Navigate to trip planning view
+    >  8 |     await page.click('[data-testid="nav-trip"]');
+         |                ^
+       9 |     await expect(page.locator('#page-trip')).toHaveClass(/active/);
+      10 |   });
+      11 |
+        at C:\Users\gals\RoamWise\frontend\tests\e2e\planner.basic.spec.ts:8:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    frontend\test-results\planner.basic-Planner---Ba-85cfa-events-premature-assertions-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    frontend\test-results\planner.basic-Planner---Ba-85cfa-events-premature-assertions-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: frontend\test-results\planner.basic-Planner---Ba-85cfa-events-premature-assertions-chromium\error-context.md
+
+
+[1A[2K  17) [chromium] › frontend\tests\e2e\planner.basic.spec.ts:110:3 › Planner - Basic Flows › can regenerate trip multiple times 
+
+    [31mTest timeout of 120000ms exceeded while running "beforeEach" hook.[39m
+
+      3 |
+      4 | test.describe('Planner - Basic Flows', () => {
+    > 5 |   test.beforeEach(async ({ page }) => {
+        |        ^
+      6 |     await page.goto('/');
+      7 |     // Navigate to trip planning view
+      8 |     await page.click('[data-testid="nav-trip"]');
+        at C:\Users\gals\RoamWise\frontend\tests\e2e\planner.basic.spec.ts:5:8
+
+    Error: page.click: Test timeout of 120000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[data-testid="nav-trip"]')[22m
+    [2m    - locator resolved to <button class="nav-btn" data-view="trip" data-testid="nav-trip">…</button>[22m
+    [2m  - attempting click action[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m    - waiting 20ms[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m      - waiting 100ms[22m
+    [2m    224 × waiting for element to be visible, enabled and stable[22m
+    [2m        - element is visible, enabled and stable[22m
+    [2m        - scrolling into view if needed[22m
+    [2m        - done scrolling[22m
+    [2m        - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m      - retrying click action[22m
+    [2m        - waiting 500ms[22m
+    [2m    - waiting for element to be visible, enabled and stable[22m
+    [2m    - element is visible, enabled and stable[22m
+    [2m    - scrolling into view if needed[22m
+    [2m    - done scrolling[22m
+
+
+       6 |     await page.goto('/');
+       7 |     // Navigate to trip planning view
+    >  8 |     await page.click('[data-testid="nav-trip"]');
+         |                ^
+       9 |     await expect(page.locator('#page-trip')).toHaveClass(/active/);
+      10 |   });
+      11 |
+        at C:\Users\gals\RoamWise\frontend\tests\e2e\planner.basic.spec.ts:8:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    frontend\test-results\planner.basic-Planner---Ba-caffa-enerate-trip-multiple-times-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    frontend\test-results\planner.basic-Planner---Ba-caffa-enerate-trip-multiple-times-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: frontend\test-results\planner.basic-Planner---Ba-caffa-enerate-trip-multiple-times-chromium\error-context.md
+
+
+[1A[2K  18) [chromium] › frontend\tests\e2e\planner.basic.spec.ts:51:3 › Planner - Basic Flows › A→B flow - generates trip with destination 
+
+    [31mTest timeout of 120000ms exceeded while running "beforeEach" hook.[39m
+
+      3 |
+      4 | test.describe('Planner - Basic Flows', () => {
+    > 5 |   test.beforeEach(async ({ page }) => {
+        |        ^
+      6 |     await page.goto('/');
+      7 |     // Navigate to trip planning view
+      8 |     await page.click('[data-testid="nav-trip"]');
+        at C:\Users\gals\RoamWise\frontend\tests\e2e\planner.basic.spec.ts:5:8
+
+    Error: page.click: Test timeout of 120000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[data-testid="nav-trip"]')[22m
+    [2m    - locator resolved to <button class="nav-btn" data-view="trip" data-testid="nav-trip">…</button>[22m
+    [2m  - attempting click action[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m    - waiting 20ms[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m      - waiting 100ms[22m
+    [2m    224 × waiting for element to be visible, enabled and stable[22m
+    [2m        - element is visible, enabled and stable[22m
+    [2m        - scrolling into view if needed[22m
+    [2m        - done scrolling[22m
+    [2m        - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m      - retrying click action[22m
+    [2m        - waiting 500ms[22m
+    [2m    - waiting for element to be visible, enabled and stable[22m
+    [2m    - element is visible, enabled and stable[22m
+    [2m    - scrolling into view if needed[22m
+    [2m    - done scrolling[22m
+
+
+       6 |     await page.goto('/');
+       7 |     // Navigate to trip planning view
+    >  8 |     await page.click('[data-testid="nav-trip"]');
+         |                ^
+       9 |     await expect(page.locator('#page-trip')).toHaveClass(/active/);
+      10 |   });
+      11 |
+        at C:\Users\gals\RoamWise\frontend\tests\e2e\planner.basic.spec.ts:8:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    frontend\test-results\planner.basic-Planner---Ba-56924-rates-trip-with-destination-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    frontend\test-results\planner.basic-Planner---Ba-56924-rates-trip-with-destination-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: frontend\test-results\planner.basic-Planner---Ba-56924-rates-trip-with-destination-chromium\error-context.md
+
+
+[1A[2K  19) [chromium] › frontend\tests\e2e\planner.basic.spec.ts:12:3 › Planner - Basic Flows › NEARBY flow - generates trip without destination 
+
+    [31mTest timeout of 120000ms exceeded while running "beforeEach" hook.[39m
+
+      3 |
+      4 | test.describe('Planner - Basic Flows', () => {
+    > 5 |   test.beforeEach(async ({ page }) => {
+        |        ^
+      6 |     await page.goto('/');
+      7 |     // Navigate to trip planning view
+      8 |     await page.click('[data-testid="nav-trip"]');
+        at C:\Users\gals\RoamWise\frontend\tests\e2e\planner.basic.spec.ts:5:8
+
+    Error: page.click: Test timeout of 120000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[data-testid="nav-trip"]')[22m
+    [2m    - locator resolved to <button class="nav-btn" data-view="trip" data-testid="nav-trip">…</button>[22m
+    [2m  - attempting click action[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m    - waiting 20ms[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m      - waiting 100ms[22m
+    [2m    224 × waiting for element to be visible, enabled and stable[22m
+    [2m        - element is visible, enabled and stable[22m
+    [2m        - scrolling into view if needed[22m
+    [2m        - done scrolling[22m
+    [2m        - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m      - retrying click action[22m
+    [2m        - waiting 500ms[22m
+
+
+       6 |     await page.goto('/');
+       7 |     // Navigate to trip planning view
+    >  8 |     await page.click('[data-testid="nav-trip"]');
+         |                ^
+       9 |     await expect(page.locator('#page-trip')).toHaveClass(/active/);
+      10 |   });
+      11 |
+        at C:\Users\gals\RoamWise\frontend\tests\e2e\planner.basic.spec.ts:8:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    frontend\test-results\planner.basic-Planner---Ba-954bd-es-trip-without-destination-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    frontend\test-results\planner.basic-Planner---Ba-954bd-es-trip-without-destination-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: frontend\test-results\planner.basic-Planner---Ba-954bd-es-trip-without-destination-chromium\error-context.md
+
+
+[1A[2K  20) [chromium] › frontend\tests\e2e\planner.basic.spec.ts:90:3 › Planner - Basic Flows › handles planner errors gracefully 
+
+    [31mTest timeout of 120000ms exceeded while running "beforeEach" hook.[39m
+
+      3 |
+      4 | test.describe('Planner - Basic Flows', () => {
+    > 5 |   test.beforeEach(async ({ page }) => {
+        |        ^
+      6 |     await page.goto('/');
+      7 |     // Navigate to trip planning view
+      8 |     await page.click('[data-testid="nav-trip"]');
+        at C:\Users\gals\RoamWise\frontend\tests\e2e\planner.basic.spec.ts:5:8
+
+    Error: page.click: Test timeout of 120000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[data-testid="nav-trip"]')[22m
+    [2m    - locator resolved to <button class="nav-btn" data-view="trip" data-testid="nav-trip">…</button>[22m
+    [2m  - attempting click action[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m    - waiting 20ms[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m      - waiting 100ms[22m
+    [2m    225 × waiting for element to be visible, enabled and stable[22m
+    [2m        - element is visible, enabled and stable[22m
+    [2m        - scrolling into view if needed[22m
+    [2m        - done scrolling[22m
+    [2m        - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m      - retrying click action[22m
+    [2m        - waiting 500ms[22m
+
+
+       6 |     await page.goto('/');
+       7 |     // Navigate to trip planning view
+    >  8 |     await page.click('[data-testid="nav-trip"]');
+         |                ^
+       9 |     await expect(page.locator('#page-trip')).toHaveClass(/active/);
+      10 |   });
+      11 |
+        at C:\Users\gals\RoamWise\frontend\tests\e2e\planner.basic.spec.ts:8:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    frontend\test-results\planner.basic-Planner---Ba-3ba1b-s-planner-errors-gracefully-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    frontend\test-results\planner.basic-Planner---Ba-3ba1b-s-planner-errors-gracefully-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: frontend\test-results\planner.basic-Planner---Ba-3ba1b-s-planner-errors-gracefully-chromium\error-context.md
+
+
+[1A[2K  21) [Mobile Chrome] › frontend\tests\e2e\planner.basic.spec.ts:12:3 › Planner - Basic Flows › NEARBY flow - generates trip without destination 
+
+    [31mTest timeout of 120000ms exceeded while running "beforeEach" hook.[39m
+
+      3 |
+      4 | test.describe('Planner - Basic Flows', () => {
+    > 5 |   test.beforeEach(async ({ page }) => {
+        |        ^
+      6 |     await page.goto('/');
+      7 |     // Navigate to trip planning view
+      8 |     await page.click('[data-testid="nav-trip"]');
+        at C:\Users\gals\RoamWise\frontend\tests\e2e\planner.basic.spec.ts:5:8
+
+    Error: page.click: Test timeout of 120000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[data-testid="nav-trip"]')[22m
+    [2m    - locator resolved to <button class="nav-btn" data-view="trip" data-testid="nav-trip">…</button>[22m
+    [2m  - attempting click action[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m    - waiting 20ms[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m      - waiting 100ms[22m
+    [2m    226 × waiting for element to be visible, enabled and stable[22m
+    [2m        - element is visible, enabled and stable[22m
+    [2m        - scrolling into view if needed[22m
+    [2m        - done scrolling[22m
+    [2m        - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m      - retrying click action[22m
+    [2m        - waiting 500ms[22m
+
+
+       6 |     await page.goto('/');
+       7 |     // Navigate to trip planning view
+    >  8 |     await page.click('[data-testid="nav-trip"]');
+         |                ^
+       9 |     await expect(page.locator('#page-trip')).toHaveClass(/active/);
+      10 |   });
+      11 |
+        at C:\Users\gals\RoamWise\frontend\tests\e2e\planner.basic.spec.ts:8:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    frontend\test-results\planner.basic-Planner---Ba-954bd-es-trip-without-destination-Mobile-Chrome\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    frontend\test-results\planner.basic-Planner---Ba-954bd-es-trip-without-destination-Mobile-Chrome\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: frontend\test-results\planner.basic-Planner---Ba-954bd-es-trip-without-destination-Mobile-Chrome\error-context.md
+
+
+[1A[2K  22) [Mobile Chrome] › frontend\tests\e2e\planner.basic.spec.ts:51:3 › Planner - Basic Flows › A→B flow - generates trip with destination 
+
+    [31mTest timeout of 120000ms exceeded while running "beforeEach" hook.[39m
+
+      3 |
+      4 | test.describe('Planner - Basic Flows', () => {
+    > 5 |   test.beforeEach(async ({ page }) => {
+        |        ^
+      6 |     await page.goto('/');
+      7 |     // Navigate to trip planning view
+      8 |     await page.click('[data-testid="nav-trip"]');
+        at C:\Users\gals\RoamWise\frontend\tests\e2e\planner.basic.spec.ts:5:8
+
+    Error: page.click: Test timeout of 120000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[data-testid="nav-trip"]')[22m
+    [2m    - locator resolved to <button class="nav-btn" data-view="trip" data-testid="nav-trip">…</button>[22m
+    [2m  - attempting click action[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m    - waiting 20ms[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m      - waiting 100ms[22m
+    [2m    224 × waiting for element to be visible, enabled and stable[22m
+    [2m        - element is visible, enabled and stable[22m
+    [2m        - scrolling into view if needed[22m
+    [2m        - done scrolling[22m
+    [2m        - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m      - retrying click action[22m
+    [2m        - waiting 500ms[22m
+    [2m    - waiting for element to be visible, enabled and stable[22m
+    [2m    - element is visible, enabled and stable[22m
+    [2m    - scrolling into view if needed[22m
+    [2m    - done scrolling[22m
+
+
+       6 |     await page.goto('/');
+       7 |     // Navigate to trip planning view
+    >  8 |     await page.click('[data-testid="nav-trip"]');
+         |                ^
+       9 |     await expect(page.locator('#page-trip')).toHaveClass(/active/);
+      10 |   });
+      11 |
+        at C:\Users\gals\RoamWise\frontend\tests\e2e\planner.basic.spec.ts:8:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    frontend\test-results\planner.basic-Planner---Ba-56924-rates-trip-with-destination-Mobile-Chrome\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    frontend\test-results\planner.basic-Planner---Ba-56924-rates-trip-with-destination-Mobile-Chrome\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: frontend\test-results\planner.basic-Planner---Ba-56924-rates-trip-with-destination-Mobile-Chrome\error-context.md
+
+
+[1A[2K  23) [Mobile Chrome] › frontend\tests\e2e\planner.basic.spec.ts:136:3 › Planner - Basic Flows › network wait prevents premature assertions 
+
+    [31mTest timeout of 120000ms exceeded while running "beforeEach" hook.[39m
+
+      3 |
+      4 | test.describe('Planner - Basic Flows', () => {
+    > 5 |   test.beforeEach(async ({ page }) => {
+        |        ^
+      6 |     await page.goto('/');
+      7 |     // Navigate to trip planning view
+      8 |     await page.click('[data-testid="nav-trip"]');
+        at C:\Users\gals\RoamWise\frontend\tests\e2e\planner.basic.spec.ts:5:8
+
+    Error: page.click: Test timeout of 120000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[data-testid="nav-trip"]')[22m
+    [2m    - locator resolved to <button class="nav-btn" data-view="trip" data-testid="nav-trip">…</button>[22m
+    [2m  - attempting click action[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m    - waiting 20ms[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m      - waiting 100ms[22m
+    [2m    225 × waiting for element to be visible, enabled and stable[22m
+    [2m        - element is visible, enabled and stable[22m
+    [2m        - scrolling into view if needed[22m
+    [2m        - done scrolling[22m
+    [2m        - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m      - retrying click action[22m
+    [2m        - waiting 500ms[22m
+
+
+       6 |     await page.goto('/');
+       7 |     // Navigate to trip planning view
+    >  8 |     await page.click('[data-testid="nav-trip"]');
+         |                ^
+       9 |     await expect(page.locator('#page-trip')).toHaveClass(/active/);
+      10 |   });
+      11 |
+        at C:\Users\gals\RoamWise\frontend\tests\e2e\planner.basic.spec.ts:8:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    frontend\test-results\planner.basic-Planner---Ba-85cfa-events-premature-assertions-Mobile-Chrome\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    frontend\test-results\planner.basic-Planner---Ba-85cfa-events-premature-assertions-Mobile-Chrome\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: frontend\test-results\planner.basic-Planner---Ba-85cfa-events-premature-assertions-Mobile-Chrome\error-context.md
+
+
+[1A[2K  24) [Mobile Chrome] › frontend\tests\e2e\planner.basic.spec.ts:90:3 › Planner - Basic Flows › handles planner errors gracefully 
+
+    [31mTest timeout of 120000ms exceeded while running "beforeEach" hook.[39m
+
+      3 |
+      4 | test.describe('Planner - Basic Flows', () => {
+    > 5 |   test.beforeEach(async ({ page }) => {
+        |        ^
+      6 |     await page.goto('/');
+      7 |     // Navigate to trip planning view
+      8 |     await page.click('[data-testid="nav-trip"]');
+        at C:\Users\gals\RoamWise\frontend\tests\e2e\planner.basic.spec.ts:5:8
+
+    Error: page.click: Test timeout of 120000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[data-testid="nav-trip"]')[22m
+    [2m    - locator resolved to <button class="nav-btn" data-view="trip" data-testid="nav-trip">…</button>[22m
+    [2m  - attempting click action[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m    - waiting 20ms[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m      - waiting 100ms[22m
+    [2m    226 × waiting for element to be visible, enabled and stable[22m
+    [2m        - element is visible, enabled and stable[22m
+    [2m        - scrolling into view if needed[22m
+    [2m        - done scrolling[22m
+    [2m        - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m      - retrying click action[22m
+    [2m        - waiting 500ms[22m
+
+
+       6 |     await page.goto('/');
+       7 |     // Navigate to trip planning view
+    >  8 |     await page.click('[data-testid="nav-trip"]');
+         |                ^
+       9 |     await expect(page.locator('#page-trip')).toHaveClass(/active/);
+      10 |   });
+      11 |
+        at C:\Users\gals\RoamWise\frontend\tests\e2e\planner.basic.spec.ts:8:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    frontend\test-results\planner.basic-Planner---Ba-3ba1b-s-planner-errors-gracefully-Mobile-Chrome\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    frontend\test-results\planner.basic-Planner---Ba-3ba1b-s-planner-errors-gracefully-Mobile-Chrome\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: frontend\test-results\planner.basic-Planner---Ba-3ba1b-s-planner-errors-gracefully-Mobile-Chrome\error-context.md
+
+
+[1A[2K  25) [Mobile Chrome] › frontend\tests\e2e\planner.basic.spec.ts:110:3 › Planner - Basic Flows › can regenerate trip multiple times 
+
+    [31mTest timeout of 120000ms exceeded while running "beforeEach" hook.[39m
+
+      3 |
+      4 | test.describe('Planner - Basic Flows', () => {
+    > 5 |   test.beforeEach(async ({ page }) => {
+        |        ^
+      6 |     await page.goto('/');
+      7 |     // Navigate to trip planning view
+      8 |     await page.click('[data-testid="nav-trip"]');
+        at C:\Users\gals\RoamWise\frontend\tests\e2e\planner.basic.spec.ts:5:8
+
+    Error: page.click: Test timeout of 120000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[data-testid="nav-trip"]')[22m
+    [2m    - locator resolved to <button class="nav-btn" data-view="trip" data-testid="nav-trip">…</button>[22m
+    [2m  - attempting click action[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m    - waiting 20ms[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m      - waiting 100ms[22m
+    [2m    225 × waiting for element to be visible, enabled and stable[22m
+    [2m        - element is visible, enabled and stable[22m
+    [2m        - scrolling into view if needed[22m
+    [2m        - done scrolling[22m
+    [2m        - <vite-error-overlay></vite-error-overlay> intercepts pointer events[22m
+    [2m      - retrying click action[22m
+    [2m        - waiting 500ms[22m
+    [2m    - waiting for element to be visible, enabled and stable[22m
+    [2m    - element is visible, enabled and stable[22m
+    [2m    - scrolling into view if needed[22m
+    [2m    - done scrolling[22m
+
+
+       6 |     await page.goto('/');
+       7 |     // Navigate to trip planning view
+    >  8 |     await page.click('[data-testid="nav-trip"]');
+         |                ^
+       9 |     await expect(page.locator('#page-trip')).toHaveClass(/active/);
+      10 |   });
+      11 |
+        at C:\Users\gals\RoamWise\frontend\tests\e2e\planner.basic.spec.ts:8:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    frontend\test-results\planner.basic-Planner---Ba-caffa-enerate-trip-multiple-times-Mobile-Chrome\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    frontend\test-results\planner.basic-Planner---Ba-caffa-enerate-trip-multiple-times-Mobile-Chrome\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: frontend\test-results\planner.basic-Planner---Ba-caffa-enerate-trip-multiple-times-Mobile-Chrome\error-context.md
+
+
+[1A[2K  25 failed
+    [chromium] › frontend\tests\e2e\planner.basic.spec.ts:12:3 › Planner - Basic Flows › NEARBY flow - generates trip without destination 
+    [chromium] › frontend\tests\e2e\planner.basic.spec.ts:51:3 › Planner - Basic Flows › A→B flow - generates trip with destination 
+    [chromium] › frontend\tests\e2e\planner.basic.spec.ts:90:3 › Planner - Basic Flows › handles planner errors gracefully 
+    [chromium] › frontend\tests\e2e\planner.basic.spec.ts:110:3 › Planner - Basic Flows › can regenerate trip multiple times 
+    [chromium] › frontend\tests\e2e\planner.basic.spec.ts:136:3 › Planner - Basic Flows › network wait prevents premature assertions 
+    [firefox] › frontend\tests\e2e\planner.basic.spec.ts:12:3 › Planner - Basic Flows › NEARBY flow - generates trip without destination 
+    [firefox] › frontend\tests\e2e\planner.basic.spec.ts:51:3 › Planner - Basic Flows › A→B flow - generates trip with destination 
+    [firefox] › frontend\tests\e2e\planner.basic.spec.ts:90:3 › Planner - Basic Flows › handles planner errors gracefully 
+    [firefox] › frontend\tests\e2e\planner.basic.spec.ts:110:3 › Planner - Basic Flows › can regenerate trip multiple times 
+    [firefox] › frontend\tests\e2e\planner.basic.spec.ts:136:3 › Planner - Basic Flows › network wait prevents premature assertions 
+    [webkit] › frontend\tests\e2e\planner.basic.spec.ts:12:3 › Planner - Basic Flows › NEARBY flow - generates trip without destination 
+    [webkit] › frontend\tests\e2e\planner.basic.spec.ts:51:3 › Planner - Basic Flows › A→B flow - generates trip with destination 
+    [webkit] › frontend\tests\e2e\planner.basic.spec.ts:90:3 › Planner - Basic Flows › handles planner errors gracefully 
+    [webkit] › frontend\tests\e2e\planner.basic.spec.ts:110:3 › Planner - Basic Flows › can regenerate trip multiple times 
+    [webkit] › frontend\tests\e2e\planner.basic.spec.ts:136:3 › Planner - Basic Flows › network wait prevents premature assertions 
+    [Mobile Chrome] › frontend\tests\e2e\planner.basic.spec.ts:12:3 › Planner - Basic Flows › NEARBY flow - generates trip without destination 
+    [Mobile Chrome] › frontend\tests\e2e\planner.basic.spec.ts:51:3 › Planner - Basic Flows › A→B flow - generates trip with destination 
+    [Mobile Chrome] › frontend\tests\e2e\planner.basic.spec.ts:90:3 › Planner - Basic Flows › handles planner errors gracefully 
+    [Mobile Chrome] › frontend\tests\e2e\planner.basic.spec.ts:110:3 › Planner - Basic Flows › can regenerate trip multiple times 
+    [Mobile Chrome] › frontend\tests\e2e\planner.basic.spec.ts:136:3 › Planner - Basic Flows › network wait prevents premature assertions 
+    [Mobile Safari] › frontend\tests\e2e\planner.basic.spec.ts:12:3 › Planner - Basic Flows › NEARBY flow - generates trip without destination 
+    [Mobile Safari] › frontend\tests\e2e\planner.basic.spec.ts:51:3 › Planner - Basic Flows › A→B flow - generates trip with destination 
+    [Mobile Safari] › frontend\tests\e2e\planner.basic.spec.ts:90:3 › Planner - Basic Flows › handles planner errors gracefully 
+    [Mobile Safari] › frontend\tests\e2e\planner.basic.spec.ts:110:3 › Planner - Basic Flows › can regenerate trip multiple times 
+    [Mobile Safari] › frontend\tests\e2e\planner.basic.spec.ts:136:3 › Planner - Basic Flows › network wait prevents premature assertions 

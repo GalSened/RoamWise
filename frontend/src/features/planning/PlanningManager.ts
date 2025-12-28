@@ -1,10 +1,9 @@
-import type { 
-  TripPlan, 
-  TripStop, 
-  PlanningConstraints, 
-  LatLng, 
+import type {
+  TripPlan,
+  TripStop,
+  PlanningConstraints,
   StopCategory,
-  Place 
+  Place
 } from '@/types';
 import { AppError } from '@/types';
 import { EventBus } from '@/lib/utils/events';
@@ -232,7 +231,7 @@ class PlanningManager extends EventBus {
     }
 
     if (fromIndex < 0 || fromIndex >= plan.stops.length ||
-        toIndex < 0 || toIndex >= plan.stops.length) {
+      toIndex < 0 || toIndex >= plan.stops.length) {
       throw new AppError('Invalid stop indices', 'INVALID_INDICES');
     }
 
@@ -343,7 +342,7 @@ class PlanningManager extends EventBus {
     };
   }
 
-  optimizeStopOrder(planId: string, constraints?: PlanningConstraints): Promise<TripPlan> {
+  optimizeStopOrder(planId: string, _constraints?: PlanningConstraints): Promise<TripPlan> {
     // This would implement a traveling salesman problem solver
     // For now, return a simple implementation
     return Promise.resolve(this.plans.get(planId)!);
@@ -384,7 +383,7 @@ class PlanningManager extends EventBus {
         plan.endDate = new Date(plan.endDate);
         plan.metadata.created = new Date(plan.metadata.created);
         plan.metadata.updated = new Date(plan.metadata.updated);
-        
+
         plan.stops.forEach(stop => {
           if (stop.arrivalTime) stop.arrivalTime = new Date(stop.arrivalTime);
           if (stop.departureTime) stop.departureTime = new Date(stop.departureTime);
@@ -406,7 +405,7 @@ class PlanningManager extends EventBus {
     try {
       const plans = Array.from(this.plans.values());
       await storage.set('trip-plans', plans);
-      
+
       if (this.currentPlan) {
         await storage.set('current-plan-id', this.currentPlan.id);
       }

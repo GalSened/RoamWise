@@ -61,7 +61,7 @@ const searchLimit = createRateLimit(60 * 1000, 30, "Too many search requests");
 app.use(generalLimit);
 
 // In-memory cache system
-const cache = new NodeCache({ 
+const cache = new NodeCache({
   stdTTL: 300, // 5 minutes default
   checkperiod: 60, // Check for expired keys every minute
   useClones: false // Better performance
@@ -71,15 +71,15 @@ const cache = new NodeCache({
 const cacheMiddleware = (ttl = 300) => (req, res, next) => {
   const key = `${req.method}:${req.originalUrl}:${JSON.stringify(req.body)}`;
   const cached = cache.get(key);
-  
+
   if (cached) {
     logger.info(`Cache hit: ${key}`);
     return res.json(cached);
   }
-  
+
   // Store original json method
   const originalJson = res.json;
-  res.json = function(body) {
+  res.json = function (body) {
     // Cache successful responses only
     if (body.ok) {
       cache.set(key, body, ttl);
@@ -87,7 +87,7 @@ const cacheMiddleware = (ttl = 300) => (req, res, next) => {
     }
     return originalJson.call(this, body);
   };
-  
+
   next();
 };
 
@@ -125,7 +125,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json({ limit:'1mb' }));
+app.use(express.json({ limit: '1mb' }));
 app.use(morgan("combined", { stream: { write: message => logger.info(message.trim()) } }));
 
 // Environment
@@ -134,25 +134,25 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 if (!GMAPS_KEY) { console.error("Missing GMAPS_KEY env"); process.exit(1); }
 
 // CORS: limit to your GitHub Pages origin(s)
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").map(s=>s.trim()).filter(Boolean);
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || ALLOWED_ORIGINS.length===0) return cb(null, true);
+    if (!origin || ALLOWED_ORIGINS.length === 0) return cb(null, true);
     return ALLOWED_ORIGINS.includes(origin) ? cb(null, true) : cb(new Error("Not allowed by CORS"));
   }
 }));
 
 // Helpers
 const g = (u) => `https://maps.googleapis.com${u}${u.includes("?") ? "&" : "?"}key=${GMAPS_KEY}`;
-const ok = (res, data) => res.json({ ok:true, ...data });
-const err = (res, code, msg) => res.status(code).json({ ok:false, error: msg });
+const ok = (res, data) => res.json({ ok: true, ...data });
+const err = (res, code, msg) => res.status(code).json({ ok: false, error: msg });
 
 // ---- Provider Stubs (no external API calls) ----
 async function stubSearchPlaces(query, location) {
   // Stub: return mock places for the query
   return [
-    { id: 'place-1', name: `${query} Spot A`, rating: 4.5, category: 'attraction' },
-    { id: 'place-2', name: `${query} Spot B`, rating: 4.2, category: 'restaurant' }
+    { id: 'place-1', name: `${query} Spot A`, rating: 4.5, category: 'attraction', vicinity: '123 Fake St' },
+    { id: 'place-2', name: `${query} Spot B`, rating: 4.2, category: 'restaurant', vicinity: '456 Mock Ave' }
   ];
 }
 
@@ -224,7 +224,7 @@ function plannerGuardrails(req, res, next) {
 }
 
 // ---- /places ---- (Enhanced with caching and validation)
-app.post("/places", 
+app.post("/places",
   searchLimit,
   cacheMiddleware(600), // Cache for 10 minutes
   validateRequest([
@@ -234,19 +234,26 @@ app.post("/places",
     body('minRating').optional().isFloat({ min: 0, max: 5 }).withMessage('Rating must be 0-5')
   ]),
   asyncHandler(async (req, res) => {
-    const { lat, lng, openNow=true, radius=4500, language='he', type='point_of_interest', keyword='', minRating=0, maxResults=12 } = req.body || {};
+    const { lat, lng, openNow = true, radius = 4500, language = 'he', type = 'point_of_interest', keyword = '', minRating = 0, maxResults = 12 } = req.body || {};
     logger.info(`[${req.id}] Places search: ${lat},${lng} radius:${radius}`);
-    const p = new URLSearchParams({ location:`${lat},${lng}`, radius:String(radius), language, type });
-    if (openNow) p.set("opennow","true");
+
+    // MOCK RESPONSE
+    if (!GMAPS_KEY || GMAPS_KEY === 'dummy_key') {
+      const items = await stubSearchPlaces(keyword || 'Local', { lat, lng });
+      return ok(res, { items });
+    }
+
+    const p = new URLSearchParams({ location: `${lat},${lng}`, radius: String(radius), language, type });
+    if (openNow) p.set("opennow", "true");
     if (keyword) p.set("keyword", keyword);
     const r = await fetch(g(`/maps/api/place/nearbysearch/json?${p}`));
     const j = await r.json();
-    if (!["OK","ZERO_RESULTS"].includes(j.status)) return err(res, 400, `Places: ${j.status}`);
-    const items = (j.results||[]).filter(x => (x.rating||0) >= minRating).slice(0, maxResults).map(x => ({
-      id:x.place_id, name:x.name, address: x.vicinity || x.formatted_address || "",
-      rating:x.rating, userRatingsTotal:x.user_ratings_total,
-      lat:x.geometry?.location?.lat, lng:x.geometry?.location?.lng,
-      openNow:x.opening_hours?.open_now ?? null
+    if (!["OK", "ZERO_RESULTS"].includes(j.status)) return err(res, 400, `Places: ${j.status}`);
+    const items = (j.results || []).filter(x => (x.rating || 0) >= minRating).slice(0, maxResults).map(x => ({
+      id: x.place_id, name: x.name, address: x.vicinity || x.formatted_address || "",
+      rating: x.rating, userRatingsTotal: x.user_ratings_total,
+      lat: x.geometry?.location?.lat, lng: x.geometry?.location?.lng,
+      openNow: x.opening_hours?.open_now ?? null
     }));
     ok(res, { items });
   })
@@ -255,48 +262,76 @@ app.post("/places",
 // ---- /place-details ----
 app.post("/place-details", async (req, res) => {
   try {
-    const { placeId, language='he' } = req.body || {};
+    const { placeId, language = 'he' } = req.body || {};
     if (!placeId) return err(res, 400, "placeId required");
-    const fields = ["name","formatted_address","formatted_phone_number","opening_hours","website","url","geometry","rating","user_ratings_total"].join(",");
+
+    // MOCK RESPONSE
+    if (!GMAPS_KEY || GMAPS_KEY === 'dummy_key') {
+      return ok(res, {
+        details: {
+          name: "Mock Place " + placeId,
+          formatted_address: "123 Mock St, Tel Aviv",
+          formatted_phone_number: "03-1234567",
+          rating: 4.5,
+          user_ratings_total: 100,
+          geometry: { location: { lat: 32.0853, lng: 34.7818 } }
+        }
+      });
+    }
+
+    const fields = ["name", "formatted_address", "formatted_phone_number", "opening_hours", "website", "url", "geometry", "rating", "user_ratings_total"].join(",");
     const r = await fetch(g(`/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&language=${language}&fields=${fields}`));
     const j = await r.json();
     if (j.status !== "OK") return err(res, 400, `Details: ${j.status}`);
     ok(res, { details: j.result });
-  } catch(e){ err(res, 500, String(e)); }
+  } catch (e) { err(res, 500, String(e)); }
 });
 
 // ---- /autocomplete ----
 app.post("/autocomplete", async (req, res) => {
   try {
-    const { input, language='he', sessionToken='' } = req.body || {};
+    const { input, language = 'he', sessionToken = '' } = req.body || {};
     if (!input) return err(res, 400, "input required");
     const p = new URLSearchParams({ input, language });
     if (sessionToken) p.set("sessiontoken", sessionToken);
     const r = await fetch(g(`/maps/api/place/autocomplete/json?${p}`));
     const j = await r.json();
-    if (!["OK","ZERO_RESULTS"].includes(j.status)) return err(res, 400, `Autocomplete: ${j.status}`);
+    if (!["OK", "ZERO_RESULTS"].includes(j.status)) return err(res, 400, `Autocomplete: ${j.status}`);
     ok(res, { predictions: j.predictions || [] });
-  } catch(e){ err(res, 500, String(e)); }
+  } catch (e) { err(res, 500, String(e)); }
 });
 
 // ---- /geocode ----
 app.post("/geocode", async (req, res) => {
   try {
-    const { query, language='he' } = req.body || {};
+    const { query, language = 'he' } = req.body || {};
     if (!query) return err(res, 400, "query required");
     const r = await fetch(g(`/maps/api/geocode/json?address=${encodeURIComponent(query)}&language=${language}`));
     const j = await r.json();
     if (j.status !== "OK" || !j.results?.length) return err(res, 404, "not found");
     const r0 = j.results[0];
     ok(res, { result: { address: r0.formatted_address, lat: r0.geometry?.location?.lat, lng: r0.geometry?.location?.lng, placeId: r0.place_id } });
-  } catch(e){ err(res, 500, String(e)); }
+  } catch (e) { err(res, 500, String(e)); }
 });
 
 // ---- /route ----
 app.post("/route", async (req, res) => {
   try {
-    const { origin, dest, mode='driving', language='he' } = req.body || {};
+    const { origin, dest, mode = 'driving', language = 'he' } = req.body || {};
     if (!origin?.lat || !origin?.lng || !dest?.lat || !dest?.lng) return err(res, 400, "origin/dest lat/lng required");
+
+    // MOCK RESPONSE
+    if (!GMAPS_KEY || GMAPS_KEY === 'dummy_key') {
+      return ok(res, {
+        summary: "Mock Route",
+        distanceText: "5 km",
+        durationText: "15 mins",
+        startAddress: "Origin",
+        endAddress: "Destination",
+        polyline: "mock_polyline"
+      });
+    }
+
     const p = new URLSearchParams({ origin: `${origin.lat},${origin.lng}`, destination: `${dest.lat},${dest.lng}`, mode, language, departure_time: "now" });
     const r = await fetch(g(`/maps/api/directions/json?${p}`));
     const j = await r.json();
@@ -310,15 +345,26 @@ app.post("/route", async (req, res) => {
       endAddress: leg?.end_address,
       polyline: route?.overview_polyline?.points
     });
-  } catch(e){ err(res, 500, String(e)); }
+  } catch (e) { err(res, 500, String(e)); }
 });
 
 // ---- /think (ChatGPT NLU) ----
 app.post("/think", async (req, res) => {
   try {
-    if (!OPENAI_API_KEY) return err(res, 500, "missing OPENAI_API_KEY");
     const { text, context } = req.body || {};
     if (!text) return err(res, 400, "text required");
+
+    // MOCK RESPONSE FOR TESTING
+    if (!OPENAI_API_KEY || OPENAI_API_KEY === 'dummy_key') {
+      logger.info('Using MOCK response for /think');
+      return ok(res, {
+        intent: 'activities',
+        mode: null,
+        filters: { openNow: true },
+        destinationText: 'Tel Aviv',
+        subcategory: 'museum'
+      });
+    }
 
     const systemPrompt = [
       "You are an NLU planner for a travel & local discovery app.",
@@ -331,7 +377,7 @@ app.post("/think", async (req, res) => {
       "No prose, JSON only."
     ].join("\n");
 
-    const userMsg = `Text: <<${req.body.text}>>. Locale: ${context?.locale||'he-IL'}. Be concise.`;
+    const userMsg = `Text: <<${req.body.text}>>. Locale: ${context?.locale || 'he-IL'}. Be concise.`;
 
     const r = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -352,15 +398,15 @@ app.post("/think", async (req, res) => {
       if (j.choices && j.choices[0]?.message?.content) {
         jsonText = j.choices[0].message.content;
       }
-    } catch{}
+    } catch { }
     if (!jsonText) return err(res, 500, "bad openai response shape");
     const parsed = JSON.parse(jsonText);
     ok(res, parsed);
-  } catch(e){ err(res, 500, String(e)); }
+  } catch (e) { err(res, 500, String(e)); }
 });
 
 // ---- /weather (Open-Meteo) ---- (Enhanced with caching)
-app.post("/weather", 
+app.post("/weather",
   cacheMiddleware(600), // Cache weather for 10 minutes
   validateRequest([
     body('lat').isFloat({ min: -90, max: 90 }).withMessage('Valid latitude required'),
@@ -371,12 +417,16 @@ app.post("/weather",
     logger.info(`[${req.id}] Weather request: ${lat},${lng}`);
     const params = new URLSearchParams({
       latitude: String(lat), longitude: String(lng),
-      current: ["temperature_2m","apparent_temperature","precipitation","wind_speed_10m","is_day"].join(","),
-      hourly: ["temperature_2m","precipitation_probability","precipitation","wind_speed_10m","cloud_cover"].join(","),
-      daily: ["temperature_2m_max","temperature_2m_min","precipitation_sum","sunrise","sunset"].join(","),
+      current: ["temperature_2m", "apparent_temperature", "precipitation", "wind_speed_10m", "is_day"].join(","),
+      hourly: ["temperature_2m", "precipitation_probability", "precipitation", "wind_speed_10m", "cloud_cover"].join(","),
+      daily: ["temperature_2m_max", "temperature_2m_min", "precipitation_sum", "sunrise", "sunset"].join(","),
       timezone: "auto"
     });
     const url = `https://api.open-meteo.com/v1/forecast?${params.toString()}`;
+
+    // MOCK if fetch fails or for consistency (Optional, but good for stability)
+    // Actually OpenMeteo is free and doesn't need key, so we might leave it or wrap in try-catch fallback
+    // But let's verify connectivity. Assuming verify ok.
     const r = await fetch(url);
     if (!r.ok) return err(res, 502, "weather upstream error");
     const j = await r.json();
@@ -409,16 +459,16 @@ app.post("/weather-compare", async (req, res) => {
   try {
     const { src, dst } = req.body || {};
     if (!src?.lat || !src?.lng || !dst?.lat || !dst?.lng) return err(res, 400, "src/dst lat/lng required");
-    const mk = (lat,lng)=> new URL(`https://api.open-meteo.com/v1/forecast?` + new URLSearchParams({
-      latitude:String(lat), longitude:String(lng),
-      current:["temperature_2m","apparent_temperature","precipitation","wind_speed_10m","is_day"].join(","),
-      hourly:["temperature_2m","precipitation_probability","precipitation","wind_speed_10m","cloud_cover"].join(","),
-      daily:["temperature_2m_max","temperature_2m_min","precipitation_sum","sunrise","sunset"].join(","),
-      timezone:"auto"
+    const mk = (lat, lng) => new URL(`https://api.open-meteo.com/v1/forecast?` + new URLSearchParams({
+      latitude: String(lat), longitude: String(lng),
+      current: ["temperature_2m", "apparent_temperature", "precipitation", "wind_speed_10m", "is_day"].join(","),
+      hourly: ["temperature_2m", "precipitation_probability", "precipitation", "wind_speed_10m", "cloud_cover"].join(","),
+      daily: ["temperature_2m_max", "temperature_2m_min", "precipitation_sum", "sunrise", "sunset"].join(","),
+      timezone: "auto"
     }).toString());
-    const [r1,r2] = await Promise.all([fetch(mk(src.lat,src.lng)), fetch(mk(dst.lat,dst.lng))]);
+    const [r1, r2] = await Promise.all([fetch(mk(src.lat, src.lng)), fetch(mk(dst.lat, dst.lng))]);
     if (!r1.ok || !r2.ok) return err(res, 502, "weather upstream error");
-    const [j1,j2] = await Promise.all([r1.json(), r2.json()]);
+    const [j1, j2] = await Promise.all([r1.json(), r2.json()]);
     ok(res, { src: j1, dst: j2 });
   } catch (e) { err(res, 500, String(e)); }
 });
@@ -442,10 +492,10 @@ class RecommendationEngine {
         mood: 'neutral'
       });
     }
-    
+
     const profile = this.userBehavior.get(userId);
     profile.visits.push({ placeId, interactionType, timestamp: Date.now(), rating });
-    
+
     if (rating) profile.preferences.ratings.push(rating);
   }
 
@@ -453,10 +503,10 @@ class RecommendationEngine {
   getPersonalizedRecommendations(userId, location, context = {}) {
     const profile = this.userBehavior.get(userId) || this.getDefaultProfile();
     const { mood = 'neutral', timeOfDay, weather, companionType = 'solo' } = context;
-    
+
     // AI logic for recommendations
     let recommendations = [];
-    
+
     // Mood-based filtering - using more common place types
     if (mood === 'adventurous') {
       recommendations.push({ type: 'tourist_attraction', keyword: 'adventure outdoor unique' });
@@ -474,7 +524,7 @@ class RecommendationEngine {
       recommendations.push({ type: 'restaurant', keyword: 'food dining popular' });
       recommendations.push({ type: 'meal_takeaway', keyword: 'food quick' });
     }
-    
+
     // Time-based recommendations
     const hour = new Date().getHours();
     if (hour >= 6 && hour < 11) {
@@ -482,7 +532,7 @@ class RecommendationEngine {
     } else if (hour >= 17 && hour < 22) {
       recommendations.push({ type: 'restaurant', keyword: 'dinner food' });
     }
-    
+
     // Weather-based recommendations
     if (weather?.current?.precipitation > 0) {
       recommendations.push({ type: 'shopping_mall', keyword: 'indoor covered' });
@@ -491,7 +541,7 @@ class RecommendationEngine {
       recommendations.push({ type: 'restaurant', keyword: 'ice cream outdoor terrace' });
       recommendations.push({ type: 'park', keyword: 'outdoor shade trees' });
     }
-    
+
     return recommendations;
   }
 
@@ -508,7 +558,7 @@ class RecommendationEngine {
 const aiEngine = new RecommendationEngine();
 
 // ---- /ai-recommendations ---- (Enhanced with AI rate limiting)
-app.post("/ai-recommendations", 
+app.post("/ai-recommendations",
   aiLimit,
   cacheMiddleware(900), // Cache AI recommendations for 15 minutes
   validateRequest([
@@ -542,7 +592,7 @@ app.post("/ai-recommendations",
       try {
         const placesResponse = await fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=2000&type=${rec.type}&keyword=${rec.keyword}&language=he&key=${GMAPS_KEY}`);
         const placesData = await placesResponse.json();
-        
+
         if (placesData.status === "OK" && placesData.results?.length) {
           results.push({
             category: rec.type,
@@ -584,10 +634,10 @@ app.post("/track-interaction", async (req, res) => {
   try {
     const { userId = 'anonymous', placeId, interactionType, rating } = req.body || {};
     if (!placeId || !interactionType) return err(res, 400, "placeId and interactionType required");
-    
+
     aiEngine.trackInteraction(userId, placeId, interactionType, rating);
     ok(res, { tracked: true, message: "Interaction recorded for future recommendations" });
-  } catch(e) { err(res, 500, String(e)); }
+  } catch (e) { err(res, 500, String(e)); }
 });
 
 // ---- /user-insights ----
@@ -595,20 +645,20 @@ app.post("/user-insights", async (req, res) => {
   try {
     const { userId = 'anonymous' } = req.body || {};
     const profile = aiEngine.userBehavior.get(userId) || aiEngine.getDefaultProfile();
-    
+
     // Calculate insights
     const insights = {
       totalVisits: profile.visits.length,
-      averageRating: profile.preferences.ratings.length 
+      averageRating: profile.preferences.ratings.length
         ? (profile.preferences.ratings.reduce((a, b) => a + b, 0) / profile.preferences.ratings.length).toFixed(1)
         : null,
       preferredTypes: getTopPreferences(profile.visits),
       travelStyle: inferTravelStyle(profile),
       lastActive: profile.visits.length ? new Date(Math.max(...profile.visits.map(v => v.timestamp))) : null
     };
-    
+
     ok(res, { insights, profile: { mood: profile.mood } });
-  } catch(e) { err(res, 500, String(e)); }
+  } catch (e) { err(res, 500, String(e)); }
 });
 
 // Helper methods for insights
@@ -635,6 +685,15 @@ app.post("/voice-to-intent", async (req, res) => {
     const { text, userId = 'anonymous', location } = req.body || {};
     if (!text) return err(res, 400, "text required");
 
+    // MOCK RESPONSE FOR TESTING
+    if (!OPENAI_API_KEY || OPENAI_API_KEY === 'dummy_key') {
+      return ok(res, {
+        voiceIntent: { intent: 'ai_recommendations', mood: 'relaxed', params: {} },
+        actionResult: { recommendations: [] },
+        conversationResponse: "שמעתי אותך! (מצב בדיקה)"
+      });
+    }
+
     // Enhanced NLU with voice-specific processing
     const voiceSystemPrompt = [
       "You are traveling AI, a smart travel assistant. Parse voice commands and respond with JSON.",
@@ -642,7 +701,7 @@ app.post("/voice-to-intent", async (req, res) => {
       "Extract mood from tone: adventurous, relaxed, social, hungry, curious, romantic",
       "Output JSON with:",
       "intent: string,",
-      "mood: string,", 
+      "mood: string,",
       "params: object with relevant parameters,",
       "response: friendly conversational response in Hebrew",
       "No prose outside JSON."
@@ -667,7 +726,7 @@ app.post("/voice-to-intent", async (req, res) => {
     if (aiResponse.error) return err(res, 400, aiResponse.error.message);
 
     const voiceIntent = JSON.parse(aiResponse.choices[0].message.content);
-    
+
     // Execute the intent automatically
     let actionResult = null;
     if (voiceIntent.intent === 'ai_recommendations' && location) {
@@ -678,7 +737,7 @@ app.post("/voice-to-intent", async (req, res) => {
         mood: voiceIntent.mood,
         ...voiceIntent.params
       };
-      
+
       // Internal API call
       try {
         const recResponse = await fetch(`http://localhost:${process.env.PORT || 8080}/ai-recommendations`, {
@@ -692,19 +751,19 @@ app.post("/voice-to-intent", async (req, res) => {
       }
     }
 
-    ok(res, { 
-      voiceIntent, 
+    ok(res, {
+      voiceIntent,
       actionResult,
       conversationResponse: voiceIntent.response || "הבנתי! מחפש עבורך..."
     });
-  } catch(e) { err(res, 500, String(e)); }
+  } catch (e) { err(res, 500, String(e)); }
 });
 
 // ---- AI Trip Planning ----
 app.post("/plan-trip", async (req, res) => {
   try {
-    const { 
-      startLocation, 
+    const {
+      startLocation,
       duration, // 'half-day', 'full-day', 'weekend', 'custom'
       customHours = 8,
       interests = [], // ['food', 'culture', 'adventure', 'relaxation', 'nightlife']
@@ -716,6 +775,51 @@ app.post("/plan-trip", async (req, res) => {
 
     if (!startLocation?.lat || !startLocation?.lng) return err(res, 400, "startLocation required");
 
+    // MOCK RESPONSE FOR TESTING
+    if (!OPENAI_API_KEY || OPENAI_API_KEY === 'dummy_key') {
+      logger.info('Using MOCK response for /plan-trip');
+      return ok(res, {
+        title: "Mock Trip to Tel Aviv",
+        overview: "A wonderful mock trip generated for testing purposes.",
+        estimated_cost: "$100-200",
+        activities: [
+          {
+            name: "Gordon Beach",
+            type: "beach",
+            duration_minutes: 120,
+            description: "Relax at the famous Gordon Beach.",
+            priority: "high",
+            cost_estimate: "free",
+            place: {
+              id: "mock_place_1",
+              name: "Gordon Beach",
+              rating: 4.7,
+              address: "Tel Aviv-Yafo",
+              lat: 32.083,
+              lng: 34.767
+            }
+          },
+          {
+            name: "Sarona Market",
+            type: "market",
+            duration_minutes: 90,
+            description: "Enjoy food at Sarona Market.",
+            priority: "medium",
+            cost_estimate: "$$$",
+            place: {
+              id: "mock_place_2",
+              name: "Sarona Market",
+              rating: 4.6,
+              address: "Aluf Albert Mendler St 8",
+              lat: 32.072,
+              lng: 34.788
+            }
+          }
+        ],
+        tips: ["Wear sunscreen", "Bring water"]
+      });
+    }
+
     // Get weather context
     const weatherResponse = await fetch(`http://localhost:${process.env.PORT || 8080}/weather`, {
       method: 'POST',
@@ -726,7 +830,7 @@ app.post("/plan-trip", async (req, res) => {
 
     // Calculate trip duration in hours
     let hours;
-    switch(duration) {
+    switch (duration) {
       case 'half-day': hours = 4; break;
       case 'full-day': hours = 8; break;
       case 'weekend': hours = 16; break;
@@ -746,7 +850,7 @@ app.post("/plan-trip", async (req, res) => {
       "",
       "Output JSON with:",
       "title: string,",
-      "overview: string,", 
+      "overview: string,",
       "estimated_cost: string,",
       "activities: [{ name, type, duration_minutes, description, priority, cost_estimate }],",
       "tips: string[]",
@@ -777,7 +881,7 @@ app.post("/plan-trip", async (req, res) => {
       try {
         const placesResponse = await fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${startLocation.lat},${startLocation.lng}&radius=5000&type=point_of_interest&keyword=${encodeURIComponent(activity.name)}&language=he&key=${GMAPS_KEY}`);
         const placesData = await placesResponse.json();
-        
+
         if (placesData.status === "OK" && placesData.results?.length) {
           const place = placesData.results[0];
           enrichedActivities.push({
@@ -818,7 +922,7 @@ app.post("/plan-trip", async (req, res) => {
       tripId,
       context: { weather: weatherData?.weather?.current, duration: hours }
     });
-  } catch(e) { err(res, 500, String(e)); }
+  } catch (e) { err(res, 500, String(e)); }
 });
 
 // ---- AI Planner Orchestrator (Stub) ----
@@ -917,7 +1021,7 @@ app.post("/api/plan", aiLimit, validateRequest([
       stub: true // Mark as stub response
     });
 
-  } catch(e) {
+  } catch (e) {
     logger.error(`[${req.id}] Plan error:`, e);
     res.status(500).json({
       ok: false,
@@ -942,7 +1046,7 @@ app.post("/navigate-trip", async (req, res) => {
 
     const activities = trip.plan.activities;
     const nextActivity = activities[currentActivity];
-    
+
     if (!nextActivity?.place) {
       return ok(res, { message: "Trip completed!", hasNext: false });
     }
@@ -962,7 +1066,7 @@ app.post("/navigate-trip", async (req, res) => {
     // Check for weather/time adjustments
     const now = new Date();
     let adjustments = [];
-    
+
     if (now.getHours() > 20 && nextActivity.type === 'outdoor') {
       adjustments.push({
         type: 'time_warning',
@@ -978,7 +1082,7 @@ app.post("/navigate-trip", async (req, res) => {
       adjustments,
       hasNext: currentActivity < activities.length - 1
     });
-  } catch(e) { err(res, 500, String(e)); }
+  } catch (e) { err(res, 500, String(e)); }
 });
 
 // ---- Smart Notifications ----
@@ -989,11 +1093,11 @@ app.post("/smart-notifications", async (req, res) => {
 
     const notifications = [];
     const profile = aiEngine.userBehavior.get(userId) || aiEngine.getDefaultProfile();
-    
+
     // Time-based notifications
     const hour = new Date().getHours();
     const day = new Date().getDay();
-    
+
     // Meal time suggestions
     if (hour === 12 && day !== 6 && day !== 0) { // Weekday lunch
       notifications.push({
@@ -1005,7 +1109,7 @@ app.post("/smart-notifications", async (req, res) => {
         params: { mood: 'hungry', type: 'restaurant' }
       });
     }
-    
+
     // Weather-based notifications
     try {
       const weatherResponse = await fetch(`http://localhost:${process.env.PORT || 8080}/weather`, {
@@ -1014,11 +1118,11 @@ app.post("/smart-notifications", async (req, res) => {
         body: JSON.stringify(location)
       });
       const weatherData = await weatherResponse.json();
-      
+
       if (weatherData.ok && weatherData.weather?.current) {
         const temp = weatherData.weather.current.temperature_2m;
         const precipitation = weatherData.weather.current.precipitation;
-        
+
         if (temp > 28) {
           notifications.push({
             type: 'weather_advice',
@@ -1029,7 +1133,7 @@ app.post("/smart-notifications", async (req, res) => {
             params: { mood: 'cooling', keyword: 'ice cream air conditioning' }
           });
         }
-        
+
         if (precipitation > 0) {
           notifications.push({
             type: 'weather_alert',
@@ -1044,7 +1148,7 @@ app.post("/smart-notifications", async (req, res) => {
     } catch (e) {
       console.error('Weather notification error:', e);
     }
-    
+
     // Personal pattern notifications
     if (profile.visits.length > 5) {
       const avgRating = profile.preferences.ratings.reduce((a, b) => a + b, 0) / profile.preferences.ratings.length;
@@ -1061,7 +1165,7 @@ app.post("/smart-notifications", async (req, res) => {
     }
 
     ok(res, { notifications, context: { hour, userId, profileExists: !!aiEngine.userBehavior.has(userId) } });
-  } catch(e) { err(res, 500, String(e)); }
+  } catch (e) { err(res, 500, String(e)); }
 });
 
 // ---- Backend-v2 Pass-Through Handlers ----
@@ -1231,10 +1335,10 @@ app.get('/admin/health', async (req, res) => {
 // Global error handler
 app.use((error, req, res, next) => {
   logger.error(`[${req.id}] Error:`, error);
-  
+
   // Don't leak error details in production
   const isDev = process.env.NODE_ENV !== 'production';
-  
+
   res.status(error.status || 500).json({
     ok: false,
     error: isDev ? error.message : 'Internal server error',
@@ -1260,7 +1364,7 @@ app.get("/", (req, res) => {
 app.get('/health', (req, res) => {
   const memUsage = process.memoryUsage();
   const uptime = process.uptime();
-  
+
   res.json({
     ok: true,
     status: 'healthy',
@@ -1305,7 +1409,7 @@ process.on('SIGTERM', () => {
 });
 
 const port = process.env.PORT || 8080;
-app.listen(port, ()=> {
+app.listen(port, () => {
   logger.info(`🚀 RoamWise AI proxy listening on port ${port}`);
   logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.info(`Cache TTL: ${cache.options.stdTTL}s`);

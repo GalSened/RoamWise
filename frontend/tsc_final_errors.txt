@@ -1,0 +1,84 @@
+src/core/app.ts(32,37): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/core/app.ts(33,38): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/core/app.ts(34,37): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/core/app.ts(160,40): error TS7006: Parameter 'data' implicitly has an 'any' type.
+src/core/app.ts(166,43): error TS7006: Parameter 'updateInfo' implicitly has an 'any' type.
+src/core/app.ts(172,49): error TS7006: Parameter 'intent' implicitly has an 'any' type.
+src/core/app.ts(198,39): error TS6133: 'event' is declared but its value is never read.
+src/core/app.ts(241,17): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/core/update/UpdateManager.ts(226,31): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/features/routing/WeatherAwareRouter.ts(172,39): error TS2741: Property 'conditions' is missing in type 'WeatherNow' but required in type 'WeatherData'.
+src/features/routing/WeatherAwareRouter.ts(174,5): error TS2741: Property 'conditions' is missing in type 'WeatherNow' but required in type 'WeatherData'.
+src/features/routing/WeatherAwareRouter.ts(396,5): error TS6133: 'destination' is declared but its value is never read.
+src/features/routing/WeatherAwareRouter.ts(406,55): error TS2345: Argument of type 'WeatherHour[]' is not assignable to parameter of type 'WeatherData[]'.
+  Property 'conditions' is missing in type 'WeatherHour' but required in type 'WeatherData'.
+src/features/ui/InfoDrawer.ts(69,18): error TS2339: Property 'touches' does not exist on type 'Event'.
+src/features/ui/InfoDrawer.ts(75,20): error TS2339: Property 'touches' does not exist on type 'Event'.
+src/features/ui/UIManager.ts(1,15): error TS6196: 'VoiceIntent' is declared but never used.
+src/features/ui/UIManager.ts(1,47): error TS6196: 'Route' is declared but never used.
+src/features/ui/UIManager.ts(16,11): error TS6133: 'currentView' is declared but its value is never read.
+src/features/ui/UIManager.ts(388,24): error TS6133: 'plan' is declared but its value is never read.
+src/features/voice/VoiceManager.ts(55,34): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/features/voice/VoiceManager.ts(58,24): error TS18046: 'result' is of type 'unknown'.
+src/features/voice/VoiceManager.ts(61,47): error TS2571: Object is of type 'unknown'.
+src/features/voice/VoiceManager.ts(71,33): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/features/voice/VoiceManager.ts(208,36): error TS7031: Binding element 'transcript' implicitly has an 'any' type.
+src/features/voice/VoiceManager.ts(224,27): error TS7006: Parameter 'error' implicitly has an 'any' type.
+src/lib/telemetry/index.ts(22,28): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/lib/telemetry/index.ts(23,29): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/main.ts(15,54): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/main.ts(16,52): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/providers/google/maps.ts(22,21): error TS2503: Cannot find namespace 'google'.
+src/providers/google/maps.ts(33,16): error TS2304: Cannot find name 'google'.
+src/providers/google/maps.ts(39,24): error TS2304: Cannot find name 'google'.
+src/providers/google/maps.ts(44,18): error TS2304: Cannot find name 'google'.
+src/providers/google/maps.ts(75,22): error TS2503: Cannot find namespace 'google'.
+src/providers/google/maps.ts(77,38): error TS2304: Cannot find name 'google'.
+src/providers/google/maps.ts(83,41): error TS2503: Cannot find namespace 'google'.
+src/providers/google/maps.ts(84,44): error TS7006: Parameter 'results' implicitly has an 'any' type.
+src/providers/google/maps.ts(84,53): error TS7006: Parameter 'status' implicitly has an 'any' type.
+src/providers/google/maps.ts(85,26): error TS2304: Cannot find name 'google'.
+src/providers/google/maps.ts(119,22): error TS2503: Cannot find namespace 'google'.
+src/providers/google/maps.ts(129,40): error TS2503: Cannot find namespace 'google'.
+src/providers/google/maps.ts(130,44): error TS7006: Parameter 'place' implicitly has an 'any' type.
+src/providers/google/maps.ts(130,51): error TS7006: Parameter 'status' implicitly has an 'any' type.
+src/providers/google/maps.ts(131,26): error TS2304: Cannot find name 'google'.
+src/providers/google/maps.ts(167,34): error TS2503: Cannot find namespace 'google'.
+src/providers/google/maps.ts(185,34): error TS7006: Parameter 'photo' implicitly has an 'any' type.
+src/providers/google/maps.ts(194,40): error TS2503: Cannot find namespace 'google'.
+src/providers/google/maps.ts(207,52): error TS7006: Parameter 'period' implicitly has an 'any' type.
+src/providers/google/maps.ts(219,36): error TS7006: Parameter 'review' implicitly has an 'any' type.
+src/providers/google/maps.ts(233,21): error TS2503: Cannot find namespace 'google'.
+src/providers/google/maps.ts(243,16): error TS2304: Cannot find name 'google'.
+src/providers/google/maps.ts(247,24): error TS2304: Cannot find name 'google'.
+src/providers/google/maps.ts(252,18): error TS2304: Cannot find name 'google'.
+src/providers/google/maps.ts(282,22): error TS2503: Cannot find namespace 'google'.
+src/providers/google/maps.ts(283,21): error TS2304: Cannot find name 'google'.
+src/providers/google/maps.ts(284,26): error TS2304: Cannot find name 'google'.
+src/providers/google/maps.ts(286,25): error TS2304: Cannot find name 'google'.
+src/providers/google/maps.ts(293,25): error TS2304: Cannot find name 'google'.
+src/providers/google/maps.ts(295,21): error TS2304: Cannot find name 'google'.
+src/providers/google/maps.ts(298,40): error TS2503: Cannot find namespace 'google'.
+src/providers/google/maps.ts(299,39): error TS7006: Parameter 'result' implicitly has an 'any' type.
+src/providers/google/maps.ts(299,47): error TS7006: Parameter 'status' implicitly has an 'any' type.
+src/providers/google/maps.ts(300,26): error TS2304: Cannot find name 'google'.
+src/providers/google/maps.ts(329,40): error TS2503: Cannot find namespace 'google'.
+src/providers/google/maps.ts(331,27): error TS2304: Cannot find name 'google'.
+src/providers/google/maps.ts(332,27): error TS2304: Cannot find name 'google'.
+src/providers/google/maps.ts(333,30): error TS2304: Cannot find name 'google'.
+src/providers/google/maps.ts(334,23): error TS2304: Cannot find name 'google'.
+src/providers/google/maps.ts(338,34): error TS2503: Cannot find namespace 'google'.
+src/providers/google/maps.ts(345,28): error TS7006: Parameter 'leg' implicitly has an 'any' type.
+src/providers/google/maps.ts(356,30): error TS7006: Parameter 'step' implicitly has an 'any' type.
+src/providers/google/maps.ts(371,33): error TS7006: Parameter 'step' implicitly has an 'any' type.
+src/providers/google/maps.ts(381,38): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/providers/google/maps.ts(381,43): error TS7006: Parameter 'leg' implicitly has an 'any' type.
+src/providers/google/maps.ts(382,38): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/providers/google/maps.ts(382,43): error TS7006: Parameter 'leg' implicitly has an 'any' type.
+src/providers/proxy/index.ts(36,18): error TS6133: 'placeId' is declared but its value is never read.
+src/providers/weather/openweather.ts(113,47): error TS6133: 'at' is declared but its value is never read.
+src/test/setup.ts(80,1): error TS2322: Type 'Mock<[], { observe: Mock<[target: Element], void>; unobserve: Mock<[target: Element], void>; disconnect: Mock<[], void>; }>' is not assignable to type '{ new (callback: IntersectionObserverCallback, options?: IntersectionObserverInit | undefined): IntersectionObserver; prototype: IntersectionObserver; }'.
+  Type '{ observe: Mock<[target: Element], void>; unobserve: Mock<[target: Element], void>; disconnect: Mock<[], void>; }' is missing the following properties from type 'IntersectionObserver': root, rootMargin, thresholds, takeRecords
+src/test/setup.ts(94,1): error TS2741: Property 'supportedEntryTypes' is missing in type 'Mock<[], { observe: Mock<any, any>; disconnect: Mock<any, any>; }>' but required in type '{ new (callback: PerformanceObserverCallback): PerformanceObserver; prototype: PerformanceObserver; readonly supportedEntryTypes: readonly string[]; }'.
+src/test/setup.ts(124,3): error TS2322: Type 'Mock<[], { onupgradeneeded: null; result: { transaction: Mock<[], { objectStore: Mock<[], { get: Mock<[], { onerror: null; onsuccess: null; result: null; error: null; }>; put: Mock<[], { onerror: null; onsuccess: null; result: null; error: null; }>; delete: Mock<...>; clear: Mock<...>; getAllKeys: Mock<...>; }>; }>;...' is not assignable to type '(name: string, version?: number | undefined) => IDBOpenDBRequest'.
+  Type '{ onupgradeneeded: null; result: { transaction: Mock<[], { objectStore: Mock<[], { get: Mock<[], { onerror: null; onsuccess: null; result: null; error: null; }>; put: Mock<[], { onerror: null; onsuccess: null; result: null; error: null; }>; delete: Mock<...>; clear: Mock<...>; getAllKeys: Mock<...>; }>; }>; createOb...' is missing the following properties from type 'IDBOpenDBRequest': onblocked, addEventListener, removeEventListener, readyState, and 3 more.

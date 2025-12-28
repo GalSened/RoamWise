@@ -1,4 +1,4 @@
-import type { Route, RouteLeg, RouteStep, LatLng, TripPlan } from '@/types';
+import type { Route, RouteStep, LatLng } from '@/types';
 import { AppError } from '@/types';
 import { EventBus } from '@/lib/utils/events';
 import { telemetry } from '@/lib/telemetry';
@@ -58,7 +58,7 @@ class NavigationManager extends EventBus {
 
       await this.startLocationTracking();
       this.emit('navigation-started', this.state);
-      
+
       telemetry.track('navigation_started', {
         total_distance: route.overview.distance,
         total_duration: route.overview.duration,
@@ -81,7 +81,7 @@ class NavigationManager extends EventBus {
     this.state.isNavigating = false;
     this.stopLocationTracking();
     this.emit('navigation-stopped');
-    
+
     telemetry.track('navigation_stopped', {
       was_completed: this.isNavigationComplete()
     });
@@ -122,7 +122,7 @@ class NavigationManager extends EventBus {
             lat: position.coords.latitude,
             lng: position.coords.longitude
           });
-          
+
           // Start watching position
           this.watchId = navigator.geolocation.watchPosition(
             (position) => {
@@ -140,7 +140,7 @@ class NavigationManager extends EventBus {
             },
             options
           );
-          
+
           resolve();
         },
         (error) => {
@@ -163,7 +163,7 @@ class NavigationManager extends EventBus {
 
   private updateLocation(location: LatLng): void {
     this.state.currentLocation = location;
-    
+
     if (!this.state.currentRoute || !this.state.isNavigating) return;
 
     // Update navigation state based on current location
@@ -235,7 +235,7 @@ class NavigationManager extends EventBus {
   private completeNavigation(): void {
     this.state.isNavigating = false;
     this.stopLocationTracking();
-    
+
     this.emit('navigation-completed');
     telemetry.track('navigation_completed', {
       total_legs: this.state.currentRoute?.legs.length,
@@ -253,10 +253,10 @@ class NavigationManager extends EventBus {
 
     // Calculate remaining time based on remaining distance and average speed
     let remainingDistance = 0;
-    
+
     // Add distance from current location to end of current step
     remainingDistance += this.state.distanceToNextStep;
-    
+
     // Add distance for remaining steps in current leg
     const currentLeg = this.state.currentRoute.legs[this.state.currentLeg];
     if (currentLeg) {
@@ -264,7 +264,7 @@ class NavigationManager extends EventBus {
         remainingDistance += currentLeg.steps[i].distance;
       }
     }
-    
+
     // Add distance for remaining legs
     for (let i = this.state.currentLeg + 1; i < this.state.currentRoute.legs.length; i++) {
       remainingDistance += this.state.currentRoute.legs[i].distance;
@@ -287,7 +287,7 @@ class NavigationManager extends EventBus {
 
     // Announce at different distances
     const distance = this.state.distanceToNextStep;
-    
+
     if (distance <= 100 && this.lastAnnouncedStep !== this.state.currentStep) {
       this.announceNextInstruction();
       this.lastAnnouncedStep = this.state.currentStep;
@@ -302,7 +302,7 @@ class NavigationManager extends EventBus {
 
     const nextStepIndex = this.state.currentStep + 1;
     const nextStep = currentLeg.steps[nextStepIndex];
-    
+
     if (nextStep) {
       const distance = this.formatDistance(this.state.distanceToNextStep);
       const instruction = `In ${distance}, ${nextStep.instruction}`;
@@ -345,10 +345,10 @@ class NavigationManager extends EventBus {
     const Δφ = (to.lat - from.lat) * Math.PI / 180;
     const Δλ = (to.lng - from.lng) * Math.PI / 180;
 
-    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ/2) * Math.sin(Δλ/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) *
+      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
     return R * c;
   }
@@ -380,7 +380,7 @@ class NavigationManager extends EventBus {
 
     while (upcoming.length < count && legIndex < this.state.currentRoute.legs.length) {
       const leg = this.state.currentRoute.legs[legIndex];
-      
+
       if (stepIndex < leg.steps.length) {
         upcoming.push(leg.steps[stepIndex]);
         stepIndex++;
@@ -429,13 +429,13 @@ class NavigationManager extends EventBus {
 
   // Simulation methods for testing
   simulateLocation(location: LatLng): void {
-    if (import.meta.env.DEV) {
+    if ((import.meta as any).env.DEV) {
       this.updateLocation(location);
     }
   }
 
   simulateProgress(legIndex: number, stepIndex: number): void {
-    if (import.meta.env.DEV) {
+    if ((import.meta as any).env.DEV) {
       this.state.currentLeg = legIndex;
       this.state.currentStep = stepIndex;
       this.emit('step-advanced', this.state);

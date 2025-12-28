@@ -68,7 +68,7 @@ export class OpenWeatherProvider implements WeatherProvider {
 
   async getCurrent(lat: number, lng: number): Promise<WeatherNow> {
     const startTime = performance.now();
-    
+
     try {
       const url = new URL(`${this.baseUrl}/onecall`);
       url.searchParams.set('lat', lat.toString());
@@ -79,7 +79,7 @@ export class OpenWeatherProvider implements WeatherProvider {
       url.searchParams.set('exclude', 'minutely,hourly,daily,alerts');
 
       const response = await fetch(url.toString());
-      
+
       if (!response.ok) {
         throw new AppError(
           `Weather API error: ${response.status}`,
@@ -90,7 +90,7 @@ export class OpenWeatherProvider implements WeatherProvider {
 
       const data: OpenWeatherResponse = await response.json();
       const weather = this.transformCurrentWeather(data);
-      
+
       telemetry.track('weather_current', {
         lat,
         lng,
@@ -110,9 +110,9 @@ export class OpenWeatherProvider implements WeatherProvider {
     }
   }
 
-  async getForecast(lat: number, lng: number, at?: Date): Promise<WeatherForecast> {
+  async getForecast(lat: number, lng: number, _at?: Date): Promise<WeatherForecast> {
     const startTime = performance.now();
-    
+
     try {
       const url = new URL(`${this.baseUrl}/onecall`);
       url.searchParams.set('lat', lat.toString());
@@ -123,7 +123,7 @@ export class OpenWeatherProvider implements WeatherProvider {
       url.searchParams.set('exclude', 'minutely,alerts');
 
       const response = await fetch(url.toString());
-      
+
       if (!response.ok) {
         throw new AppError(
           `Weather API error: ${response.status}`,
@@ -134,7 +134,7 @@ export class OpenWeatherProvider implements WeatherProvider {
 
       const data: OpenWeatherResponse = await response.json();
       const forecast = this.transformForecast(data);
-      
+
       telemetry.track('weather_forecast', {
         lat,
         lng,
@@ -161,7 +161,7 @@ export class OpenWeatherProvider implements WeatherProvider {
     const now = new Date();
     const sunrise = new Date(current.sunrise * 1000);
     const sunset = new Date(current.sunset * 1000);
-    
+
     return {
       temperature: current.temp,
       feelsLike: current.feels_like,
