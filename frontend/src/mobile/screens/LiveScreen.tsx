@@ -31,6 +31,8 @@ import { useNavigationState, SAMPLE_TRAIL } from '../hooks/useNavigationState';
 import { SafetyStatus } from '../managers/NavigationManager';
 import { AlertModal } from '../components/live/AlertModal';
 import { InteractiveMap } from '../components/map/InteractiveMap';
+import { ProfileManager } from '../features/profile';
+import type { CompletedTrip } from '../features/profile/types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SLIDE_THRESHOLD = SCREEN_WIDTH * 0.6;
@@ -321,6 +323,9 @@ export function LiveScreen() {
   const [showAlert, setShowAlert] = useState(false);
   const [alertDismissed, setAlertDismissed] = useState(false);
 
+  // Track hike start time for duration calculation
+  const trackingStartTime = useRef<number | null>(null);
+
   // Show alert modal when status changes to WARNING or DANGER
   useEffect(() => {
     if (
@@ -341,7 +346,10 @@ export function LiveScreen() {
 
     setIsLoading(false);
 
-    if (!success) {
+    if (success) {
+      // Record start time for duration calculation
+      trackingStartTime.current = Date.now();
+    } else {
       Alert.alert(
         'Location Permission Required',
         'Please enable location access to use Field Guardian mode.',
@@ -351,8 +359,40 @@ export function LiveScreen() {
   };
 
   // Handle end hike
-  const handleEndHike = () => {
+  const handleEndHike = async () => {
+    // CRITICAL: Capture data BEFORE stopTracking() resets state
+    const distanceKm = state.distanceTraveled / 1000;
+    const durationMinutes = trackingStartTime.current
+      ? Math.round((Date.now() - trackingStartTime.current) / 60000)
+      : 0;
+
+    // Create completed trip record
+    const completedTrip: CompletedTrip = {
+      id: `trip-${Date.now()}`,
+      name: SAMPLE_TRAIL.name || 'Hiking Trip',
+      date: new Date().toISOString(),
+      distanceKm,
+      durationMinutes,
+      stopsVisited: state.visitedStops?.length || 0,
+      category: 'Nature', // SAMPLE_TRAIL doesn't have category, default to Nature
+      destination: {
+        lat: SAMPLE_TRAIL.destination.latitude,
+        lng: SAMPLE_TRAIL.destination.longitude,
+        name: 'David Waterfall', // From SAMPLE_TRAIL
+      },
+    };
+
+    // Save to profile
+    try {
+      const manager = ProfileManager.getInstance();
+      await manager.saveCompletedTrip(completedTrip);
+    } catch (error) {
+      console.error('Failed to save completed trip:', error);
+    }
+
+    // Now safe to stop tracking (resets state)
     stopTracking();
+    trackingStartTime.current = null;
 
     Alert.alert(
       'Hike Completed!',

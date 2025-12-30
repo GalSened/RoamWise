@@ -2,13 +2,13 @@
  * ProfileScreen - Tab 4 (User Profile/Memories)
  *
  * User profile and settings with:
- * - Profile header with avatar
- * - Stats board (distance, places, trips)
- * - Trip log with thumbnails
- * - Settings section with toggles
+ * - Profile header with avatar and level
+ * - Stats board (distance, trips, days)
+ * - Trip log with real data from history
+ * - Settings section with persistent toggles
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,97 +16,48 @@ import {
   TouchableOpacity,
   StyleSheet,
   Switch,
-  FlatList,
-  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme/tokens';
+import { ProfileManager } from '../features/profile';
+import type { ProfileStats, UserPreferences, CompletedTrip } from '../features/profile/types';
 
 /**
- * User Stats Data
+ * Format minutes to human-readable duration
  */
-const userStats = [
-  { id: 'distance', value: '245', unit: 'km', label: 'walked' },
-  { id: 'places', value: '32', unit: '', label: 'places visited' },
-  { id: 'trips', value: '18', unit: '', label: 'trips complete' },
-];
+function formatDuration(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours === 0) return `${mins}m`;
+  if (mins === 0) return `${hours}h`;
+  return `${hours}h ${mins}m`;
+}
 
 /**
- * Trip Log Data
+ * Format ISO date string to readable format
  */
-const tripLog = [
-  {
-    id: '1',
-    title: 'Ein Gedi',
-    date: 'Dec 28, 2024',
-    distance: '7.2 km',
-    duration: '4h 30m',
-    image: 'placeholder',
-  },
-  {
-    id: '2',
-    title: 'Mount Tabor',
-    date: 'Dec 21, 2024',
-    distance: '5.8 km',
-    duration: '3h 15m',
-    image: 'placeholder',
-  },
-  {
-    id: '3',
-    title: 'Banias Falls',
-    date: 'Dec 14, 2024',
-    distance: '4.2 km',
-    duration: '2h 45m',
-    image: 'placeholder',
-  },
-  {
-    id: '4',
-    title: 'Masada Sunrise',
-    date: 'Dec 7, 2024',
-    distance: '3.5 km',
-    duration: '2h',
-    image: 'placeholder',
-  },
-];
-
-/**
- * Settings Data
- */
-const settingsSections = [
-  {
-    id: 'preferences',
-    title: 'Preferences',
-    items: [
-      { id: 'vegetarian', label: 'Vegetarian Food', type: 'toggle' },
-      { id: 'avoid-stairs', label: 'Avoid Stairs', type: 'toggle' },
-    ],
-  },
-  {
-    id: 'activity',
-    title: 'Activity Settings',
-    items: [
-      {
-        id: 'pace',
-        label: 'Walking Pace',
-        type: 'selector',
-        options: ['Slow', 'Medium', 'Fast'],
-        selected: 'Medium',
-      },
-      {
-        id: 'car',
-        label: 'Car Type',
-        type: 'dropdown',
-        value: 'Sedan',
-      },
-    ],
-  },
-];
+function formatDate(isoDate: string): string {
+  const date = new Date(isoDate);
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
 
 /**
  * Profile Header Component
  */
-function ProfileHeader() {
+function ProfileHeader({
+  displayName,
+  levelTitle,
+}: {
+  displayName: string;
+  levelTitle: string;
+}) {
   return (
     <View style={styles.profileHeader}>
       <View style={styles.avatarContainer}>
@@ -117,8 +68,8 @@ function ProfileHeader() {
           <Ionicons name="camera" size={16} color={colors.textInverse} />
         </TouchableOpacity>
       </View>
-      <Text style={styles.userName}>Traveler</Text>
-      <Text style={styles.userTagline}>Adventure Seeker 🏔️</Text>
+      <Text style={styles.userName}>{displayName}</Text>
+      <Text style={styles.userTagline}>{levelTitle} 🏔️</Text>
     </View>
   );
 }
@@ -126,10 +77,31 @@ function ProfileHeader() {
 /**
  * Stats Board Component
  */
-function StatsBoard() {
+function StatsBoard({ stats }: { stats: ProfileStats }) {
+  const displayStats = [
+    {
+      id: 'distance',
+      value: stats.totalDistanceKm.toFixed(1),
+      unit: 'km',
+      label: 'walked',
+    },
+    {
+      id: 'days',
+      value: String(stats.totalDaysInNature),
+      unit: '',
+      label: 'days in nature',
+    },
+    {
+      id: 'trips',
+      value: String(stats.totalTrips),
+      unit: '',
+      label: 'trips complete',
+    },
+  ];
+
   return (
     <View style={styles.statsBoard}>
-      {userStats.map((stat, index) => (
+      {displayStats.map((stat, index) => (
         <React.Fragment key={stat.id}>
           <View style={styles.statItem}>
             <Text style={styles.statValue}>
@@ -138,7 +110,7 @@ function StatsBoard() {
             </Text>
             <Text style={styles.statLabel}>{stat.label}</Text>
           </View>
-          {index < userStats.length - 1 && <View style={styles.statDivider} />}
+          {index < displayStats.length - 1 && <View style={styles.statDivider} />}
         </React.Fragment>
       ))}
     </View>
@@ -148,19 +120,19 @@ function StatsBoard() {
 /**
  * Trip Card Component
  */
-function TripCard({ trip }: { trip: typeof tripLog[0] }) {
+function TripCard({ trip }: { trip: CompletedTrip }) {
   return (
     <TouchableOpacity style={styles.tripCard}>
       <View style={styles.tripImagePlaceholder}>
         <Ionicons name="image" size={30} color={colors.textTertiary} />
       </View>
       <View style={styles.tripInfo}>
-        <Text style={styles.tripTitle}>{trip.title}</Text>
-        <Text style={styles.tripDate}>{trip.date}</Text>
+        <Text style={styles.tripTitle}>{trip.name}</Text>
+        <Text style={styles.tripDate}>{formatDate(trip.date)}</Text>
         <View style={styles.tripMeta}>
-          <Text style={styles.tripMetaText}>{trip.distance}</Text>
+          <Text style={styles.tripMetaText}>{trip.distanceKm.toFixed(1)} km</Text>
           <Text style={styles.tripMetaDot}>•</Text>
-          <Text style={styles.tripMetaText}>{trip.duration}</Text>
+          <Text style={styles.tripMetaText}>{formatDuration(trip.durationMinutes)}</Text>
         </View>
       </View>
       <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -171,17 +143,40 @@ function TripCard({ trip }: { trip: typeof tripLog[0] }) {
 /**
  * Trip Log Section
  */
-function TripLog() {
+function TripLog({ history }: { history: CompletedTrip[] }) {
+  // Show only the first 4 trips
+  const displayedTrips = history.slice(0, 4);
+
+  if (history.length === 0) {
+    return (
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="camera" size={20} color={colors.primary} />
+          <Text style={styles.sectionTitle}>Trip Log</Text>
+        </View>
+        <View style={styles.emptyState}>
+          <Ionicons name="map-outline" size={48} color={colors.textTertiary} />
+          <Text style={styles.emptyStateText}>No trips yet</Text>
+          <Text style={styles.emptyStateSubtext}>
+            Complete your first hike to see it here!
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Ionicons name="camera" size={20} color={colors.primary} />
         <Text style={styles.sectionTitle}>Trip Log</Text>
-        <TouchableOpacity>
-          <Text style={styles.seeAllButton}>See All</Text>
-        </TouchableOpacity>
+        {history.length > 4 && (
+          <TouchableOpacity>
+            <Text style={styles.seeAllButton}>See All</Text>
+          </TouchableOpacity>
+        )}
       </View>
-      {tripLog.map((trip) => (
+      {displayedTrips.map((trip) => (
         <TripCard key={trip.id} trip={trip} />
       ))}
     </View>
@@ -191,15 +186,21 @@ function TripLog() {
 /**
  * Toggle Setting Component
  */
-function ToggleSetting({ label }: { label: string }) {
-  const [isEnabled, setIsEnabled] = useState(false);
-
+function ToggleSetting({
+  label,
+  value,
+  onValueChange,
+}: {
+  label: string;
+  value: boolean;
+  onValueChange: (value: boolean) => void;
+}) {
   return (
     <View style={styles.settingRow}>
       <Text style={styles.settingLabel}>{label}</Text>
       <Switch
-        value={isEnabled}
-        onValueChange={setIsEnabled}
+        value={value}
+        onValueChange={onValueChange}
         trackColor={{ false: colors.borderLight, true: colors.success }}
         thumbColor={colors.surface}
         ios_backgroundColor={colors.borderLight}
@@ -268,7 +269,13 @@ function DropdownSetting({ label, value }: { label: string; value: string }) {
 /**
  * Settings Section Component
  */
-function SettingsSection() {
+function SettingsSection({
+  preferences,
+  onPreferenceChange,
+}: {
+  preferences: UserPreferences;
+  onPreferenceChange: (key: keyof UserPreferences, value: boolean | string) => void;
+}) {
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
@@ -276,31 +283,41 @@ function SettingsSection() {
         <Text style={styles.sectionTitle}>Settings</Text>
       </View>
 
-      {settingsSections.map((section) => (
-        <View key={section.id} style={styles.settingsGroup}>
-          <Text style={styles.settingsGroupTitle}>{section.title}</Text>
-          <View style={styles.settingsCard}>
-            {section.items.map((item, index) => (
-              <React.Fragment key={item.id}>
-                {item.type === 'toggle' && <ToggleSetting label={item.label} />}
-                {item.type === 'selector' && (
-                  <SelectorSetting
-                    label={item.label}
-                    options={item.options!}
-                    selected={item.selected!}
-                  />
-                )}
-                {item.type === 'dropdown' && (
-                  <DropdownSetting label={item.label} value={item.value!} />
-                )}
-                {index < section.items.length - 1 && (
-                  <View style={styles.settingDivider} />
-                )}
-              </React.Fragment>
-            ))}
-          </View>
+      {/* Hiking Preferences */}
+      <View style={styles.settingsGroup}>
+        <Text style={styles.settingsGroupTitle}>HIKING PREFERENCES</Text>
+        <View style={styles.settingsCard}>
+          <ToggleSetting
+            label="Vegetarian-Friendly"
+            value={preferences.vegetarian}
+            onValueChange={(v) => onPreferenceChange('vegetarian', v)}
+          />
+          <View style={styles.settingDivider} />
+          <ToggleSetting
+            label="Avoid Stairs"
+            value={preferences.avoidStairs}
+            onValueChange={(v) => onPreferenceChange('avoidStairs', v)}
+          />
+          <View style={styles.settingDivider} />
+          <SelectorSetting
+            label="Pace"
+            options={['slow', 'moderate', 'fast']}
+            selected={preferences.walkingPace}
+          />
         </View>
-      ))}
+      </View>
+
+      {/* Notifications */}
+      <View style={styles.settingsGroup}>
+        <Text style={styles.settingsGroupTitle}>NOTIFICATIONS</Text>
+        <View style={styles.settingsCard}>
+          <ToggleSetting
+            label="Push Notifications"
+            value={preferences.notifications}
+            onValueChange={(v) => onPreferenceChange('notifications', v)}
+          />
+        </View>
+      </View>
     </View>
   );
 }
@@ -309,6 +326,65 @@ function SettingsSection() {
  * ProfileScreen Main Component
  */
 export function ProfileScreen() {
+  const [stats, setStats] = useState<ProfileStats | null>(null);
+  const [preferences, setPreferences] = useState<UserPreferences | null>(null);
+  const [history, setHistory] = useState<CompletedTrip[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  /**
+   * Load all profile data
+   */
+  const loadProfileData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const manager = ProfileManager.getInstance();
+      const data = await manager.getProfileData();
+      setStats(data.stats);
+      setPreferences(data.preferences);
+      setHistory(data.history);
+    } catch (error) {
+      console.error('Failed to load profile data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Load data on mount and when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadProfileData();
+    }, [loadProfileData])
+  );
+
+  /**
+   * Handle preference changes
+   */
+  const handlePreferenceChange = useCallback(
+    async (key: keyof UserPreferences, value: boolean | string) => {
+      try {
+        const manager = ProfileManager.getInstance();
+        await manager.updatePreferences({ [key]: value });
+        setPreferences((prev) =>
+          prev ? { ...prev, [key]: value } : null
+        );
+      } catch (error) {
+        console.error('Failed to update preference:', error);
+      }
+    },
+    []
+  );
+
+  // Show loading state
+  if (isLoading || !stats || !preferences) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
@@ -316,10 +392,16 @@ export function ProfileScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <ProfileHeader />
-        <StatsBoard />
-        <TripLog />
-        <SettingsSection />
+        <ProfileHeader
+          displayName={preferences.displayName}
+          levelTitle={stats.levelTitle}
+        />
+        <StatsBoard stats={stats} />
+        <TripLog history={history} />
+        <SettingsSection
+          preferences={preferences}
+          onPreferenceChange={handlePreferenceChange}
+        />
 
         {/* Sign Out Button */}
         <TouchableOpacity style={styles.signOutButton}>
@@ -338,6 +420,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollView: {
     flex: 1,
@@ -485,6 +572,27 @@ const styles = StyleSheet.create({
   tripMetaDot: {
     color: colors.textTertiary,
     marginHorizontal: spacing.xs,
+  },
+
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    marginHorizontal: spacing.lg,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+  },
+  emptyStateText: {
+    ...typography.headline,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
+  },
+  emptyStateSubtext: {
+    ...typography.subhead,
+    color: colors.textTertiary,
+    marginTop: spacing.xs,
+    textAlign: 'center',
   },
 
   // Settings
