@@ -30,6 +30,7 @@ import { colors, spacing, typography, borderRadius, shadows } from '../theme/tok
 import { useNavigationState, SAMPLE_TRAIL } from '../hooks/useNavigationState';
 import { SafetyStatus } from '../managers/NavigationManager';
 import { AlertModal } from '../components/live/AlertModal';
+import { InteractiveMap } from '../components/map/InteractiveMap';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SLIDE_THRESHOLD = SCREEN_WIDTH * 0.6;
@@ -124,58 +125,6 @@ function HUDOverlay({
         <View style={styles.trackingIndicator}>
           <View style={styles.trackingDot} />
           <Text style={styles.trackingText}>GPS Active</Text>
-        </View>
-      )}
-    </View>
-  );
-}
-
-/**
- * Map Placeholder Component (to be replaced with react-native-maps)
- */
-function MapPlaceholder({
-  currentPosition,
-  isTracking,
-}: {
-  currentPosition: { latitude: number; longitude: number } | null;
-  isTracking: boolean;
-}) {
-  return (
-    <View style={styles.mapContainer}>
-      <View style={styles.mapPlaceholder}>
-        <Ionicons name="map" size={80} color={colors.textTertiary} />
-        <Text style={styles.mapPlaceholderText}>High Contrast Map</Text>
-        {isTracking ? (
-          <View style={styles.gpsInfo}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={styles.gpsInfoText}>
-              {currentPosition
-                ? `${currentPosition.latitude.toFixed(4)}, ${currentPosition.longitude.toFixed(4)}`
-                : 'Acquiring GPS...'}
-            </Text>
-          </View>
-        ) : (
-          <Text style={styles.mapPlaceholderSubtext}>
-            Tap "Start" to begin tracking
-          </Text>
-        )}
-      </View>
-
-      {/* Compass Button */}
-      <TouchableOpacity style={styles.compassButton}>
-        <Ionicons name="compass" size={24} color={colors.text} />
-      </TouchableOpacity>
-
-      {/* Location Button */}
-      <TouchableOpacity style={styles.locationButton}>
-        <Ionicons name="locate" size={24} color={colors.primary} />
-      </TouchableOpacity>
-
-      {/* User Location Marker */}
-      {isTracking && currentPosition && (
-        <View style={styles.userMarker}>
-          <View style={styles.userMarkerPulse} />
-          <View style={styles.userMarkerDot} />
         </View>
       )}
     </View>
@@ -435,10 +384,16 @@ export function LiveScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Full Screen Map */}
-      <MapPlaceholder
-        currentPosition={state.currentPosition}
-        isTracking={state.isTracking}
+      {/* Full Screen Interactive Map */}
+      <InteractiveMap
+        mode="navigation"
+        routePolyline={SAMPLE_TRAIL.coordinates}
+        userLocation={state.currentPosition}
+        accuracy={state.accuracy}
+        markers={[
+          { id: 'start', coordinate: SAMPLE_TRAIL.coordinates[0], type: 'start', title: 'Trailhead' },
+          { id: 'end', coordinate: SAMPLE_TRAIL.destination, type: 'end', title: 'David Waterfall' },
+        ]}
       />
 
       {/* Top HUD Overlay - REAL DATA */}
@@ -488,89 +443,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-
-  // Map
-  mapContainer: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#E8E8E8',
-  },
-  mapPlaceholder: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  mapPlaceholderText: {
-    ...typography.title2,
-    color: colors.textSecondary,
-    marginTop: spacing.md,
-  },
-  mapPlaceholderSubtext: {
-    ...typography.subhead,
-    color: colors.textTertiary,
-    marginTop: spacing.xs,
-  },
-  gpsInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.md,
-    gap: spacing.sm,
-  },
-  gpsInfoText: {
-    ...typography.caption1,
-    color: colors.textSecondary,
-    fontFamily: 'monospace',
-  },
-  compassButton: {
-    position: 'absolute',
-    top: 160,
-    right: spacing.md,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...shadows.medium,
-  },
-  locationButton: {
-    position: 'absolute',
-    top: 216,
-    right: spacing.md,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...shadows.medium,
-  },
-  userMarker: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    marginLeft: -15,
-    marginTop: -15,
-    width: 30,
-    height: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  userMarkerPulse: {
-    position: 'absolute',
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: colors.primary,
-    opacity: 0.3,
-  },
-  userMarkerDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: colors.primary,
-    borderWidth: 2,
-    borderColor: colors.surface,
   },
 
   // HUD

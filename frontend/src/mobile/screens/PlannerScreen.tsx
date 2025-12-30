@@ -22,6 +22,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme/tokens';
+import { InteractiveMap } from '../components/map/InteractiveMap';
+import { SAMPLE_TRAIL } from '../hooks/useNavigationState';
 
 /**
  * Trip Mode Cards Data
@@ -252,6 +254,28 @@ function TimelineNode({ event, isLast }: { event: typeof timelineEvents[0]; isLa
 }
 
 /**
+ * Map Preview Component - Shows route in preview mode
+ */
+function MapPreview() {
+  return (
+    <View style={styles.mapPreviewSection}>
+      <Text style={styles.sectionTitle}>Route Preview</Text>
+      <View style={styles.mapPreviewContainer}>
+        <InteractiveMap
+          mode="preview"
+          routePolyline={SAMPLE_TRAIL.coordinates}
+          userLocation={null}
+          markers={[
+            { id: 'start', coordinate: SAMPLE_TRAIL.coordinates[0], type: 'start', title: 'Trailhead' },
+            { id: 'end', coordinate: SAMPLE_TRAIL.destination, type: 'end', title: 'David Waterfall' },
+          ]}
+        />
+      </View>
+    </View>
+  );
+}
+
+/**
  * Dynamic Timeline Section
  */
 function Timeline() {
@@ -340,6 +364,7 @@ export function PlannerScreen() {
         </View>
 
         <ModeSelector />
+        <MapPreview />
         <Timeline />
       </ScrollView>
 
@@ -426,9 +451,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
+  // Map Preview
+  mapPreviewSection: {
+    marginTop: spacing.lg,
+  },
+  mapPreviewContainer: {
+    height: 200,
+    marginHorizontal: spacing.lg,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    ...shadows.medium,
+  },
+
   // Timeline
   timelineSection: {
-    marginTop: spacing.xl,
+    marginTop: spacing.lg,
   },
   timeline: {
     paddingHorizontal: spacing.lg,
