@@ -1,27 +1,60 @@
-// Simple JavaScript implementation to ensure navigation works
-console.log('Simple app starting...');
+// RoamWise iOS-style App - Full implementation with bug fixes
+console.log('RoamWise iOS App starting...');
 
 // API Configuration - use environment variable or fallback to Cloud Run proxy
 const API_BASE_URL = 'https://roamwise-proxy-971999716773.us-central1.run.app';
 
+// Helper: Convert PRICE_LEVEL API values to $ symbols
+function formatPriceLevel(priceLevel) {
+  if (priceLevel === undefined || priceLevel === null) return null;
+
+  // Handle string formats from Google Places API
+  const priceLevelMap = {
+    'PRICE_LEVEL_FREE': 'Free',
+    'PRICE_LEVEL_INEXPENSIVE': '$',
+    'PRICE_LEVEL_MODERATE': '$$',
+    'PRICE_LEVEL_EXPENSIVE': '$$$',
+    'PRICE_LEVEL_VERY_EXPENSIVE': '$$$$',
+    // Numeric formats
+    0: 'Free',
+    1: '$',
+    2: '$$',
+    3: '$$$',
+    4: '$$$$'
+  };
+
+  return priceLevelMap[priceLevel] || null;
+}
+
+// Helper: Truncate long text for display
+function truncateText(text, maxLength = 50) {
+  if (!text || text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + '...';
+}
+
 class SimpleNavigation {
   constructor() {
     this.currentView = 'search';
+    this.selectedInterests = [];
+    this.tripsPlanned = parseInt(localStorage.getItem('tripsPlanned') || '0');
+    this.placesVisited = parseInt(localStorage.getItem('placesVisited') || '0');
     this.init();
   }
 
   init() {
-    console.log('Initializing navigation...');
+    console.log('Initializing iOS-style navigation...');
     this.setupNavigation();
     this.setupThemeToggle();
     this.setupLanguageToggle();
-    this.setupFormInteractions(); // Add this to ensure search works
+    this.setupFormInteractions();
+    this.updateProfileStats();
     this.showView('search');
   }
 
   setupNavigation() {
-    const navButtons = document.querySelectorAll('.nav-btn');
-    const views = document.querySelectorAll('.app-view');
+    // Support both old class names (.nav-btn) and new iOS class names (.ios-tab)
+    const navButtons = document.querySelectorAll('.nav-btn, .ios-tab');
+    const views = document.querySelectorAll('.app-view, .ios-view');
 
     console.log('Found nav buttons:', navButtons.length);
     console.log('Found views:', views.length);
@@ -30,6 +63,13 @@ class SimpleNavigation {
       button.addEventListener('click', () => {
         const targetView = button.getAttribute('data-view');
         console.log('Navigation clicked:', targetView);
+
+        // Add iOS spring animation
+        button.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+          button.style.transform = '';
+        }, 100);
+
         this.showView(targetView);
       });
     });
@@ -37,9 +77,9 @@ class SimpleNavigation {
 
   showView(viewName) {
     console.log('Showing view:', viewName);
-    
-    // Hide all views
-    const views = document.querySelectorAll('.app-view');
+
+    // Hide all views (support both class naming conventions)
+    const views = document.querySelectorAll('.app-view, .ios-view');
     views.forEach(view => {
       view.classList.remove('active');
     });
@@ -53,8 +93,8 @@ class SimpleNavigation {
       console.error('View not found:', viewName);
     }
 
-    // Update navigation buttons
-    const navButtons = document.querySelectorAll('.nav-btn');
+    // Update navigation buttons (support both class naming conventions)
+    const navButtons = document.querySelectorAll('.nav-btn, .ios-tab');
     navButtons.forEach(button => {
       button.classList.remove('active');
       if (button.getAttribute('data-view') === viewName) {
@@ -72,35 +112,98 @@ class SimpleNavigation {
         const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
         const newTheme = currentTheme === 'light' ? 'dark' : 'light';
         document.documentElement.setAttribute('data-theme', newTheme);
+        document.body.setAttribute('data-theme', newTheme);
         localStorage.setItem('app-theme', newTheme);
         console.log('Theme changed to:', newTheme);
+
+        // Update icon if using new iOS toggle
+        const icon = themeToggle.querySelector('.ios-icon');
+        if (icon) {
+          icon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+        }
       });
     }
 
     // Load saved theme
     const savedTheme = localStorage.getItem('app-theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
+    document.body.setAttribute('data-theme', savedTheme);
   }
 
   setupLanguageToggle() {
-    const langHe = document.getElementById('langHe');
-    const langEn = document.getElementById('langEn');
+    // Support both old IDs and new data-testid attributes
+    const langHe = document.getElementById('langHe') || document.querySelector('[data-testid="lang-he"]');
+    const langEn = document.getElementById('langEn') || document.querySelector('[data-testid="lang-en"]');
 
-    const setLanguage = (lang) => {
-      // Update active class
-      if (lang === 'he') {
-        langHe.classList.add('active');
-        langEn.classList.remove('active');
-        document.body.setAttribute('dir', 'rtl');
-      } else {
-        langEn.classList.add('active');
-        langHe.classList.remove('active');
-        document.body.setAttribute('dir', 'ltr');
+    // Translation cache
+    this.translations = {};
+    this.currentLang = 'en';
+
+    // Load translation file
+    const loadTranslations = async (lang) => {
+      if (this.translations[lang]) return this.translations[lang];
+      try {
+        // Use relative path for Vite base path compatibility
+        const basePath = import.meta.env?.BASE_URL || '/';
+        const response = await fetch(`${basePath}i18n/${lang}.json`);
+        if (response.ok) {
+          this.translations[lang] = await response.json();
+        } else {
+          console.warn(`Failed to load ${lang} translations`);
+          this.translations[lang] = {};
+        }
+      } catch (error) {
+        console.warn(`Error loading ${lang} translations:`, error);
+        this.translations[lang] = {};
       }
+      return this.translations[lang];
+    };
+
+    // Apply translations to DOM
+    const applyTranslations = (translations) => {
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[key]) {
+          if (el.tagName === 'INPUT' && el.placeholder !== undefined) {
+            el.placeholder = translations[key];
+          } else {
+            el.textContent = translations[key];
+          }
+        }
+      });
+    };
+
+    const setLanguage = async (lang) => {
+      this.currentLang = lang;
+
+      // Update active class (support both button types)
+      const allLangBtns = document.querySelectorAll('[data-testid^="lang-"], #langHe, #langEn');
+      allLangBtns.forEach(btn => btn.classList.remove('active'));
+
+      if (lang === 'he') {
+        if (langHe) langHe.classList.add('active');
+        document.body.setAttribute('dir', 'rtl');
+        document.documentElement.setAttribute('lang', 'he');
+        document.documentElement.setAttribute('dir', 'rtl');
+      } else {
+        if (langEn) langEn.classList.add('active');
+        document.body.setAttribute('dir', 'ltr');
+        document.documentElement.setAttribute('lang', 'en');
+        document.documentElement.setAttribute('dir', 'ltr');
+      }
+
+      // Load and apply translations
+      const translations = await loadTranslations(lang);
+      applyTranslations(translations);
 
       // Save to localStorage
       localStorage.setItem('app-language', lang);
       console.log('Language changed to:', lang);
+    };
+
+    // Expose translation helper
+    this.t = (key) => {
+      return this.translations[this.currentLang]?.[key] || key;
     };
 
     if (langHe) {
@@ -111,44 +214,33 @@ class SimpleNavigation {
       langEn.addEventListener('click', () => setLanguage('en'));
     }
 
-    // Load saved language (default to 'en')
-    const savedLang = localStorage.getItem('app-language') || 'en';
+    // Load saved language (default to 'he' - Hebrew)
+    const savedLang = localStorage.getItem('app-language') || 'he';
     setLanguage(savedLang);
   }
 
   setupFormInteractions() {
     console.log('Setting up form interactions...');
-    
-    // Budget slider
-    const budgetSlider = document.getElementById('budgetRange');
-    const budgetAmount = document.getElementById('budgetAmount');
+
+    // Budget slider (support both old and new IDs)
+    const budgetSlider = document.getElementById('budgetRange') || document.getElementById('budgetSlider');
+    const budgetAmount = document.getElementById('budgetAmount') || document.getElementById('budgetValue');
     if (budgetSlider && budgetAmount) {
       budgetSlider.addEventListener('input', () => {
         budgetAmount.textContent = budgetSlider.value;
       });
     }
 
-    // Duration options
-    document.querySelectorAll('.duration-option').forEach(option => {
+    // Duration options (support both old and new class names)
+    document.querySelectorAll('.duration-option, .ios-segment').forEach(option => {
       option.addEventListener('click', () => {
-        document.querySelectorAll('.duration-option').forEach(o => o.classList.remove('selected'));
+        document.querySelectorAll('.duration-option, .ios-segment').forEach(o => o.classList.remove('selected'));
         option.classList.add('selected');
       });
     });
 
-    // Interest options
-    document.querySelectorAll('.interest-option').forEach(option => {
-      option.addEventListener('click', () => {
-        const selected = document.querySelectorAll('.interest-option.selected');
-        if (option.classList.contains('selected')) {
-          option.classList.remove('selected');
-        } else if (selected.length < 4) {
-          option.classList.add('selected');
-        } else {
-          alert('Maximum 4 interests allowed');
-        }
-      });
-    });
+    // Interest options with counter and validation (support both old and new class names)
+    this.setupInterestSelection();
 
     this.setupSearch();
     this.setupTripGeneration();
@@ -156,68 +248,173 @@ class SimpleNavigation {
     this.setupPlannerUI();
   }
 
+  setupInterestSelection() {
+    const interestOptions = document.querySelectorAll('.interest-option, .ios-interest');
+    const interestCount = document.getElementById('interestCount');
+    const interestHint = document.getElementById('interestHint');
+    const generateBtn = document.getElementById('generateTripBtn');
+
+    const updateInterestUI = () => {
+      const selected = document.querySelectorAll('.interest-option.selected, .ios-interest.selected');
+      const count = selected.length;
+
+      // Update counter display
+      if (interestCount) {
+        interestCount.textContent = `${count}/4`;
+      }
+
+      // Update hint message
+      if (interestHint) {
+        if (count === 0) {
+          interestHint.textContent = this.t('trip.select_hint') || 'Select at least 1 interest';
+          interestHint.style.color = 'var(--ios-red, #FF3B30)';
+        } else if (count >= 4) {
+          interestHint.textContent = this.t('trip.max_reached') || 'Maximum reached';
+          interestHint.style.color = 'var(--ios-orange, #FF9500)';
+        } else {
+          interestHint.textContent = '';
+        }
+      }
+
+      // Disable/enable unselected options when max reached
+      interestOptions.forEach(opt => {
+        if (!opt.classList.contains('selected')) {
+          if (count >= 4) {
+            opt.classList.add('disabled');
+            opt.style.opacity = '0.5';
+            opt.style.pointerEvents = 'none';
+          } else {
+            opt.classList.remove('disabled');
+            opt.style.opacity = '';
+            opt.style.pointerEvents = '';
+          }
+        }
+      });
+
+      // Require at least 1 interest for trip generation
+      if (generateBtn) {
+        if (count === 0) {
+          generateBtn.disabled = true;
+          generateBtn.style.opacity = '0.5';
+        } else {
+          generateBtn.disabled = false;
+          generateBtn.style.opacity = '';
+        }
+      }
+    };
+
+    interestOptions.forEach(option => {
+      option.addEventListener('click', () => {
+        const selected = document.querySelectorAll('.interest-option.selected, .ios-interest.selected');
+
+        if (option.classList.contains('selected')) {
+          option.classList.remove('selected');
+        } else if (selected.length < 4) {
+          option.classList.add('selected');
+        }
+        // If at max and trying to add, do nothing (visual feedback via disabled state)
+
+        updateInterestUI();
+      });
+    });
+
+    // Initialize UI state
+    updateInterestUI();
+  }
+
   setupSearch() {
     const searchBtn = document.getElementById('searchBtn');
-    const searchInput = document.getElementById('freeText');
+    const searchInput = document.getElementById('freeText') || document.getElementById('searchInput');
+    const resultsList = document.getElementById('list') || document.getElementById('searchResults');
+
     console.log('Setting up search - Button:', !!searchBtn, 'Input:', !!searchInput);
-    
+
     if (searchBtn && searchInput) {
       searchBtn.addEventListener('click', async () => {
         const query = searchInput.value.trim();
-        if (query) {
-          console.log('Searching with Personal AI for:', query);
-          searchBtn.textContent = 'AI Searching...';
-          searchBtn.disabled = true;
-          
-          try {
-            // Use Google Places API via backend proxy
-            const response = await fetch(`${API_BASE_URL}/api/places/search`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Lang': localStorage.getItem('app-language') || 'en'
-              },
-              body: JSON.stringify({
-                query: query,
-                minRating: 3.5
-              })
-            });
 
-            const data = await response.json();
-            const resultsList = document.getElementById('list');
-
-            if (data.ok && data.items && data.items.length > 0) {
-              resultsList.innerHTML = data.items.map(place => `
-                <div class="search-result ai-powered">
-                  <h3>📍 ${place.displayName?.text || place.name || 'Unknown'}</h3>
-                  <p>${place.formattedAddress || place.vicinity || ''}</p>
-                  <div class="result-rating">⭐ ${place.rating?.toFixed(1) || 'N/A'} (${place.userRatingCount || 0} reviews)</div>
-                  ${place.priceLevel ? `<div class="price-level">💰 ${place.priceLevel}</div>` : ''}
-                </div>
-              `).join('');
-            } else {
-              resultsList.innerHTML = `
-                <div class="search-result">
-                  <h3>🔍 No results for "${query}"</h3>
-                  <p>Try a different search term or location.</p>
-                </div>
-              `;
-            }
-          } catch (error) {
-            console.error('Search error:', error);
-            const resultsList = document.getElementById('list');
+        // FIX: Handle empty search - show ready state, not previous results
+        if (!query) {
+          if (resultsList) {
             resultsList.innerHTML = `
-              <div class="search-result">
-                <h3>⚠️ Search Error</h3>
-                <p>Unable to connect to search service. Please try again.</p>
-                <div class="error-detail">${error.message}</div>
+              <div class="ios-empty-state" style="text-align: center; padding: 3rem 1.5rem; color: var(--label-secondary);">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+                <h3 style="margin: 0 0 0.5rem; color: var(--label-primary);">${this.t('search.ready') || 'Ready to Search'}</h3>
+                <p style="margin: 0;">${this.t('search.enter_query') || 'Enter a location or place to find nearby options'}</p>
               </div>
             `;
           }
-          
-          searchBtn.textContent = 'Search';
-          searchBtn.disabled = false;
+          return;
         }
+
+        console.log('Searching with Personal AI for:', query);
+        searchBtn.textContent = this.t('search.searching') || 'AI Searching...';
+        searchBtn.disabled = true;
+
+        try {
+          // Use Google Places API via backend proxy
+          const response = await fetch(`${API_BASE_URL}/api/places/search`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Lang': localStorage.getItem('app-language') || 'en'
+            },
+            body: JSON.stringify({
+              query: query,
+              minRating: 3.5
+            })
+          });
+
+          const data = await response.json();
+
+          if (data.ok && data.items && data.items.length > 0) {
+            // Track places visited
+            this.placesVisited += data.items.length;
+            localStorage.setItem('placesVisited', this.placesVisited.toString());
+            this.updateProfileStats();
+
+            resultsList.innerHTML = data.items.map(place => {
+              // FIX: Format price level properly
+              const priceDisplay = formatPriceLevel(place.priceLevel);
+
+              return `
+                <div class="ios-card search-result" style="cursor: pointer;" onclick="window.open('https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.displayName?.text || place.name || '')}', '_blank')">
+                  <div class="ios-card-content">
+                    <h3 style="margin: 0 0 0.25rem; font-size: 17px; font-weight: 600;">📍 ${place.displayName?.text || place.name || 'Unknown'}</h3>
+                    <p style="margin: 0 0 0.5rem; color: var(--label-secondary); font-size: 15px;">${place.formattedAddress || place.vicinity || ''}</p>
+                    <div style="display: flex; gap: 1rem; font-size: 13px; color: var(--label-secondary);">
+                      <span>⭐ ${place.rating?.toFixed(1) || 'N/A'} (${place.userRatingCount || 0})</span>
+                      ${priceDisplay ? `<span>💰 ${priceDisplay}</span>` : ''}
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('');
+          } else {
+            // FIX: Truncate long query in error message
+            const displayQuery = truncateText(query, 40);
+            resultsList.innerHTML = `
+              <div class="ios-empty-state" style="text-align: center; padding: 3rem 1.5rem;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+                <h3 style="margin: 0 0 0.5rem;">${this.t('search.no_results') || 'No Results'}</h3>
+                <p style="margin: 0; color: var(--label-secondary);">${this.t('search.no_results_for') || 'No results for'} "<span class="ios-error-query">${displayQuery}</span>"</p>
+                <p style="margin: 0.5rem 0 0; color: var(--label-tertiary); font-size: 13px;">${this.t('search.try_different') || 'Try a different search term'}</p>
+              </div>
+            `;
+          }
+        } catch (error) {
+          console.error('Search error:', error);
+          resultsList.innerHTML = `
+            <div class="ios-empty-state" style="text-align: center; padding: 3rem 1.5rem;">
+              <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+              <h3 style="margin: 0 0 0.5rem;">${this.t('error.search') || 'Search Error'}</h3>
+              <p style="margin: 0; color: var(--label-secondary);">${this.t('error.try_again') || 'Unable to connect. Please try again.'}</p>
+            </div>
+          `;
+        }
+
+        searchBtn.textContent = this.t('search.button') || 'Search';
+        searchBtn.disabled = false;
       });
     } else {
       console.error('Search elements not found - Button:', !!searchBtn, 'Input:', !!searchInput);
@@ -228,18 +425,40 @@ class SimpleNavigation {
     const generateBtn = document.getElementById('generateTripBtn');
     if (generateBtn) {
       generateBtn.addEventListener('click', async () => {
+        // Validate at least 1 interest selected
+        const selectedInterests = Array.from(document.querySelectorAll('.interest-option.selected, .ios-interest.selected'));
+        if (selectedInterests.length === 0) {
+          const interestHint = document.getElementById('interestHint');
+          if (interestHint) {
+            interestHint.textContent = this.t('trip.select_at_least_one') || 'Please select at least 1 interest';
+            interestHint.style.color = 'var(--ios-red, #FF3B30)';
+          }
+          return;
+        }
+
         console.log('Generating AI-powered trip...');
         generateBtn.textContent = '🧠 AI Thinking...';
         generateBtn.disabled = true;
-        
+
         try {
           // Collect user preferences
-          const selectedDuration = document.querySelector('.duration-option.selected')?.textContent || 'Full day';
-          const selectedInterests = Array.from(document.querySelectorAll('.interest-option.selected')).map(el => el.textContent);
-          const budget = document.getElementById('budgetAmount')?.textContent || '300';
-          
+          const selectedDuration = document.querySelector('.duration-option.selected, .ios-segment.selected');
+          const durationHours = selectedDuration?.getAttribute('data-duration') || '8';
+          const durationText = selectedDuration?.textContent || 'Full day';
+
+          const interests = selectedInterests.map(el => el.getAttribute('data-interest') || el.textContent);
+          const budget = document.getElementById('budgetAmount')?.textContent ||
+                        document.getElementById('budgetValue')?.textContent || '300';
+
           // Map interests to Google Places types
           const interestToType = {
+            'food': 'restaurant',
+            'nature': 'park',
+            'culture': 'museum',
+            'shopping': 'shopping_mall',
+            'entertainment': 'tourist_attraction',
+            'relaxation': 'spa',
+            // Text-based fallbacks
             '🍽️ Food': 'restaurant',
             '🌿 Nature': 'park',
             '🏛️ Culture': 'museum',
@@ -247,7 +466,7 @@ class SimpleNavigation {
             '🎯 Entertainment': 'tourist_attraction',
             '😌 Relaxation': 'spa'
           };
-          const types = selectedInterests.map(i => interestToType[i] || 'tourist_attraction').filter(Boolean);
+          const types = interests.map(i => interestToType[i] || 'tourist_attraction').filter(Boolean);
 
           // Call planner API
           const response = await fetch(`${API_BASE_URL}/planner/plan-day`, {
@@ -263,64 +482,97 @@ class SimpleNavigation {
                 radius_km: 10,
                 types: types.length > 0 ? types : ['tourist_attraction', 'restaurant'],
                 min_rating: 4.0,
-                limit: 10
+                limit: parseInt(durationHours) + 2 // Adjust stops based on duration
               }
             })
           });
 
           const data = await response.json();
-          const tripDisplay = document.getElementById('enhancedTripDisplay');
+          const tripDisplay = document.getElementById('enhancedTripDisplay') || document.getElementById('tripResults');
+
+          // Get AI weather insights for the trip location
+          const insightsData = await this.getAIWeatherInsights(32.0853, 34.7818, 'Tel Aviv');
 
           if (data.ok && data.plan) {
             const { summary, timeline } = data.plan;
+
+            // FIX: Count actual POI stops, not all timeline entries
+            const poiStops = timeline.filter(leg => leg.to?.kind === 'poi' || leg.to?.name);
+            const stopCount = poiStops.length;
+
+            // FIX: Increment trip counter
+            this.tripsPlanned++;
+            localStorage.setItem('tripsPlanned', this.tripsPlanned.toString());
+            this.updateProfileStats();
+
             tripDisplay.innerHTML = `
-              <div class="trip-result ai-powered">
-                <h3>🗺️ Your AI-Powered Trip!</h3>
-                <div class="trip-summary">
-                  <div class="trip-stat">
-                    <span class="stat-label">Duration:</span>
-                    <span class="stat-value">${selectedDuration}</span>
-                  </div>
-                  <div class="trip-stat">
-                    <span class="stat-label">Budget:</span>
-                    <span class="stat-value">$${budget}</span>
-                  </div>
-                  <div class="trip-stat">
-                    <span class="stat-label">Stops:</span>
-                    <span class="stat-value">${summary.count || 0} places</span>
-                  </div>
-                </div>
-                <div class="trip-timeline">
-                  ${timeline.map((leg, idx) => `
-                    <div class="timeline-item">
-                      <div class="timeline-marker">${idx + 1}</div>
-                      <div class="timeline-content">
-                        <strong>${leg.to?.name || leg.to?.kind || 'Stop'}</strong>
-                        ${leg.leg_seconds ? `<span class="travel-time">🚗 ${Math.round(leg.leg_seconds / 60)} min</span>` : ''}
-                        ${leg.to?.rating ? `<span class="rating">⭐ ${leg.to.rating.toFixed(1)}</span>` : ''}
-                      </div>
+              <div class="ios-card trip-result">
+                <div class="ios-card-content">
+                  <h3 style="margin: 0 0 1rem; font-size: 20px; font-weight: 600;">🗺️ ${this.t('trip.your_trip') || 'Your AI-Powered Trip!'}</h3>
+
+                  <div class="trip-summary" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; padding: 1rem; background: var(--bg-secondary); border-radius: 12px;">
+                    <div style="text-align: center;">
+                      <div style="font-size: 13px; color: var(--label-secondary);">${this.t('trip.duration') || 'Duration'}</div>
+                      <div style="font-size: 17px; font-weight: 600;">${durationText}</div>
                     </div>
-                  `).join('')}
+                    <div style="text-align: center;">
+                      <div style="font-size: 13px; color: var(--label-secondary);">${this.t('trip.budget') || 'Budget'}</div>
+                      <div style="font-size: 17px; font-weight: 600;">$${budget}</div>
+                    </div>
+                    <div style="text-align: center;">
+                      <div style="font-size: 13px; color: var(--label-secondary);">${this.t('trip.stops') || 'Stops'}</div>
+                      <div style="font-size: 17px; font-weight: 600;">${stopCount} ${this.t('trip.places') || 'places'}</div>
+                    </div>
+                  </div>
+
+                  <div class="trip-timeline">
+                    ${poiStops.map((leg, idx) => {
+                      // FIX: Handle "dest" placeholder - use actual name or fallback
+                      const stopName = (leg.to?.name && leg.to.name !== 'dest')
+                        ? leg.to.name
+                        : (leg.to?.kind === 'dest' ? (this.t('trip.destination') || 'Destination') : `Stop ${idx + 1}`);
+
+                      return `
+                        <div class="timeline-item" style="display: flex; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid var(--separator);">
+                          <div class="timeline-marker" style="width: 28px; height: 28px; background: var(--ios-blue); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; flex-shrink: 0;">${idx + 1}</div>
+                          <div class="timeline-content" style="flex: 1;">
+                            <strong style="font-size: 15px;">${stopName}</strong>
+                            <div style="display: flex; gap: 1rem; margin-top: 0.25rem; font-size: 13px; color: var(--label-secondary);">
+                              ${leg.leg_seconds ? `<span>🚗 ${Math.round(leg.leg_seconds / 60)} min</span>` : ''}
+                              ${leg.to?.rating ? `<span>⭐ ${leg.to.rating.toFixed(1)}</span>` : ''}
+                            </div>
+                          </div>
+                        </div>
+                      `;
+                    }).join('')}
+                  </div>
                 </div>
               </div>
             `;
+
+            // Render weather insights after trip display
+            if (insightsData.insights.length > 0) {
+              this.renderInsights(insightsData.insights, tripDisplay.id);
+            }
           } else {
             throw new Error(data.error || 'No plan generated');
           }
-          
+
         } catch (error) {
           console.error('Trip generation error:', error);
-          const tripDisplay = document.getElementById('enhancedTripDisplay');
+          const tripDisplay = document.getElementById('enhancedTripDisplay') || document.getElementById('tripResults');
           tripDisplay.innerHTML = `
-            <div class="trip-result">
-              <h3>⚠️ Trip Planning Error</h3>
-              <p>Unable to generate trip plan. Please try again.</p>
-              <div class="error-detail">${error.message}</div>
+            <div class="ios-card" style="background: var(--ios-red-bg, #FEE2E2); border: 1px solid var(--ios-red, #FF3B30);">
+              <div class="ios-card-content" style="text-align: center; padding: 2rem;">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚠️</div>
+                <h3 style="margin: 0 0 0.5rem;">${this.t('error.trip') || 'Trip Planning Error'}</h3>
+                <p style="margin: 0; color: var(--label-secondary);">${this.t('error.try_again') || 'Unable to generate trip. Please try again.'}</p>
+              </div>
             </div>
           `;
         }
-        
-        generateBtn.textContent = '🤖 Generate Smart Trip';
+
+        generateBtn.textContent = this.t('trip.generate') || '🤖 Generate Smart Trip';
         generateBtn.disabled = false;
 
         // Update route chips and navigation links with mock data
@@ -333,6 +585,14 @@ class SimpleNavigation {
         });
       });
     }
+  }
+
+  updateProfileStats() {
+    const tripsEl = document.getElementById('tripsPlannedCount');
+    const placesEl = document.getElementById('placesVisitedCount');
+
+    if (tripsEl) tripsEl.textContent = this.tripsPlanned;
+    if (placesEl) placesEl.textContent = this.placesVisited;
   }
 
   updateRouteInfo(routeData) {
@@ -352,9 +612,9 @@ class SimpleNavigation {
     const duration = routeData?.duration || '1h 15m';
     const avoid = routeData?.avoid || 'tolls, ferries';
 
-    chipDistance.textContent = `📏 ${distance}`;
-    chipDuration.textContent = `⏱️ ${duration}`;
-    chipAvoid.textContent = `🚫 Avoid: ${avoid}`;
+    if (chipDistance) chipDistance.textContent = `📏 ${distance}`;
+    if (chipDuration) chipDuration.textContent = `⏱️ ${duration}`;
+    if (chipAvoid) chipAvoid.textContent = `🚫 Avoid: ${avoid}`;
 
     // Show chips
     routeChips.style.display = 'flex';
@@ -363,9 +623,9 @@ class SimpleNavigation {
     const origin = routeData?.origin || '32.08,34.78';
     const destination = routeData?.destination || '31.77,35.22';
 
-    navWaze.href = `https://waze.com/ul?ll=${destination}&navigate=yes`;
-    navGoogle.href = `https://www.google.com/maps/dir/${origin}/${destination}`;
-    navApple.href = `https://maps.apple.com/?saddr=${origin}&daddr=${destination}`;
+    if (navWaze) navWaze.href = `https://waze.com/ul?ll=${destination}&navigate=yes`;
+    if (navGoogle) navGoogle.href = `https://www.google.com/maps/dir/${origin}/${destination}`;
+    if (navApple) navApple.href = `https://maps.apple.com/?saddr=${origin}&daddr=${destination}`;
 
     // Show navigation links
     navLinks.style.display = 'flex';
@@ -374,51 +634,368 @@ class SimpleNavigation {
   setupVoiceButton() {
     const voiceBtn = document.getElementById('voiceBtn');
     if (voiceBtn) {
-      let isListening = false;
-      
-      voiceBtn.addEventListener('mousedown', () => {
-        if (!isListening) {
-          isListening = true;
-          voiceBtn.classList.add('listening');
-          voiceBtn.querySelector('.voice-text').textContent = 'Listening... Release to stop';
-          
-          const statusEl = document.getElementById('voiceStatus');
-          if (statusEl) {
-            statusEl.textContent = '🎤 Listening for your voice command...';
-          }
+      // Voice feature is Coming Soon - show demo only
+      voiceBtn.addEventListener('click', () => {
+        const responseEl = document.getElementById('voiceResponse') || document.getElementById('aiResponse');
+        if (responseEl) {
+          responseEl.innerHTML = `
+            <div class="ios-card" style="background: var(--ios-blue-bg, #E0F2FE); border: 1px solid var(--ios-blue);">
+              <div class="ios-card-content" style="text-align: center; padding: 1.5rem;">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎤</div>
+                <h4 style="margin: 0 0 0.5rem;">${this.t('voice.coming_soon') || 'Voice Feature Coming Soon!'}</h4>
+                <p style="margin: 0; color: var(--label-secondary); font-size: 13px;">${this.t('voice.demo') || 'Voice recognition will be available in a future update.'}</p>
+              </div>
+            </div>
+          `;
+          responseEl.style.display = 'block';
         }
       });
+    }
 
-      voiceBtn.addEventListener('mouseup', () => {
-        if (isListening) {
-          isListening = false;
-          voiceBtn.classList.remove('listening');
-          voiceBtn.querySelector('.voice-text').textContent = 'Press & Hold to Speak';
-          
-          const statusEl = document.getElementById('voiceStatus');
-          const responseEl = document.getElementById('voiceResponse');
-          
-          if (statusEl) {
-            statusEl.textContent = '🤖 Processing your request...';
-          }
-          
-          setTimeout(() => {
-            if (statusEl) statusEl.textContent = '';
-            if (responseEl) {
-              responseEl.textContent = 'Demo: Voice recognition would work here. The AI would process your speech and provide intelligent responses!';
-              responseEl.style.display = 'block';
-            }
-          }, 1500);
-        }
-      });
+    // Setup quick action buttons
+    this.setupQuickActions();
+  }
 
-      voiceBtn.addEventListener('mouseleave', () => {
-        if (isListening) {
-          isListening = false;
-          voiceBtn.classList.remove('listening');
-          voiceBtn.querySelector('.voice-text').textContent = 'Press & Hold to Speak';
+  setupQuickActions() {
+    const actionButtons = document.querySelectorAll('.action-btn[data-action], .ios-action-btn[data-action]');
+    const responseEl = document.getElementById('voiceResponse') || document.getElementById('aiResponse');
+
+    actionButtons.forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const action = btn.getAttribute('data-action');
+        console.log('Quick action:', action);
+
+        switch (action) {
+          case 'find-food':
+            await this.handleFindFood();
+            break;
+          case 'weather':
+            await this.handleCheckWeather(responseEl);
+            break;
+          case 'navigate':
+            this.handleGetDirections();
+            break;
+          case 'recommend':
+            await this.handleRecommendations();
+            break;
         }
       });
+    });
+  }
+
+  async handleFindFood() {
+    // Navigate to search view and search for restaurants
+    this.showView('search');
+    const searchInput = document.getElementById('freeText') || document.getElementById('searchInput');
+    const searchBtn = document.getElementById('searchBtn');
+
+    if (searchInput && searchBtn) {
+      searchInput.value = 'restaurants nearby';
+      searchBtn.click();
+    }
+  }
+
+  async handleCheckWeather(responseEl) {
+    if (responseEl) {
+      responseEl.innerHTML = `
+        <div class="ios-card">
+          <div class="ios-card-content" style="text-align: center; padding: 1.5rem;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🌤️</div>
+            <p>${this.t('weather.loading') || 'Getting weather info...'}</p>
+          </div>
+        </div>
+      `;
+      responseEl.style.display = 'block';
+    }
+
+    try {
+      // Get current location with better error handling
+      let lat, lon;
+
+      try {
+        const position = await new Promise((resolve, reject) => {
+          if (!navigator.geolocation) {
+            reject(new Error('Geolocation not supported'));
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            timeout: 10000,
+            enableHighAccuracy: false,
+            maximumAge: 300000 // Accept cached position up to 5 minutes old
+          });
+        });
+        lat = position.coords.latitude;
+        lon = position.coords.longitude;
+      } catch (geoError) {
+        // FIX: Better geolocation error handling with fallback
+        console.warn('Geolocation error, using Tel Aviv as fallback:', geoError);
+        lat = 32.0853;
+        lon = 34.7818;
+
+        // Show fallback notice
+        if (responseEl) {
+          responseEl.innerHTML = `
+            <div class="ios-card" style="background: var(--ios-orange-bg, #FEF3C7); border: 1px solid var(--ios-orange);">
+              <div class="ios-card-content" style="text-align: center; padding: 1rem;">
+                <p style="margin: 0; font-size: 13px;">📍 ${this.t('weather.location_fallback') || 'Using Tel Aviv as default location'}</p>
+              </div>
+            </div>
+          `;
+        }
+        await new Promise(r => setTimeout(r, 1500)); // Show notice briefly
+      }
+
+      // Fetch weather from hazards API
+      const response = await fetch(
+        `${API_BASE_URL}/api/hazards?lat=${lat}&lon=${lon}&radius=5000`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const weather = data.conditions || {};
+
+        if (responseEl) {
+          const temp = weather.temperature !== undefined
+            ? `${Math.round(weather.temperature)}°C`
+            : 'N/A';
+          const desc = weather.description || 'Clear';
+          const humidity = weather.humidity ? `${weather.humidity}%` : 'N/A';
+          const wind = weather.windSpeed ? `${weather.windSpeed} m/s` : 'N/A';
+
+          responseEl.innerHTML = `
+            <div class="ios-card weather-card" style="background: linear-gradient(135deg, var(--ios-blue), #3B82F6); color: white;">
+              <div class="ios-card-content" style="padding: 1.5rem;">
+                <h4 style="margin: 0 0 0.5rem; font-size: 15px; opacity: 0.9;">🌤️ ${this.t('weather.current') || 'Current Weather'}</h4>
+                <p style="margin: 0; font-size: 2.5rem; font-weight: 700;">${temp}</p>
+                <p style="margin: 0.25rem 0; font-size: 17px;">${desc}</p>
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.2); display: flex; gap: 1.5rem; font-size: 13px; opacity: 0.9;">
+                  <span>💧 ${humidity}</span>
+                  <span>💨 ${wind}</span>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+      } else {
+        throw new Error('Weather API failed');
+      }
+    } catch (error) {
+      console.error('Weather error:', error);
+      if (responseEl) {
+        responseEl.innerHTML = `
+          <div class="ios-card" style="background: var(--ios-red-bg, #FEE2E2); border: 1px solid var(--ios-red);">
+            <div class="ios-card-content" style="text-align: center; padding: 1.5rem;">
+              <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚠️</div>
+              <p style="margin: 0;">${this.t('weather.error') || 'Unable to get weather. Please try again.'}</p>
+            </div>
+          </div>
+        `;
+      }
+    }
+  }
+
+  handleGetDirections() {
+    // Navigate to trip planning view
+    this.showView('trip');
+
+    const responseEl = document.getElementById('voiceResponse') || document.getElementById('aiResponse');
+    if (responseEl) {
+      responseEl.innerHTML = `
+        <div class="ios-card" style="background: var(--ios-green-bg, #D1FAE5); border: 1px solid var(--ios-green);">
+          <div class="ios-card-content" style="padding: 1rem;">
+            <p style="margin: 0;">✅ ${this.t('nav.opened_planner') || 'Navigated to Trip Planner. Configure your preferences and generate a smart route!'}</p>
+          </div>
+        </div>
+      `;
+      responseEl.style.display = 'block';
+
+      // Clear message after 3 seconds
+      setTimeout(() => {
+        responseEl.style.display = 'none';
+      }, 3000);
+    }
+  }
+
+  async handleRecommendations() {
+    // Navigate to search view and search for attractions
+    this.showView('search');
+    const searchInput = document.getElementById('freeText') || document.getElementById('searchInput');
+    const searchBtn = document.getElementById('searchBtn');
+
+    if (searchInput && searchBtn) {
+      searchInput.value = 'popular attractions sightseeing';
+      searchBtn.click();
+    }
+  }
+
+  async getAIWeatherInsights(lat, lon, locationName = '') {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/hazards?lat=${lat}&lon=${lon}&radius=10000`
+      );
+
+      if (!response.ok) throw new Error('Weather API failed');
+
+      const data = await response.json();
+      const weather = data.conditions || {};
+      const alerts = data.alerts || [];
+
+      const insights = [];
+      const temp = weather.temperature;
+      const description = (weather.description || '').toLowerCase();
+      const windSpeed = weather.windSpeed || 0;
+      const humidity = weather.humidity || 0;
+
+      // Rain insights
+      if (description.includes('rain') || description.includes('shower') || description.includes('drizzle')) {
+        insights.push({
+          type: 'warning',
+          icon: '🌧️',
+          title: this.t('insight.rain_title') || 'Rain Expected',
+          message: locationName
+            ? `${this.t('insight.rain_at') || "It's raining in"} ${locationName} ${this.t('insight.rain_change_route') || "today. You may want to consider indoor activities or changing your route."}`
+            : this.t('insight.rain_generic') || "Rain is expected. Consider bringing an umbrella or waterproof jacket."
+        });
+      }
+
+      // Cold weather insights
+      if (temp !== undefined && temp < 10) {
+        const coldMsg = temp < 5
+          ? this.t('insight.very_cold') || "It will be very cold. Dress warmly with layers, hat, and gloves."
+          : this.t('insight.cold') || "It might be chilly. Bring a warm jacket.";
+        insights.push({
+          type: 'info',
+          icon: '🥶',
+          title: this.t('insight.cold_title') || 'Cold Weather',
+          message: coldMsg
+        });
+      }
+
+      // Hot weather insights
+      if (temp !== undefined && temp > 30) {
+        insights.push({
+          type: 'warning',
+          icon: '☀️',
+          title: this.t('insight.hot_title') || 'Hot Weather',
+          message: this.t('insight.hot') || "It will be hot today. Stay hydrated, wear sunscreen, and take breaks in the shade."
+        });
+      }
+
+      // High altitude / hills insight
+      if (locationName && (locationName.toLowerCase().includes('hill') || locationName.toLowerCase().includes('mountain') || locationName.toLowerCase().includes('garda'))) {
+        if (temp !== undefined && temp < 15) {
+          insights.push({
+            type: 'info',
+            icon: '⛰️',
+            title: this.t('insight.altitude_title') || 'Mountain Weather',
+            message: this.t('insight.altitude') || "It will be colder up in the hills. Bring warm layers even if it's nice at the base."
+          });
+        }
+      }
+
+      // Wind insights
+      if (windSpeed > 10) {
+        insights.push({
+          type: 'info',
+          icon: '💨',
+          title: this.t('insight.windy_title') || 'Windy Conditions',
+          message: this.t('insight.windy') || "Strong winds expected. Secure loose items and consider windproof clothing."
+        });
+      }
+
+      // Snow insights
+      if (description.includes('snow')) {
+        insights.push({
+          type: 'warning',
+          icon: '❄️',
+          title: this.t('insight.snow_title') || 'Snow Expected',
+          message: this.t('insight.snow') || "Snow is expected. Check road conditions and consider alternative routes."
+        });
+      }
+
+      // Add any official alerts
+      if (alerts.length > 0) {
+        alerts.forEach(alert => {
+          insights.push({
+            type: 'alert',
+            icon: '⚠️',
+            title: alert.event || 'Weather Alert',
+            message: alert.description || 'Check local weather services for details.'
+          });
+        });
+      }
+
+      // Good weather message if no concerns
+      if (insights.length === 0 && temp !== undefined) {
+        insights.push({
+          type: 'success',
+          icon: '✨',
+          title: this.t('insight.good_title') || 'Great Weather!',
+          message: `${Math.round(temp)}°C - ${this.t('insight.good') || "Perfect conditions for your trip. Enjoy!"}`
+        });
+      }
+
+      return {
+        weather: {
+          temp: temp !== undefined ? Math.round(temp) : null,
+          description: weather.description || 'Clear',
+          humidity,
+          windSpeed
+        },
+        insights
+      };
+    } catch (error) {
+      console.error('AI Insights error:', error);
+      return { weather: null, insights: [] };
+    }
+  }
+
+  renderInsights(insights, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container || insights.length === 0) return;
+
+    const insightsHtml = insights.map(insight => {
+      const bgColor = {
+        warning: 'var(--ios-orange-bg, #FEF3C7)',
+        alert: 'var(--ios-red-bg, #FEE2E2)',
+        info: 'var(--ios-blue-bg, #E0F2FE)',
+        success: 'var(--ios-green-bg, #D1FAE5)'
+      }[insight.type] || 'var(--bg-secondary)';
+
+      const borderColor = {
+        warning: 'var(--ios-orange, #FF9500)',
+        alert: 'var(--ios-red, #FF3B30)',
+        info: 'var(--ios-blue, #007AFF)',
+        success: 'var(--ios-green, #34C759)'
+      }[insight.type] || 'var(--separator)';
+
+      return `
+        <div class="ios-card ai-insight" style="background: ${bgColor}; border-left: 4px solid ${borderColor}; margin-bottom: 0.75rem;">
+          <div class="ios-card-content" style="padding: 1rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+              <span style="font-size: 1.25rem;">${insight.icon}</span>
+              <strong style="font-size: 15px;">${insight.title}</strong>
+            </div>
+            <p style="margin: 0; color: var(--label-secondary); font-size: 13px;">${insight.message}</p>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Insert or update insights section
+    let insightsSection = container.querySelector('.ai-insights-section');
+    if (!insightsSection) {
+      insightsSection = document.createElement('div');
+      insightsSection.className = 'ai-insights-section';
+      insightsSection.innerHTML = `
+        <h4 style="display: flex; align-items: center; gap: 0.5rem; margin: 1rem 0; font-size: 15px;">
+          🧠 <span data-i18n="insight.header">${this.t('insight.header') || 'AI Weather Insights'}</span>
+        </h4>
+        <div class="insights-list">${insightsHtml}</div>
+      `;
+      container.appendChild(insightsSection);
+    } else {
+      insightsSection.querySelector('.insights-list').innerHTML = insightsHtml;
     }
   }
 
@@ -427,21 +1004,21 @@ class SimpleNavigation {
     const btnCurrent = document.getElementById('btnStartCurrent');
     const btnHotel = document.getElementById('btnStartHotel');
     const hotelRow = document.getElementById('hotelRow');
-    
+
     if (btnCurrent && btnHotel && hotelRow) {
       btnCurrent.addEventListener('click', () => {
         btnCurrent.classList.add('active');
         btnHotel.classList.remove('active');
         hotelRow.style.display = 'none';
       });
-      
+
       btnHotel.addEventListener('click', () => {
         btnHotel.classList.add('active');
         btnCurrent.classList.remove('active');
         hotelRow.style.display = 'flex';
       });
     }
-    
+
     // Update slider value displays
     const nearRadius = document.getElementById('nearRadius');
     const nearRadiusVal = document.getElementById('nearRadiusVal');
@@ -450,7 +1027,7 @@ class SimpleNavigation {
         nearRadiusVal.textContent = nearRadius.value;
       });
     }
-    
+
     const detourMin = document.getElementById('detourMin');
     const detourMinVal = document.getElementById('detourMinVal');
     if (detourMin && detourMinVal) {
@@ -458,22 +1035,22 @@ class SimpleNavigation {
         detourMinVal.textContent = detourMin.value;
       });
     }
-    
+
     // Plan Day button handler
     const btnPlanDay = document.getElementById('btnPlanDay');
     if (btnPlanDay) {
       btnPlanDay.addEventListener('click', async () => {
         const resultsDiv = document.getElementById('planner-results');
         if (!resultsDiv) return;
-        
+
         resultsDiv.innerHTML = '<div data-testid="planner-loading" style="padding:20px; text-align:center;">🧠 Planning your day...</div>';
         btnPlanDay.disabled = true;
         btnPlanDay.textContent = 'Planning...';
-        
+
         try {
-          const lang = document.documentElement.getAttribute('data-lang') || 'he';
+          const lang = document.documentElement.getAttribute('lang') || 'he';
           const isHotelMode = btnHotel && btnHotel.classList.contains('active');
-          
+
           let body = {
             mode: 'drive',
             near_origin: {
@@ -489,20 +1066,18 @@ class SimpleNavigation {
               max_results: 12
             }
           };
-          
+
           if (isHotelMode) {
-            // Hotel mode: use origin_query
             const hotelInput = document.getElementById('hotelInput');
             const hotelName = hotelInput?.value?.trim();
             if (!hotelName) {
-              resultsDiv.innerHTML = '<div data-testid="planner-error" style="padding:20px; color:#d32f2f;">⚠️ Please enter a hotel name</div>';
+              resultsDiv.innerHTML = '<div data-testid="planner-error" style="padding:20px; color: var(--ios-red);">⚠️ Please enter a hotel name</div>';
               btnPlanDay.disabled = false;
-              btnPlanDay.textContent = document.querySelector('[data-i18n="planner.plan_day"]')?.textContent || 'Plan Day';
+              btnPlanDay.textContent = this.t('planner.plan_day') || 'Plan Day';
               return;
             }
             body.origin_query = hotelName;
           } else {
-            // Current location mode: use geolocation
             try {
               const pos = await new Promise((resolve, reject) => {
                 navigator.geolocation.getCurrentPosition(resolve, reject, {
@@ -517,113 +1092,87 @@ class SimpleNavigation {
               };
             } catch (geoErr) {
               console.warn('Geolocation error, falling back to Tel Aviv center:', geoErr);
-              // Fallback to Tel Aviv center
               body.origin = {
                 lat: 32.08,
                 lon: 34.78
               };
             }
           }
-          
+
           // Optional destination
           const destInput = document.getElementById('destInput');
           const destQuery = destInput?.value?.trim();
           if (destQuery) {
             body.dest_query = destQuery;
           }
-          
+
           // Call backend API via proxy
-          const response = await fetch('https://roamwise-proxy-971999716773.us-central1.run.app/planner/plan-day', {
+          const response = await fetch(`${API_BASE_URL}/planner/plan-day`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'x-lang': lang
             },
-            credentials: 'include',
             body: JSON.stringify(body)
           });
-          
+
           const data = await response.json();
-          
+
           if (!data.ok || !data.plan) {
             throw new Error(data.error || 'Plan failed');
           }
-          
+
           // Render results
           const { plan } = data;
           const { summary, timeline } = plan;
-          
-          let html = '<div class="header">';
-          html += `<div><strong>🗺️ Day Plan</strong></div>`;
+
+          // FIX: Increment trip counter
+          this.tripsPlanned++;
+          localStorage.setItem('tripsPlanned', this.tripsPlanned.toString());
+          this.updateProfileStats();
+
+          let html = '<div class="ios-card"><div class="ios-card-content">';
+          html += `<h3 style="margin: 0 0 1rem; font-size: 17px; font-weight: 600;">🗺️ Day Plan</h3>`;
           if (summary.origin_name) {
-            html += `<div>📍 Starting from: ${summary.origin_name}</div>`;
+            html += `<p style="margin: 0 0 0.5rem; font-size: 13px; color: var(--label-secondary);">📍 Starting from: ${summary.origin_name}</p>`;
           }
-          html += `<div>🎯 Mode: ${summary.plan_mode} • POIs: ${summary.count}</div>`;
-          if (summary.near_origin_scanned) {
-            html += `<div>🔍 Near origin: ${summary.near_origin_count || 0} found</div>`;
-          }
-          if (summary.sar_scanned) {
-            html += `<div>🛣️ Along route: ${summary.sar_count || 0} found</div>`;
-          }
-          html += '</div>';
-          
+          html += `<p style="margin: 0 0 1rem; font-size: 13px; color: var(--label-secondary);">🎯 Mode: ${summary.plan_mode} • POIs: ${summary.count}</p>`;
+
           if (timeline && timeline.length > 0) {
             let cumMin = 0;
-            for (const leg of timeline) {
-              if (leg.to?.kind === 'poi') {
-                const eta = leg.eta_seconds ? Math.round(leg.eta_seconds / 60) : null;
-                cumMin = eta || cumMin;
-                
-                html += '<div class="poi">';
-                html += `<div><strong>${leg.to.name || 'POI'}</strong></div>`;
-                if (leg.to.rating) {
-                  html += `<div class="meta">⭐ ${leg.to.rating.toFixed(1)}`;
-                  if (leg.to.user_ratings_total) {
-                    html += ` (${leg.to.user_ratings_total} reviews)`;
-                  }
-                  html += '</div>';
-                }
-                if (eta !== null) {
-                  html += `<div class="meta">🕐 ETA: +${cumMin} min from start</div>`;
-                }
-                if (leg.to.detour_min !== undefined) {
-                  html += `<div class="meta">🔀 Detour: ${leg.to.detour_min} min</div>`;
-                }
-                html += '</div>';
-              }
+            const poiLegs = timeline.filter(leg => leg.to?.kind === 'poi');
+
+            for (const leg of poiLegs) {
+              const eta = leg.eta_seconds ? Math.round(leg.eta_seconds / 60) : null;
+              cumMin = eta || cumMin;
+
+              // FIX: Handle "dest" placeholder
+              const poiName = (leg.to?.name && leg.to.name !== 'dest') ? leg.to.name : 'Point of Interest';
+
+              html += `
+                <div style="padding: 0.75rem 0; border-bottom: 1px solid var(--separator);">
+                  <strong style="font-size: 15px;">${poiName}</strong>
+                  <div style="display: flex; gap: 1rem; margin-top: 0.25rem; font-size: 13px; color: var(--label-secondary);">
+                    ${leg.to?.rating ? `<span>⭐ ${leg.to.rating.toFixed(1)}${leg.to.user_ratings_total ? ` (${leg.to.user_ratings_total})` : ''}</span>` : ''}
+                    ${eta !== null ? `<span>🕐 +${cumMin} min</span>` : ''}
+                    ${leg.to?.detour_min !== undefined ? `<span>🔀 ${leg.to.detour_min} min detour</span>` : ''}
+                  </div>
+                </div>
+              `;
             }
           } else {
-            html += '<div style="padding:20px;">No POIs found. Try adjusting the radius or destination.</div>';
+            html += '<p style="padding: 1rem 0; text-align: center; color: var(--label-secondary);">No POIs found. Try adjusting the radius or destination.</p>';
           }
-          
-          // Add SAR results if present
-          if (summary.sar_results && summary.sar_results.length > 0) {
-            html += '<hr><div class="header"><strong>🛣️ Along-Route Discoveries</strong></div>';
-            for (const sar of summary.sar_results.slice(0, 6)) {
-              html += '<div class="poi">';
-              html += `<div><strong>${sar.name || 'Place'}</strong></div>`;
-              if (sar.rating) {
-                html += `<div class="meta">⭐ ${sar.rating.toFixed(1)}`;
-                if (sar.user_ratings_total) {
-                  html += ` (${sar.user_ratings_total} reviews)`;
-                }
-                html += '</div>';
-              }
-              if (sar.detour_min !== undefined) {
-                html += `<div class="meta">🔀 Detour: ${sar.detour_min} min</div>`;
-              }
-              html += '</div>';
-            }
-          }
-          
+
+          html += '</div></div>';
           resultsDiv.innerHTML = html;
-          
+
         } catch (error) {
           console.error('Planner error:', error);
-          resultsDiv.innerHTML = `<div data-testid="planner-error" style="padding:20px; color:#d32f2f;">❌ Error: ${error.message || 'Failed to plan day'}</div>`;
+          resultsDiv.innerHTML = `<div data-testid="planner-error" class="ios-card" style="background: var(--ios-red-bg); border: 1px solid var(--ios-red);"><div class="ios-card-content" style="padding: 1.5rem; text-align: center;">❌ Error: ${error.message || 'Failed to plan day'}</div></div>`;
         } finally {
           btnPlanDay.disabled = false;
-          btnPlanDay.textContent = document.querySelector('[data-i18n="planner.plan_day"]')?.textContent || 'Plan Day';
+          btnPlanDay.textContent = this.t('planner.plan_day') || 'Plan Day';
         }
       });
     }
@@ -639,4 +1188,4 @@ if (document.readyState === 'loading') {
   window.simpleApp = new SimpleNavigation();
 }
 
-console.log('Simple app loaded');
+console.log('RoamWise iOS App loaded');

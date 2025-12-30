@@ -1,918 +1,1322 @@
 <!doctype html>
-<html lang="en" dir="ltr" data-theme="light">
+<html lang="he" dir="rtl" data-theme="light">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>RoamWise — AI-Powered Travel Planner</title>
-  <meta name="description" content="Smart travel planning with o3-mini AI integration">
-  
-  <!-- PWA -->
-  <meta name="theme-color" content="#0066cc">
-  
-  <!-- Fonts -->
+  <meta name="description" content="Smart travel planning with AI integration">
+  <meta name="theme-color" content="#007AFF">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+  <!-- Inter Font (iOS SF Pro alternative) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <style>
-    /* Base styles */
-    * {
+    /* ========================================
+       iOS DESIGN SYSTEM - RoamWise
+       Based on Apple Human Interface Guidelines
+       ======================================== */
+
+    :root {
+      /* iOS Typography Scale */
+      --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+      --font-size-large-title: 34px;
+      --font-size-title-1: 28px;
+      --font-size-title-2: 22px;
+      --font-size-title-3: 20px;
+      --font-size-headline: 17px;
+      --font-size-body: 17px;
+      --font-size-callout: 16px;
+      --font-size-subhead: 15px;
+      --font-size-footnote: 13px;
+      --font-size-caption-1: 12px;
+      --font-size-caption-2: 11px;
+
+      /* iOS System Colors - Light Mode */
+      --ios-blue: #007AFF;
+      --ios-green: #34C759;
+      --ios-indigo: #5856D6;
+      --ios-orange: #FF9500;
+      --ios-pink: #FF2D55;
+      --ios-purple: #AF52DE;
+      --ios-red: #FF3B30;
+      --ios-teal: #5AC8FA;
+      --ios-yellow: #FFCC00;
+
+      /* Background Colors - Light */
+      --bg-primary: #FFFFFF;
+      --bg-secondary: #F2F2F7;
+      --bg-tertiary: #FFFFFF;
+      --bg-grouped: #F2F2F7;
+
+      /* Label Colors - Light */
+      --label-primary: #000000;
+      --label-secondary: rgba(60, 60, 67, 0.6);
+      --label-tertiary: rgba(60, 60, 67, 0.3);
+      --label-quaternary: rgba(60, 60, 67, 0.18);
+
+      /* Fill Colors - Light */
+      --fill-primary: rgba(120, 120, 128, 0.2);
+      --fill-secondary: rgba(120, 120, 128, 0.16);
+      --fill-tertiary: rgba(118, 118, 128, 0.12);
+      --fill-quaternary: rgba(116, 116, 128, 0.08);
+
+      /* Separator */
+      --separator: rgba(60, 60, 67, 0.29);
+      --separator-opaque: #C6C6C8;
+
+      /* 8pt Grid Spacing */
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+      --space-10: 40px;
+      --space-12: 48px;
+
+      /* Border Radius */
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      --radius-full: 9999px;
+
+      /* iOS Multi-layer Shadows */
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+      --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.05);
+      --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.06);
+      --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+
+      /* Spring Animations */
+      --spring-bounce: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      --spring-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+      --duration-fast: 150ms;
+      --duration-normal: 300ms;
+      --duration-slow: 500ms;
+
+      /* Touch Targets */
+      --touch-target: 44px;
+      --touch-target-lg: 56px;
+
+      /* Safe Areas */
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+
+      /* Layout */
+      --nav-height: 49px;
+      --header-height: 56px;
+      --content-max-width: 428px;
+    }
+
+    /* Dark Mode */
+    [data-theme="dark"] {
+      --ios-blue: #0A84FF;
+      --ios-green: #30D158;
+      --ios-indigo: #5E5CE6;
+      --ios-orange: #FF9F0A;
+      --ios-pink: #FF375F;
+      --ios-purple: #BF5AF2;
+      --ios-red: #FF453A;
+      --ios-teal: #64D2FF;
+      --ios-yellow: #FFD60A;
+
+      --bg-primary: #000000;
+      --bg-secondary: #1C1C1E;
+      --bg-tertiary: #2C2C2E;
+      --bg-grouped: #000000;
+
+      --label-primary: #FFFFFF;
+      --label-secondary: rgba(235, 235, 245, 0.6);
+      --label-tertiary: rgba(235, 235, 245, 0.3);
+      --label-quaternary: rgba(235, 235, 245, 0.18);
+
+      --fill-primary: rgba(120, 120, 128, 0.36);
+      --fill-secondary: rgba(120, 120, 128, 0.32);
+      --fill-tertiary: rgba(118, 118, 128, 0.24);
+      --fill-quaternary: rgba(116, 116, 128, 0.18);
+
+      --separator: rgba(84, 84, 88, 0.65);
+      --separator-opaque: #38383A;
+
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
+      --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Reset */
+    *, *::before, *::after {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      box-sizing: border-box;
     }
-    
-    body { 
-      font-family: 'Rubik', system-ui, sans-serif;
-      background: #f8fafc;
-      line-height: 1.6;
+
+    html {
+      font-size: 16px;
+      -webkit-text-size-adjust: 100%;
+      -webkit-tap-highlight-color: transparent;
+      scroll-behavior: smooth;
     }
-    
-    /* App layout */
+
+    body {
+      font-family: var(--font-family);
+      font-size: var(--font-size-body);
+      line-height: 1.47;
+      color: var(--label-primary);
+      background: var(--bg-grouped);
+      min-height: 100vh;
+      min-height: 100dvh;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+
+    /* App Container */
     .app-container {
-      max-width: 1200px;
+      max-width: var(--content-max-width);
       margin: 0 auto;
       min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
       flex-direction: column;
+      background: var(--bg-grouped);
+      position: relative;
     }
-    
-    /* Header */
-    .app-header {
-      background: white;
-      padding: 1rem;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+    /* iOS Navigation Bar */
+    .ios-navbar {
+      background: var(--bg-primary);
+      border-bottom: 0.5px solid var(--separator);
+      padding: var(--space-3) var(--space-4);
+      padding-top: calc(var(--safe-top) + var(--space-3));
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    .ios-navbar-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: var(--header-height);
+    }
+
+    .ios-navbar-brand {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .ios-navbar-logo {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--ios-blue), var(--ios-teal));
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .ios-navbar-title {
+      font-size: var(--font-size-headline);
+      font-weight: 600;
+      color: var(--label-primary);
+      letter-spacing: -0.4px;
+    }
+
+    .ios-navbar-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+    }
+
+    /* iOS Buttons */
+    .ios-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: var(--touch-target);
+      min-width: var(--touch-target);
+      padding: 0 var(--space-4);
+      font-family: var(--font-family);
+      font-size: var(--font-size-body);
+      font-weight: 500;
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all var(--duration-fast) var(--spring-smooth);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .ios-btn:active {
+      transform: scale(0.97);
+      opacity: 0.8;
+    }
+
+    .ios-btn-primary {
+      background: var(--ios-blue);
+      color: white;
+    }
+
+    .ios-btn-secondary {
+      background: var(--fill-secondary);
+      color: var(--ios-blue);
+    }
+
+    .ios-btn-ghost {
+      background: transparent;
+      color: var(--ios-blue);
+      padding: var(--space-2);
+    }
+
+    .ios-btn-icon {
+      width: var(--touch-target);
+      height: var(--touch-target);
+      padding: 0;
+      font-size: 22px;
+      background: transparent;
+      border-radius: var(--radius-full);
+    }
+
+    .ios-btn-icon:hover {
+      background: var(--fill-tertiary);
+    }
+
+    /* Language Toggle */
+    .ios-lang-toggle {
+      display: flex;
+      background: var(--fill-tertiary);
+      border-radius: var(--radius-full);
+      padding: 2px;
+    }
+
+    .ios-lang-btn {
+      padding: var(--space-2) var(--space-3);
+      font-size: var(--font-size-caption-1);
+      font-weight: 500;
+      border: none;
+      border-radius: var(--radius-full);
+      background: transparent;
+      color: var(--label-secondary);
+      cursor: pointer;
+      transition: all var(--duration-fast) var(--spring-bounce);
+    }
+
+    .ios-lang-btn.active {
+      background: var(--bg-primary);
+      color: var(--label-primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Main Content */
+    .ios-content {
+      flex: 1;
+      padding: var(--space-4);
+      padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + var(--space-8));
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Views */
+    .ios-view {
+      display: none;
+      animation: fadeIn var(--duration-normal) var(--ease-out-expo);
+    }
+
+    .ios-view.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* iOS Large Title */
+    .ios-large-title {
+      font-size: var(--font-size-large-title);
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--label-primary);
+      margin-bottom: var(--space-2);
+    }
+
+    .ios-subtitle {
+      font-size: var(--font-size-subhead);
+      color: var(--label-secondary);
+      margin-bottom: var(--space-6);
+    }
+
+    /* iOS Search Field */
+    .ios-search-container {
+      margin-bottom: var(--space-6);
+    }
+
+    .ios-search-field {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      background: var(--fill-tertiary);
+      border-radius: var(--radius-md);
+      padding: 0 var(--space-3);
+      min-height: 36px;
+    }
+
+    .ios-search-icon {
+      font-size: 16px;
+      color: var(--label-tertiary);
+    }
+
+    .ios-search-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      font-family: var(--font-family);
+      font-size: var(--font-size-body);
+      color: var(--label-primary);
+      padding: var(--space-2) 0;
+      outline: none;
+    }
+
+    .ios-search-input::placeholder {
+      color: var(--label-tertiary);
+    }
+
+    .ios-search-btn {
+      background: var(--ios-blue);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: var(--space-2) var(--space-4);
+      font-family: var(--font-family);
+      font-size: var(--font-size-subhead);
+      font-weight: 600;
+      cursor: pointer;
+      margin: 4px 0;
+      transition: all var(--duration-fast);
+    }
+
+    .ios-search-btn:active {
+      transform: scale(0.95);
+    }
+
+    .ios-search-btn:disabled {
+      opacity: 0.5;
+    }
+
+    /* iOS Category Chips */
+    .ios-chips {
+      display: flex;
+      gap: var(--space-2);
+      overflow-x: auto;
+      padding: var(--space-1) 0;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .ios-chips::-webkit-scrollbar {
+      display: none;
+    }
+
+    .ios-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      padding: var(--space-2) var(--space-3);
+      background: var(--fill-tertiary);
+      border: none;
+      border-radius: var(--radius-full);
+      font-family: var(--font-family);
+      font-size: var(--font-size-footnote);
+      font-weight: 500;
+      color: var(--label-primary);
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all var(--duration-fast) var(--spring-bounce);
+    }
+
+    .ios-chip:active {
+      transform: scale(0.95);
+    }
+
+    .ios-chip.selected {
+      background: var(--ios-blue);
+      color: white;
+    }
+
+    /* iOS Cards */
+    .ios-card {
+      background: var(--bg-primary);
+      border-radius: var(--radius-lg);
+      padding: var(--space-4);
+      margin-bottom: var(--space-3);
+      box-shadow: var(--shadow-card);
+      transition: all var(--duration-fast);
+    }
+
+    .ios-card:active {
+      transform: scale(0.98);
+    }
+
+    .ios-card-title {
+      font-size: var(--font-size-headline);
+      font-weight: 600;
+      color: var(--label-primary);
+      margin-bottom: var(--space-1);
+    }
+
+    .ios-card-subtitle {
+      font-size: var(--font-size-subhead);
+      color: var(--label-secondary);
+      margin-bottom: var(--space-2);
+    }
+
+    .ios-card-meta {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      font-size: var(--font-size-footnote);
+      color: var(--label-secondary);
+    }
+
+    .ios-card-rating {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      color: var(--ios-orange);
+    }
+
+    .ios-card-price {
+      color: var(--ios-green);
+      font-weight: 600;
+    }
+
+    /* iOS Segmented Control */
+    .ios-segmented {
+      display: flex;
+      background: var(--fill-tertiary);
+      border-radius: var(--radius-sm);
+      padding: 2px;
+      margin-bottom: var(--space-4);
+    }
+
+    .ios-segment {
+      flex: 1;
+      padding: var(--space-2) var(--space-3);
+      font-family: var(--font-family);
+      font-size: var(--font-size-footnote);
+      font-weight: 500;
+      color: var(--label-primary);
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all var(--duration-fast) var(--spring-bounce);
+    }
+
+    .ios-segment.selected {
+      background: var(--bg-primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* iOS Form Groups */
+    .ios-form-group {
+      margin-bottom: var(--space-6);
+    }
+
+    .ios-form-label {
+      display: block;
+      font-size: var(--font-size-footnote);
+      font-weight: 600;
+      color: var(--label-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: var(--space-2);
+      padding-left: var(--space-4);
+    }
+
+    /* iOS Interest Grid */
+    .ios-interests-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-2);
+    }
+
+    .ios-interest {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-1);
+      padding: var(--space-3);
+      background: var(--bg-primary);
+      border: 2px solid transparent;
+      border-radius: var(--radius-md);
+      font-family: var(--font-family);
+      font-size: var(--font-size-caption-1);
+      font-weight: 500;
+      color: var(--label-primary);
+      cursor: pointer;
+      transition: all var(--duration-fast) var(--spring-bounce);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .ios-interest:active {
+      transform: scale(0.95);
+    }
+
+    .ios-interest.selected {
+      border-color: var(--ios-blue);
+      background: rgba(0, 122, 255, 0.1);
+    }
+
+    .ios-interest.disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .ios-interest-icon {
+      font-size: 24px;
+    }
+
+    .ios-interest-hint {
+      font-size: var(--font-size-caption-2);
+      color: var(--label-tertiary);
+      text-align: center;
+      margin-top: var(--space-1);
+    }
+
+    /* iOS Slider */
+    .ios-slider-container {
+      padding: var(--space-4);
+      background: var(--bg-primary);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .ios-slider-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      margin-bottom: var(--space-3);
     }
-    
-    .header-brand {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: #0066cc;
+
+    .ios-slider-label {
+      font-size: var(--font-size-subhead);
+      color: var(--label-primary);
     }
-    
-    .theme-toggle {
-      background: none;
-      border: none;
-      font-size: 1.5rem;
-      cursor: pointer;
-      padding: 0.5rem;
+
+    .ios-slider-value {
+      font-size: var(--font-size-title-3);
+      font-weight: 700;
+      color: var(--ios-blue);
+    }
+
+    .ios-slider {
+      width: 100%;
+      height: 4px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: var(--fill-tertiary);
+      border-radius: 2px;
+      outline: none;
+    }
+
+    .ios-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 28px;
+      height: 28px;
+      background: var(--bg-primary);
       border-radius: 50%;
-    }
-
-    .lang-toggle {
-      background: none;
-      border: 2px solid transparent;
-      font-size: 1.25rem;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
       cursor: pointer;
-      padding: 0.25rem 0.5rem;
-      border-radius: 0.25rem;
-      transition: all 0.2s;
-      opacity: 0.6;
     }
 
-    .lang-toggle:hover {
-      opacity: 1;
-      border-color: #e2e8f0;
+    /* iOS Voice Button */
+    .ios-voice-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: var(--space-8) 0;
     }
 
-    .lang-toggle.active {
-      opacity: 1;
-      border-color: #0066cc;
-      background: #f0f9ff;
+    .ios-voice-btn {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--ios-blue), #0051D5);
+      border: none;
+      color: white;
+      font-size: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-1);
+      cursor: pointer;
+      box-shadow: 0 8px 32px rgba(0, 122, 255, 0.4);
+      transition: all var(--duration-normal) var(--spring-bounce);
+      position: relative;
     }
-    
-    /* Main content */
-    .app-main {
-      flex: 1;
-      padding: 2rem 1rem 5rem 1rem;
-      overflow-y: auto;
+
+    .ios-voice-btn::before {
+      content: '';
+      position: absolute;
+      inset: -8px;
+      border-radius: 50%;
+      border: 2px solid rgba(0, 122, 255, 0.3);
+      animation: pulse-ring 2s infinite;
     }
-    
-    .app-view {
+
+    @keyframes pulse-ring {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(1.3); opacity: 0; }
+    }
+
+    .ios-voice-btn:active {
+      transform: scale(0.95);
+    }
+
+    .ios-voice-btn.listening {
+      background: linear-gradient(135deg, var(--ios-red), #CC2E28);
+      box-shadow: 0 8px 32px rgba(255, 59, 48, 0.4);
+    }
+
+    .ios-voice-text {
+      font-size: var(--font-size-caption-2);
+      font-weight: 500;
+    }
+
+    .ios-voice-label {
+      margin-top: var(--space-4);
+      font-size: var(--font-size-footnote);
+      color: var(--label-secondary);
+    }
+
+    .ios-coming-soon {
+      display: inline-block;
+      background: var(--ios-orange);
+      color: white;
+      font-size: var(--font-size-caption-2);
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      margin-left: var(--space-2);
+    }
+
+    /* iOS Quick Actions Grid */
+    .ios-actions-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-3);
+      margin-top: var(--space-6);
+    }
+
+    .ios-action-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-5);
+      background: var(--bg-primary);
+      border: none;
+      border-radius: var(--radius-lg);
+      font-family: var(--font-family);
+      font-size: var(--font-size-subhead);
+      font-weight: 500;
+      color: var(--label-primary);
+      cursor: pointer;
+      box-shadow: var(--shadow-card);
+      transition: all var(--duration-fast) var(--spring-bounce);
+    }
+
+    .ios-action-btn:active {
+      transform: scale(0.95);
+    }
+
+    .ios-action-icon {
+      font-size: 28px;
+    }
+
+    /* iOS Status/Response */
+    .ios-status {
+      margin-top: var(--space-4);
+      padding: var(--space-3);
+      background: var(--fill-quaternary);
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-footnote);
+      color: var(--label-secondary);
+      text-align: center;
+    }
+
+    .ios-response {
+      margin-top: var(--space-4);
       display: none;
     }
-    
-    .app-view.active {
-      display: block;
-    }
-    
-    /* Search view */
-    .view-header {
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-    
-    .view-header h1 {
-      font-size: 2rem;
-      color: #1e293b;
-      margin-bottom: 0.5rem;
-    }
-    
-    .search-form {
-      max-width: 600px;
-      margin: 0 auto 2rem;
-    }
-    
-    .search-input-group {
-      display: flex;
-      gap: 1rem;
-      margin-bottom: 1rem;
-    }
-    
-    .search-input {
-      flex: 1;
-      padding: 1rem;
-      border: 2px solid #e2e8f0;
-      border-radius: 0.5rem;
-      font-size: 1rem;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    
-    .search-input:focus {
-      border-color: #0066cc;
-    }
-    
-    .search-btn {
-      background: #0066cc;
+
+    .ios-weather-card {
+      background: linear-gradient(135deg, var(--ios-blue), var(--ios-teal));
       color: white;
-      border: none;
-      padding: 1rem 2rem;
-      border-radius: 0.5rem;
-      font-size: 1rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background-color 0.2s;
+      padding: var(--space-5);
+      border-radius: var(--radius-lg);
     }
-    
-    .search-btn:hover {
-      background: #0052a3;
+
+    .ios-weather-temp {
+      font-size: var(--font-size-large-title);
+      font-weight: 700;
     }
-    
-    .search-btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
+
+    .ios-weather-desc {
+      font-size: var(--font-size-subhead);
+      opacity: 0.9;
     }
-    
-    .quick-categories {
-      display: flex;
-      gap: 0.5rem;
-      justify-content: center;
-      flex-wrap: wrap;
+
+    .ios-weather-meta {
+      margin-top: var(--space-3);
+      font-size: var(--font-size-footnote);
+      opacity: 0.8;
     }
-    
-    .category-btn {
-      background: #f1f5f9;
-      border: 1px solid #e2e8f0;
-      padding: 0.5rem 1rem;
-      border-radius: 2rem;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    
-    .category-btn:hover {
-      background: #e2e8f0;
-    }
-    
-    /* Search results */
-    .search-results {
-      max-width: 800px;
-      margin: 0 auto;
-    }
-    
-    .search-result {
-      background: white;
-      border-radius: 0.5rem;
-      padding: 1.5rem;
-      margin-bottom: 1rem;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .search-result h3 {
-      color: #1e293b;
-      margin-bottom: 0.5rem;
-    }
-    
-    .result-rating {
-      color: #64748b;
-      font-size: 0.875rem;
-      margin-top: 0.5rem;
-    }
-    
-    .ai-reason {
-      background: #f0f9ff;
-      padding: 0.75rem;
-      border-radius: 0.25rem;
-      margin-top: 0.5rem;
-      font-size: 0.875rem;
-      color: #0369a1;
-    }
-    
-    /* Trip planning */
-    .trip-form {
-      max-width: 600px;
-      margin: 0 auto;
-    }
-    
-    .form-group {
-      margin-bottom: 2rem;
-    }
-    
-    .form-group label {
-      display: block;
-      font-weight: 500;
-      margin-bottom: 0.5rem;
-      color: #1e293b;
-    }
-    
-    .duration-options {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-    
-    .duration-option {
-      background: #f1f5f9;
-      border: 2px solid #e2e8f0;
-      padding: 0.75rem 1.5rem;
-      border-radius: 0.5rem;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    
-    .duration-option.selected {
-      background: #0066cc;
-      color: white;
-      border-color: #0066cc;
-    }
-    
-    .interests-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 0.5rem;
-    }
-    
-    .interest-option {
-      background: #f1f5f9;
-      border: 2px solid #e2e8f0;
-      padding: 1rem;
-      border-radius: 0.5rem;
-      cursor: pointer;
-      transition: all 0.2s;
-      text-align: center;
-    }
-    
-    .interest-option.selected {
-      background: #0066cc;
-      color: white;
-      border-color: #0066cc;
-    }
-    
-    .budget-slider {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-    
-    .budget-slider input {
-      flex: 1;
-    }
-    
-    .budget-display {
-      font-weight: 600;
-      color: #0066cc;
-      font-size: 1.25rem;
-    }
-    
-    .generate-btn {
-      width: 100%;
-      background: #0066cc;
-      color: white;
-      border: none;
-      padding: 1rem;
-      border-radius: 0.5rem;
-      font-size: 1.1rem;
-      font-weight: 500;
-      cursor: pointer;
-      margin-top: 1rem;
-    }
-    
-    .trip-results {
-      max-width: 800px;
-      margin: 2rem auto 0;
-    }
-    
-    .trip-result {
-      background: white;
-      border-radius: 0.5rem;
-      padding: 2rem;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .trip-summary {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 1rem;
-      margin: 1rem 0;
-    }
-    
-    .trip-stat {
-      text-align: center;
-      padding: 1rem;
-      background: #f8fafc;
-      border-radius: 0.5rem;
-    }
-    
-    .stat-label {
-      display: block;
-      font-size: 0.875rem;
-      color: #64748b;
-      margin-bottom: 0.25rem;
-    }
-    
-    .stat-value {
-      font-weight: 600;
-      color: #1e293b;
-      font-size: 1.1rem;
-    }
-    
-    /* Navigation */
-    .bottom-nav {
-      display: flex !important;
-      background: white;
-      box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
-      padding: 0.5rem;
+
+    /* iOS Tab Bar */
+    .ios-tabbar {
       position: fixed;
       bottom: 0;
       left: 0;
       right: 0;
-      z-index: 1000;
-      max-width: 1200px;
+      background: var(--bg-primary);
+      border-top: 0.5px solid var(--separator);
+      padding: var(--space-2) var(--space-4);
+      padding-bottom: calc(var(--safe-bottom) + var(--space-2));
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 100;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      max-width: var(--content-max-width);
       margin: 0 auto;
     }
-    
-    .nav-btn {
-      flex: 1;
+
+    .ios-tab {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: var(--space-1);
       background: none;
       border: none;
-      padding: 0.75rem 0.5rem;
+      min-width: 64px;
       cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.25rem;
-      transition: color 0.2s;
-      color: #64748b;
+      transition: all var(--duration-fast) var(--spring-bounce);
     }
-    
-    .nav-btn.active {
-      color: #0066cc;
+
+    .ios-tab:active {
+      transform: scale(0.9);
     }
-    
-    .nav-icon {
-      font-size: 1.25rem;
+
+    .ios-tab-icon {
+      font-size: 24px;
+      color: var(--label-tertiary);
+      transition: color var(--duration-fast);
     }
-    
-    .nav-label {
-      font-size: 0.75rem;
+
+    .ios-tab-label {
+      font-size: var(--font-size-caption-2);
       font-weight: 500;
+      color: var(--label-tertiary);
+      transition: color var(--duration-fast);
     }
-    
-    /* AI Assistant */
-    .ai-interface {
-      max-width: 600px;
-      margin: 0 auto;
+
+    .ios-tab.active .ios-tab-icon,
+    .ios-tab.active .ios-tab-label {
+      color: var(--ios-blue);
     }
-    
-    .voice-section {
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-    
-    .voice-btn {
-      background: linear-gradient(135deg, #0066cc, #3b82f6);
-      color: white;
-      border: none;
-      padding: 2rem;
-      border-radius: 1rem;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.5rem;
-      margin: 0 auto;
-      transition: transform 0.2s;
-    }
-    
-    .voice-btn:hover {
-      transform: scale(1.05);
-    }
-    
-    .voice-icon {
-      font-size: 2rem;
-    }
-    
-    .voice-text {
-      font-weight: 500;
-    }
-    
-    .quick-actions {
-      margin-top: 2rem;
-    }
-    
-    .action-grid {
+
+    /* iOS Profile Stats */
+    .ios-stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 1rem;
-    }
-    
-    .action-btn {
-      background: white;
-      border: 2px solid #e2e8f0;
-      padding: 1rem;
-      border-radius: 0.5rem;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-weight: 500;
-    }
-    
-    .action-btn:hover {
-      border-color: #0066cc;
-      color: #0066cc;
-    }
-    
-    /* Responsive design */
-    @media (max-width: 768px) {
-      .app-main {
-        padding: 1rem 0.5rem;
-      }
-      
-      .search-input-group {
-        flex-direction: column;
-      }
-      
-      .duration-options {
-        justify-content: center;
-      }
-      
-      .interests-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-    
-    /* Force visibility - override any external CSS */
-    .app-view.active {
-      display: block !important;
-      opacity: 1 !important;
-      visibility: visible !important;
-      transform: none !important;
-    }
-    
-    #searchView {
-      display: block !important;
-      opacity: 1 !important;
-      visibility: visible !important;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-3);
     }
 
-    /* Planner Controls (Step 7B) */
-    .planner-controls {
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      margin: 20px 0;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    .ios-stat-card {
+      background: var(--bg-primary);
+      border-radius: var(--radius-lg);
+      padding: var(--space-5);
+      text-align: center;
+      box-shadow: var(--shadow-card);
     }
 
-    .planner-controls .row {
-      margin: 12px 0;
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap;
+    .ios-stat-value {
+      font-size: var(--font-size-title-1);
+      font-weight: 700;
+      color: var(--ios-blue);
     }
 
-    .planner-controls .row label {
-      font-weight: 500;
-      min-width: 120px;
-      color: #333;
+    .ios-stat-label {
+      font-size: var(--font-size-footnote);
+      color: var(--label-secondary);
+      margin-top: var(--space-1);
     }
 
-    .seg {
-      display: inline-flex;
-      border: 1px solid #ccc;
-      border-radius: 10px;
+    /* iOS List Rows */
+    .ios-list {
+      background: var(--bg-primary);
+      border-radius: var(--radius-lg);
       overflow: hidden;
+      box-shadow: var(--shadow-card);
     }
 
-    .seg-btn {
-      padding: 8px 16px;
-      border: 0;
-      background: #f4f4f4;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-size: 14px;
-    }
-
-    .seg-btn:hover {
-      background: #e8e8e8;
-    }
-
-    .seg-btn.active {
-      background: #1976d2;
-      color: #fff;
-    }
-
-    .sliders {
-      flex-direction: column;
-      align-items: stretch !important;
-      gap: 16px;
-    }
-
-    .sliders .slider {
+    .ios-list-row {
       display: flex;
       align-items: center;
-      gap: 12px;
+      padding: var(--space-3) var(--space-4);
+      border-bottom: 0.5px solid var(--separator);
     }
 
-    .sliders .slider label {
-      min-width: auto;
-      flex: 1;
-    }
-
-    .sliders .slider input[type="range"] {
-      flex: 2;
-      min-width: 150px;
-    }
-
-    .sliders .slider span {
-      min-width: 30px;
-      font-weight: 600;
-      color: #1976d2;
-    }
-
-    .planner-results {
-      background: white;
-      border-radius: 12px;
-      margin: 20px 0;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      max-height: 600px;
-      overflow-y: auto;
-    }
-
-    .planner-results .poi {
-      padding: 16px;
-      border-bottom: 1px solid #eee;
-    }
-
-    .planner-results .poi:last-child {
+    .ios-list-row:last-child {
       border-bottom: none;
     }
 
-    .poi .meta {
-      font-size: 13px;
-      opacity: 0.7;
-      margin-top: 4px;
+    .ios-list-icon {
+      font-size: 24px;
+      margin-right: var(--space-3);
     }
 
-    .planner-results .header {
-      background: #f8fafc;
-      padding: 16px;
-      border-bottom: 2px solid #e2e8f0;
+    .ios-list-content {
+      flex: 1;
     }
 
-    .planner-results .header div {
-      margin: 4px 0;
-      font-size: 14px;
+    .ios-list-title {
+      font-size: var(--font-size-body);
+      color: var(--label-primary);
     }
 
-    .planner-results hr {
-      margin: 12px 0;
+    .ios-list-subtitle {
+      font-size: var(--font-size-footnote);
+      color: var(--label-secondary);
+    }
+
+    .ios-list-chevron {
+      color: var(--label-quaternary);
+    }
+
+    /* Trip Timeline */
+    .ios-timeline {
+      margin-top: var(--space-4);
+    }
+
+    .ios-timeline-item {
+      display: flex;
+      gap: var(--space-3);
+      padding: var(--space-3) 0;
+      position: relative;
+    }
+
+    .ios-timeline-item:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 15px;
+      top: 40px;
+      bottom: 0;
+      width: 2px;
+      background: var(--separator);
+    }
+
+    .ios-timeline-marker {
+      width: 32px;
+      height: 32px;
+      background: var(--ios-blue);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: var(--font-size-footnote);
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .ios-timeline-content {
+      flex: 1;
+      padding-bottom: var(--space-3);
+    }
+
+    .ios-timeline-title {
+      font-size: var(--font-size-headline);
+      font-weight: 600;
+      color: var(--label-primary);
+    }
+
+    .ios-timeline-meta {
+      display: flex;
+      gap: var(--space-3);
+      margin-top: var(--space-1);
+      font-size: var(--font-size-footnote);
+      color: var(--label-secondary);
+    }
+
+    /* RTL Support */
+    [dir="rtl"] .ios-search-field {
+      flex-direction: row-reverse;
+    }
+
+    [dir="rtl"] .ios-list-icon {
+      margin-right: 0;
+      margin-left: var(--space-3);
+    }
+
+    [dir="rtl"] .ios-list-chevron {
+      transform: scaleX(-1);
+    }
+
+    [dir="rtl"] .ios-timeline-item:not(:last-child)::before {
+      left: auto;
+      right: 15px;
+    }
+
+    /* Responsive */
+    @media (max-width: 375px) {
+      :root {
+        --font-size-large-title: 28px;
+        --font-size-title-1: 24px;
+      }
+
+      .ios-navbar-title {
+        font-size: var(--font-size-subhead);
+      }
+
+      .ios-interests-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .ios-actions-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-2);
+      }
+
+      .ios-action-btn {
+        padding: var(--space-4);
+      }
+
+      .ios-action-icon {
+        font-size: 24px;
+      }
+    }
+
+    /* Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* Results container */
+    .ios-results {
+      margin-top: var(--space-4);
+    }
+
+    .ios-results-empty {
+      text-align: center;
+      padding: var(--space-8);
+      color: var(--label-secondary);
+    }
+
+    .ios-results-empty-icon {
+      font-size: 48px;
+      margin-bottom: var(--space-3);
+    }
+
+    /* Generate Button */
+    .ios-generate-btn {
+      width: 100%;
+      padding: var(--space-4);
+      background: linear-gradient(135deg, var(--ios-blue), #0051D5);
+      color: white;
       border: none;
-      border-top: 1px solid #e2e8f0;
+      border-radius: var(--radius-md);
+      font-family: var(--font-family);
+      font-size: var(--font-size-headline);
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
+      transition: all var(--duration-fast) var(--spring-bounce);
+    }
+
+    .ios-generate-btn:active {
+      transform: scale(0.98);
+    }
+
+    .ios-generate-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Error truncation */
+    .ios-error-query {
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: inline-block;
+      vertical-align: bottom;
     }
   </style>
-  <script type="module" src="/src/main.ts"></script>
 </head>
 <body>
   <div class="app-container">
-    <!-- Header -->
-    <header class="app-header">
-      <div class="header-brand">
-        <span>🧭</span>
-        <span>RoamWise</span>
-      </div>
-      <div style="display: flex; gap: 0.5rem; align-items: center;">
-        <button id="langHe" class="lang-toggle" data-testid="lang-he" data-lang="he" title="עברית">🇮🇱</button>
-        <button id="langEn" class="lang-toggle active" data-testid="lang-en" data-lang="en" title="English">🇬🇧</button>
-        <button id="themeToggle" class="theme-toggle">🌓</button>
+    <!-- iOS Navigation Bar -->
+    <header class="ios-navbar">
+      <div class="ios-navbar-content">
+        <div class="ios-navbar-brand">
+          <div class="ios-navbar-logo">🧭</div>
+          <span class="ios-navbar-title">RoamWise</span>
+        </div>
+        <div class="ios-navbar-actions">
+          <div class="ios-lang-toggle">
+            <button id="langHe" class="ios-lang-btn active" data-testid="lang-he" data-lang="he" title="עברית">עב</button>
+            <button id="langEn" class="ios-lang-btn" data-testid="lang-en" data-lang="en" title="English">EN</button>
+          </div>
+          <button id="themeToggle" class="ios-btn-icon" aria-label="Toggle theme">🌓</button>
+        </div>
       </div>
     </header>
 
     <!-- Main Content -->
-    <main class="app-main">
+    <main class="ios-content">
       <!-- Search View -->
-      <section id="page-search" class="app-view active" data-view="search">
-        <div class="view-header">
-          <h1>🔍 Find Places</h1>
-          <p>Discover amazing places with AI-powered recommendations</p>
-        </div>
-        
-        <div class="search-form">
-          <div class="search-input-group">
-            <input 
-              type="text" 
-              id="freeText" 
+      <section id="searchView" class="ios-view active" data-view="search">
+        <h1 class="ios-large-title"><span data-i18n="search.title">Find Places</span></h1>
+        <p class="ios-subtitle" data-i18n="search.subtitle">Discover amazing places with AI-powered recommendations</p>
+
+        <div class="ios-search-container">
+          <div class="ios-search-field">
+            <span class="ios-search-icon">🔍</span>
+            <input
+              type="text"
+              id="freeText"
+              class="ios-search-input"
               placeholder="What are you looking for?"
-              class="search-input"
+              data-i18n-placeholder="search.placeholder"
             >
-            <button id="searchBtn" class="search-btn">Search</button>
-          </div>
-          
-          <div class="quick-categories">
-            <button class="category-btn" data-category="restaurant">🍽️ Food</button>
-            <button class="category-btn" data-category="attraction">🏛️ Sights</button>
-            <button class="category-btn" data-category="shopping">🛍️ Shopping</button>
-            <button class="category-btn" data-category="entertainment">🎯 Fun</button>
-          </div>
-        </div>
-        
-        <div id="list" class="search-results">
-          <div class="search-result">
-            <h3>🔍 Ready to Search</h3>
-            <p>Enter what you're looking for above and our AI will find personalized recommendations!</p>
-            <div class="result-rating">🤖 Powered by o3-mini Personal AI</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Trip Planning View -->
-      <section id="page-trip" class="app-view" data-view="trip">
-        <div class="view-header">
-          <h1>🗺️ Plan Your Trip</h1>
-          <p>AI-powered trip planning with personalized recommendations</p>
-        </div>
-        
-        <div class="trip-form">
-          <div class="form-group">
-            <label>Trip Duration</label>
-            <div class="duration-options">
-              <button class="duration-option" data-duration="2">2 hours</button>
-              <button class="duration-option selected" data-duration="8">Full day</button>
-              <button class="duration-option" data-duration="16">Weekend</button>
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label>Interests (max 4)</label>
-            <div class="interests-grid">
-              <button class="interest-option" data-interest="food">🍽️ Food</button>
-              <button class="interest-option" data-interest="nature">🌿 Nature</button>
-              <button class="interest-option" data-interest="culture">🏛️ Culture</button>
-              <button class="interest-option" data-interest="shopping">🛍️ Shopping</button>
-              <button class="interest-option" data-interest="entertainment">🎯 Entertainment</button>
-              <button class="interest-option" data-interest="relaxation">😌 Relaxation</button>
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label>Budget per person</label>
-            <div class="budget-slider">
-              <input type="range" id="budgetRange" min="50" max="1000" value="300">
-              <div class="budget-display">$<span id="budgetAmount">300</span></div>
-            </div>
-          </div>
-          
-          <button id="generateTripBtn" class="generate-btn">
-            🤖 Generate Smart Trip
-          </button>
-        </div>
-
-        <!-- Planner Controls (Step 7B) -->
-        <div id="planner-controls" class="planner-controls">
-          <h3 style="margin-bottom: 16px;">🗺️ Day Planner</h3>
-
-          <div class="row">
-            <label data-i18n="planner.start_from">Start from</label>
-            <div class="seg">
-              <button id="btnStartCurrent" class="seg-btn active" data-i18n="planner.my_location">📍 My location</button>
-              <button id="btnStartHotel" class="seg-btn" data-i18n="planner.my_hotel">🏨 My hotel</button>
-            </div>
-          </div>
-
-          <div class="row" id="hotelRow" style="display:none;">
-            <label data-i18n="planner.hotel_name">Hotel name</label>
-            <input id="hotelInput" type="text" placeholder="Hotel Splendido…" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:8px;" />
-          </div>
-
-          <div class="row">
-            <label data-i18n="planner.destination">Destination (optional)</label>
-            <input id="destInput" type="text" placeholder="Dolomites / Sirmione…" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:8px;" />
-          </div>
-
-          <div class="row sliders">
-            <div class="slider">
-              <label for="nearRadius" data-i18n="planner.near_radius">Nearby radius (km)</label>
-              <input id="nearRadius" type="range" min="1" max="30" step="1" value="5" />
-              <span id="nearRadiusVal">5</span>
-            </div>
-            <div class="slider">
-              <label for="detourMin" data-i18n="planner.detour_minutes">Along-route max detour (min)</label>
-              <input id="detourMin" type="range" min="5" max="30" step="1" value="15" />
-              <span id="detourMinVal">15</span>
-            </div>
-          </div>
-
-          <div class="row">
-            <button id="btnPlanDay" class="primary" data-i18n="planner.plan_day" style="width:100%; padding:12px; background:#1976d2; color:white; border:none; border-radius:8px; font-size:16px; cursor:pointer;">Plan Day</button>
+            <button id="searchBtn" class="ios-search-btn" data-i18n="search.button">Search</button>
           </div>
         </div>
 
-        <!-- Planner Results -->
-        <div id="planner-results" class="planner-results"></div>
+        <div class="ios-chips">
+          <button class="ios-chip" data-category="restaurant">🍽️ <span data-i18n="categories.food">Food</span></button>
+          <button class="ios-chip" data-category="attraction">🏛️ <span data-i18n="categories.sights">Sights</span></button>
+          <button class="ios-chip" data-category="shopping">🛍️ <span data-i18n="categories.shopping">Shopping</span></button>
+          <button class="ios-chip" data-category="entertainment">🎯 <span data-i18n="categories.fun">Fun</span></button>
+        </div>
 
-        <div id="enhancedTripDisplay" class="trip-results">
-          <div class="trip-result">
-            <h3>🗺️ AI Trip Planning</h3>
-            <p>Configure your preferences above and generate a personalized itinerary!</p>
-            <div class="trip-summary">
-              <div class="trip-stat">
-                <span class="stat-label">AI Model:</span>
-                <span class="stat-value">o3-mini</span>
-              </div>
-              <div class="trip-stat">
-                <span class="stat-label">Status:</span>
-                <span class="stat-value">Ready</span>
-              </div>
-            </div>
-
-            <!-- Route Information Chips -->
-            <div id="route-chips" class="route-chips" style="display: none; margin-top: 16px; gap: 8px; flex-wrap: wrap;">
-              <span id="chip-distance" class="chip" data-testid="chip-distance"></span>
-              <span id="chip-duration" class="chip" data-testid="chip-duration"></span>
-              <span id="chip-avoid" class="chip" data-testid="chip-avoid"></span>
-            </div>
-
-            <!-- External Navigation Links -->
-            <div id="nav-links" class="nav-links" style="display: none; margin-top: 16px; gap: 12px;">
-              <a id="nav-waze" href="#" target="_blank" rel="noopener" data-testid="nav-waze" class="nav-link">
-                🚗 Waze
-              </a>
-              <a id="nav-google" href="#" target="_blank" rel="noopener" data-testid="nav-google" class="nav-link">
-                🗺️ Google Maps
-              </a>
-              <a id="nav-apple" href="#" target="_blank" rel="noopener" data-testid="nav-apple" class="nav-link">
-                🍎 Apple Maps
-              </a>
+        <div id="list" class="ios-results">
+          <div class="ios-card">
+            <div class="ios-card-title">🔍 <span data-i18n="search.ready">Ready to Search</span></div>
+            <p class="ios-card-subtitle" data-i18n="search.ready_desc">Enter what you're looking for above and our AI will find personalized recommendations!</p>
+            <div class="ios-card-meta">
+              <span>🤖 <span data-i18n="search.powered_by">Powered by AI</span></span>
             </div>
           </div>
         </div>
       </section>
 
       <!-- AI Assistant View -->
-      <section id="page-ai" class="app-view" data-view="ai">
-        <div class="view-header">
-          <h1>🤖 AI Assistant</h1>
-          <p>Voice-powered travel companion</p>
+      <section id="aiView" class="ios-view" data-view="ai">
+        <h1 class="ios-large-title"><span data-i18n="ai.title">AI Assistant</span></h1>
+        <p class="ios-subtitle">
+          <span data-i18n="ai.subtitle">Voice-powered travel companion</span>
+          <span class="ios-coming-soon">Coming Soon</span>
+        </p>
+
+        <div class="ios-voice-container">
+          <button id="voiceBtn" class="ios-voice-btn">
+            <span class="ios-voice-icon">🎤</span>
+            <span class="ios-voice-text" data-i18n="ai.hold">Hold</span>
+          </button>
+          <p class="ios-voice-label" data-i18n="ai.press_speak">Press & Hold to Speak</p>
         </div>
-        
-        <div class="ai-interface">
-          <div class="voice-section">
-            <button id="voiceBtn" class="voice-btn">
-              <span class="voice-icon">🎤</span>
-              <span class="voice-text">Press & Hold to Speak</span>
+
+        <div id="voiceStatus" class="ios-status"></div>
+        <div id="voiceResponse" class="ios-response"></div>
+
+        <h3 style="margin-top: var(--space-6); margin-bottom: var(--space-3); font-size: var(--font-size-headline);">
+          <span data-i18n="ai.quick_actions">Quick Actions</span>
+        </h3>
+
+        <div class="ios-actions-grid">
+          <button class="ios-action-btn" data-action="find-food">
+            <span class="ios-action-icon">🍽️</span>
+            <span data-i18n="ai.find_food">Find Food</span>
+          </button>
+          <button class="ios-action-btn" data-action="weather">
+            <span class="ios-action-icon">🌤️</span>
+            <span data-i18n="ai.check_weather">Weather</span>
+          </button>
+          <button class="ios-action-btn" data-action="navigate">
+            <span class="ios-action-icon">🧭</span>
+            <span data-i18n="ai.get_directions">Directions</span>
+          </button>
+          <button class="ios-action-btn" data-action="recommend">
+            <span class="ios-action-icon">✨</span>
+            <span data-i18n="ai.recommendations">Explore</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Trip Planning View -->
+      <section id="tripView" class="ios-view" data-view="trip">
+        <h1 class="ios-large-title"><span data-i18n="trip.title">Plan Your Trip</span></h1>
+        <p class="ios-subtitle" data-i18n="trip.subtitle">AI-powered trip planning with personalized recommendations</p>
+
+        <div class="ios-form-group">
+          <label class="ios-form-label" data-i18n="trip.duration">Duration</label>
+          <div class="ios-segmented">
+            <button class="ios-segment" data-duration="2" data-i18n="trip.duration_2h">2 hours</button>
+            <button class="ios-segment selected" data-duration="8" data-i18n="trip.duration_full">Full day</button>
+            <button class="ios-segment" data-duration="16" data-i18n="trip.duration_weekend">Weekend</button>
+          </div>
+        </div>
+
+        <div class="ios-form-group">
+          <label class="ios-form-label">
+            <span data-i18n="trip.interests">Interests</span>
+            <span id="interestCount" style="color: var(--ios-blue);">(0/4)</span>
+          </label>
+          <div class="ios-interests-grid">
+            <button class="ios-interest" data-interest="food">
+              <span class="ios-interest-icon">🍽️</span>
+              <span data-i18n="categories.food">Food</span>
             </button>
-            <div id="voiceStatus" class="voice-status"></div>
-            <div id="voiceResponse" class="voice-response"></div>
+            <button class="ios-interest" data-interest="nature">
+              <span class="ios-interest-icon">🌿</span>
+              <span data-i18n="categories.nature">Nature</span>
+            </button>
+            <button class="ios-interest" data-interest="culture">
+              <span class="ios-interest-icon">🏛️</span>
+              <span data-i18n="categories.culture">Culture</span>
+            </button>
+            <button class="ios-interest" data-interest="shopping">
+              <span class="ios-interest-icon">🛍️</span>
+              <span data-i18n="categories.shopping">Shopping</span>
+            </button>
+            <button class="ios-interest" data-interest="entertainment">
+              <span class="ios-interest-icon">🎯</span>
+              <span data-i18n="categories.entertainment">Entertainment</span>
+            </button>
+            <button class="ios-interest" data-interest="relaxation">
+              <span class="ios-interest-icon">😌</span>
+              <span data-i18n="categories.relaxation">Relaxation</span>
+            </button>
           </div>
-          
-          <div class="quick-actions">
-            <h3>Quick Actions</h3>
-            <div class="action-grid">
-              <button class="action-btn" data-action="find-food">Find Food</button>
-              <button class="action-btn" data-action="weather">Check Weather</button>
-              <button class="action-btn" data-action="navigate">Get Directions</button>
-              <button class="action-btn" data-action="recommend">Recommendations</button>
+          <p class="ios-interest-hint" id="interestHint" style="display: none; color: var(--ios-orange);" data-i18n="trip.max_interests">Maximum 4 interests allowed</p>
+        </div>
+
+        <div class="ios-form-group">
+          <label class="ios-form-label" data-i18n="trip.budget">Budget per person</label>
+          <div class="ios-slider-container">
+            <div class="ios-slider-header">
+              <span class="ios-slider-label" data-i18n="trip.budget_label">Budget</span>
+              <span class="ios-slider-value">$<span id="budgetAmount">300</span></span>
             </div>
+            <input type="range" id="budgetRange" class="ios-slider" min="50" max="1000" value="300">
           </div>
+        </div>
+
+        <button id="generateTripBtn" class="ios-generate-btn">
+          🤖 <span data-i18n="trip.generate">Generate Smart Trip</span>
+        </button>
+
+        <div id="enhancedTripDisplay" class="ios-results" style="margin-top: var(--space-6);">
+          <!-- Trip results will be inserted here -->
         </div>
       </section>
 
       <!-- Profile View -->
-      <section id="page-profile" class="app-view" data-view="profile">
-        <div class="view-header">
-          <h1>👤 Profile</h1>
-          <p>Your travel preferences and history</p>
+      <section id="profileView" class="ios-view" data-view="profile">
+        <h1 class="ios-large-title"><span data-i18n="profile.title">Profile</span></h1>
+        <p class="ios-subtitle" data-i18n="profile.subtitle">Your travel preferences and history</p>
+
+        <div class="ios-stats-grid">
+          <div class="ios-stat-card">
+            <div class="ios-stat-value" id="tripsPlannedCount">0</div>
+            <div class="ios-stat-label" data-i18n="profile.trips_planned">Trips Planned</div>
+          </div>
+          <div class="ios-stat-card">
+            <div class="ios-stat-value" id="placesVisitedCount">0</div>
+            <div class="ios-stat-label" data-i18n="profile.places_visited">Places Visited</div>
+          </div>
         </div>
-        
-        <div class="profile-content">
-          <div class="trip-result">
-            <h3>Your Stats</h3>
-            <div class="trip-summary">
-              <div class="trip-stat">
-                <span class="stat-label">Trips Planned</span>
-                <span class="stat-value">0</span>
+
+        <div style="margin-top: var(--space-6);">
+          <label class="ios-form-label" data-i18n="profile.settings">Settings</label>
+          <div class="ios-list">
+            <div class="ios-list-row">
+              <span class="ios-list-icon">🌙</span>
+              <div class="ios-list-content">
+                <div class="ios-list-title" data-i18n="profile.dark_mode">Dark Mode</div>
+                <div class="ios-list-subtitle" data-i18n="profile.dark_mode_desc">Switch between light and dark themes</div>
               </div>
-              <div class="trip-stat">
-                <span class="stat-label">Places Visited</span>
-                <span class="stat-value">0</span>
+              <span class="ios-list-chevron">›</span>
+            </div>
+            <div class="ios-list-row">
+              <span class="ios-list-icon">🌍</span>
+              <div class="ios-list-content">
+                <div class="ios-list-title" data-i18n="profile.language">Language</div>
+                <div class="ios-list-subtitle" id="currentLanguage">עברית</div>
               </div>
+              <span class="ios-list-chevron">›</span>
+            </div>
+            <div class="ios-list-row">
+              <span class="ios-list-icon">📍</span>
+              <div class="ios-list-content">
+                <div class="ios-list-title" data-i18n="profile.location">Location Services</div>
+                <div class="ios-list-subtitle" data-i18n="profile.location_desc">Enable for better recommendations</div>
+              </div>
+              <span class="ios-list-chevron">›</span>
             </div>
           </div>
         </div>
       </section>
     </main>
 
-    <!-- Bottom Navigation -->
-    <nav class="bottom-nav">
-      <button class="nav-btn active" data-view="search" data-testid="nav-search">
-        <span class="nav-icon">🔍</span>
-        <span class="nav-label">Search</span>
+    <!-- iOS Tab Bar -->
+    <nav class="ios-tabbar">
+      <button class="ios-tab active" data-view="search">
+        <span class="ios-tab-icon">🔍</span>
+        <span class="ios-tab-label" data-i18n="nav.search">Search</span>
       </button>
-      <button class="nav-btn" data-view="ai" data-testid="nav-ai">
-        <span class="nav-icon">🤖</span>
-        <span class="nav-label">AI</span>
+      <button class="ios-tab" data-view="ai">
+        <span class="ios-tab-icon">🤖</span>
+        <span class="ios-tab-label" data-i18n="nav.ai">AI</span>
       </button>
-      <button class="nav-btn" data-view="trip" data-testid="nav-trip">
-        <span class="nav-icon">🗺️</span>
-        <span class="nav-label">Trip</span>
+      <button class="ios-tab" data-view="trip">
+        <span class="ios-tab-icon">🗺️</span>
+        <span class="ios-tab-label" data-i18n="nav.trip">Trip</span>
       </button>
-      <button class="nav-btn" data-view="profile" data-testid="nav-profile">
-        <span class="nav-icon">👤</span>
-        <span class="nav-label">Profile</span>
+      <button class="ios-tab" data-view="profile">
+        <span class="ios-tab-icon">👤</span>
+        <span class="ios-tab-label" data-i18n="nav.profile">Profile</span>
       </button>
     </nav>
   </div>
 
   <!-- JavaScript -->
-  
-  <!-- Inline navigation fix for immediate functionality -->
-  <script>
-    console.log('Navigation fallback loading...');
-    
-    // Simple navigation function
-    function setupNavigation() {
-      console.log('Setting up navigation fallback...');
-      
-      const navButtons = document.querySelectorAll('.nav-btn');
-      const views = document.querySelectorAll('.app-view');
-      
-      console.log('Found nav buttons:', navButtons.length);
-      console.log('Found views:', views.length);
-      
-      // Function to show a specific view
-      function showView(viewName) {
-        console.log('Showing view:', viewName);
-        
-        // Hide all views
-        views.forEach(view => {
-          view.classList.remove('active');
-          view.style.display = 'none';
-        });
-        
-        // Show target view
-        const targetView = document.querySelector(`[data-view="${viewName}"]`);
-        if (targetView) {
-          targetView.classList.add('active');
-          targetView.style.display = 'block';
-          console.log('View activated:', viewName);
-        } else {
-          console.error('View not found:', viewName);
-        }
-        
-        // Update navigation buttons
-        navButtons.forEach(button => {
-          button.classList.remove('active');
-          if (button.getAttribute('data-view') === viewName) {
-            button.classList.add('active');
-          }
-        });
-      }
-      
-      // Add click listeners to navigation buttons
-      navButtons.forEach(button => {
-        button.addEventListener('click', () => {
-          const targetView = button.getAttribute('data-view');
-          console.log('Navigation clicked:', targetView);
-          showView(targetView);
-        });
-      });
-      
-      // Show search view by default
-      showView('search');
-    }
-    
-    // Initialize when DOM is ready
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', setupNavigation);
-    } else {
-      setupNavigation();
-    }
-  </script>
+  <script type="module" src="app-main.js"></script>
 </body>
 </html>

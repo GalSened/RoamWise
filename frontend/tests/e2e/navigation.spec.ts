@@ -7,7 +7,7 @@ test.describe('Navigation', () => {
 
   test('exactly one page visible at a time', async ({ page }) => {
     // Initially search view should be active
-    const activeViews = page.locator('.app-view.active');
+    const activeViews = page.locator('.ios-view.active');
     await expect(activeViews).toHaveCount(1);
     await expect(page.locator('#page-search')).toHaveClass(/active/);
 
@@ -38,7 +38,7 @@ test.describe('Navigation', () => {
 
   test('content not hidden under fixed navbar', async ({ page }) => {
     // Check that page containers are properly positioned below the header
-    const header = page.locator('.app-header');
+    const header = page.locator('.ios-navbar');
     const searchView = page.locator('#page-search');
 
     const headerBox = await header.boundingBox();

@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// Default to GitHub Pages, override with BASE_URL env var for local dev
-const BASE_URL = process.env.BASE_URL || 'https://galsened.github.io/RoamWise-frontend-WX/';
+// Default to Vercel, override with BASE_URL env var for local dev
+const BASE_URL = process.env.BASE_URL || 'https://frontend-gamma-dun.vercel.app';
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -44,6 +44,6 @@ export default defineConfig({
     },
   ],
 
-  // No webServer in CI - tests run against live GitHub Pages
-  // For local dev, use: BASE_URL=http://localhost:5173/roamwise-app/ npm run test:e2e:local
+  // No webServer in CI - tests run against live Vercel deployment
+  // For local dev, use: BASE_URL=http://localhost:5173 npm run test:e2e:local
 });

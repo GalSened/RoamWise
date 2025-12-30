@@ -13,10 +13,10 @@ test.describe('Internationalization (i18n)', () => {
     await expect(page.locator('[data-testid="lang-en"]')).toBeVisible();
   });
 
-  test('English is active by default', async ({ page }) => {
-    // English button should have active class initially
-    await expect(page.locator('[data-testid="lang-en"]')).toHaveClass(/active/);
-    await expect(page.locator('[data-testid="lang-he"]')).not.toHaveClass(/active/);
+  test('Hebrew is active by default', async ({ page }) => {
+    // Hebrew button should have active class initially (Hebrew is now default)
+    await expect(page.locator('[data-testid="lang-he"]')).toHaveClass(/active/);
+    await expect(page.locator('[data-testid="lang-en"]')).not.toHaveClass(/active/);
   });
 
   test('clicking Hebrew toggle activates Hebrew', async ({ page }) => {
@@ -102,15 +102,10 @@ test.describe('Internationalization (i18n)', () => {
   });
 
   test('only one language is active at a time', async ({ page }) => {
-    // Initially only English is active
+    // Initially only Hebrew is active (Hebrew is now default)
     const langHe = page.locator('[data-testid="lang-he"]');
     const langEn = page.locator('[data-testid="lang-en"]');
 
-    await expect(langEn).toHaveClass(/active/);
-    await expect(langHe).not.toHaveClass(/active/);
-
-    // After clicking Hebrew, only Hebrew is active
-    await page.click('[data-testid="lang-he"]');
     await expect(langHe).toHaveClass(/active/);
     await expect(langEn).not.toHaveClass(/active/);
 
@@ -118,5 +113,10 @@ test.describe('Internationalization (i18n)', () => {
     await page.click('[data-testid="lang-en"]');
     await expect(langEn).toHaveClass(/active/);
     await expect(langHe).not.toHaveClass(/active/);
+
+    // After clicking Hebrew, only Hebrew is active
+    await page.click('[data-testid="lang-he"]');
+    await expect(langHe).toHaveClass(/active/);
+    await expect(langEn).not.toHaveClass(/active/);
   });
 });
