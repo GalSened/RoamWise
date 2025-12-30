@@ -17,6 +17,7 @@ import {
   StyleSheet,
   Linking,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -24,6 +25,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme/tokens';
 import { InteractiveMap } from '../components/map/InteractiveMap';
 import { SAMPLE_TRAIL } from '../hooks/useNavigationState';
+import { PackingManager, PackingList, TripContext } from '../features/packing';
+import { BackpackModal } from '../components/planner/BackpackModal';
 
 /**
  * Trip Mode Cards Data
@@ -296,23 +299,76 @@ function Timeline() {
 }
 
 /**
- * Smart Backpack Button
+ * Smart Backpack Button - AI-powered packing recommendations
+ *
+ * Generates real packing list based on:
+ * - Trip duration (8.5 hrs from timeline)
+ * - Weather conditions (temperature, rain chance)
+ * - Sunset timing
+ * - Activity tags from selected mode
  */
 function SmartBackpackButton() {
-  const handlePress = () => {
-    Alert.alert(
-      '🎒 Smart Backpack',
-      'Based on your trip:\n\n• 2L Water\n• Rain jacket\n• Sunscreen SPF 50\n• Snacks (500 cal)\n• First aid kit\n• Phone charger',
-      [{ text: 'Got it!' }]
-    );
+  const [modalVisible, setModalVisible] = useState(false);
+  const [packingList, setPackingList] = useState<PackingList | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handlePress = async () => {
+    setIsLoading(true);
+
+    // Build trip context from current planner data
+    // In production, these values come from weather API and user selections
+    const now = new Date();
+    const sunset = new Date(now);
+    sunset.setHours(17, 30, 0, 0); // Today's sunset
+
+    const tripEnd = new Date(now);
+    tripEnd.setHours(17, 30, 0, 0); // Trip ends at 5:30 PM
+
+    const tripContext: TripContext = {
+      durationHours: 8.5,           // From timeline total
+      temperature: 28,              // From weather forecast (simulated)
+      rainChance: 40,               // 40% rain chance (simulated)
+      sunsetTime: sunset,
+      tripEndTime: tripEnd,
+      tags: ['Water', 'Hiking'],    // From selected mode/activities
+    };
+
+    try {
+      const manager = new PackingManager();
+      const list = await manager.generatePackingList(tripContext);
+      setPackingList(list);
+      setModalVisible(true);
+    } catch (error) {
+      Alert.alert('Error', 'Could not generate packing list. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <TouchableOpacity style={styles.backpackButton} onPress={handlePress}>
-      <Text style={styles.backpackIcon}>🎒</Text>
-      <Text style={styles.backpackText}>Smart Backpack</Text>
-      <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-    </TouchableOpacity>
+    <>
+      <TouchableOpacity
+        style={styles.backpackButton}
+        onPress={handlePress}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <ActivityIndicator size="small" color={colors.primary} style={styles.backpackLoader} />
+        ) : (
+          <Text style={styles.backpackIcon}>🎒</Text>
+        )}
+        <Text style={styles.backpackText}>Smart Backpack</Text>
+        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+      </TouchableOpacity>
+
+      {packingList && (
+        <BackpackModal
+          visible={modalVisible}
+          packingList={packingList}
+          onClose={() => setModalVisible(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -574,6 +630,9 @@ const styles = StyleSheet.create({
   },
   backpackIcon: {
     fontSize: 24,
+    marginRight: spacing.sm,
+  },
+  backpackLoader: {
     marginRight: spacing.sm,
   },
   backpackText: {
