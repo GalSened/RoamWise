@@ -81,18 +81,54 @@ class SimpleNavigation {
   setupLanguageToggle() {
     const langHe = document.getElementById('langHe');
     const langEn = document.getElementById('langEn');
+    this.translations = {};
 
-    const setLanguage = (lang) => {
+    const loadTranslations = async (lang) => {
+      if (this.translations[lang]) return this.translations[lang];
+      try {
+        const basePath = window.location.pathname.includes('/roamwise-app') ? '/roamwise-app/' : '/';
+        const response = await fetch(`${basePath}i18n/${lang}.json`);
+        if (response.ok) {
+          this.translations[lang] = await response.json();
+          console.log('Translations loaded for:', lang);
+        }
+      } catch (error) {
+        console.error('Failed to load translations:', error);
+      }
+      return this.translations[lang];
+    };
+
+    const applyTranslations = (translations) => {
+      if (!translations) return;
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[key]) {
+          el.textContent = translations[key];
+        }
+      });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (translations[key]) {
+          el.placeholder = translations[key];
+        }
+      });
+    };
+
+    const setLanguage = async (lang) => {
       // Update active class
       if (lang === 'he') {
-        langHe.classList.add('active');
-        langEn.classList.remove('active');
+        langHe?.classList.add('active');
+        langEn?.classList.remove('active');
         document.body.setAttribute('dir', 'rtl');
       } else {
-        langEn.classList.add('active');
-        langHe.classList.remove('active');
+        langEn?.classList.add('active');
+        langHe?.classList.remove('active');
         document.body.setAttribute('dir', 'ltr');
       }
+
+      // Load and apply translations
+      const translations = await loadTranslations(lang);
+      applyTranslations(translations);
 
       // Save to localStorage
       localStorage.setItem('app-language', lang);
@@ -107,8 +143,8 @@ class SimpleNavigation {
       langEn.addEventListener('click', () => setLanguage('en'));
     }
 
-    // Load saved language (default to 'en')
-    const savedLang = localStorage.getItem('app-language') || 'en';
+    // Load saved language (default to 'he' for Hebrew-first app)
+    const savedLang = localStorage.getItem('app-language') || 'he';
     setLanguage(savedLang);
   }
 }

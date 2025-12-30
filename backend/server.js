@@ -17,6 +17,7 @@ import adminRoutes from './routes/admin.js';
 import feedbackRoutes from './routes/feedback.js';
 import familyAuth from './src/routes/family-auth.js';
 import placesRoutes from './routes/places.js';
+import plannerRoutes from './routes/planner.js';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -30,9 +31,15 @@ function reqId(req) {
 
 // ---- Middleware ----
 
-// CORS - allow frontend on different port (dev mode)
+// CORS - allow frontend from all environments
 app.use(cors({
-  origin: ['http://localhost:8080', 'http://127.0.0.1:8080', 'http://localhost:5173'],
+  origin: [
+    'http://localhost:8080',
+    'http://127.0.0.1:8080',
+    'http://localhost:5173',
+    'https://frontend-gamma-dun.vercel.app',
+    /\.vercel\.app$/  // Allow all Vercel preview deployments
+  ],
   credentials: true // Allow cookies
 }));
 
@@ -87,6 +94,9 @@ app.use('/api/family', familyAuth);
 
 // Places routes (Google Places API)
 app.use(placesRoutes);
+
+// Planner routes (trip planning)
+app.use(plannerRoutes);
 
 // /api/me endpoint (uses family session cookie)
 app.get('/api/me', (req, res) => {

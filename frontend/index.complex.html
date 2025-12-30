@@ -86,7 +86,7 @@
       border-color: #0066cc;
       background: #f0f9ff;
     }
-
+    
     /* Main content */
     .app-main {
       flex: 1;
@@ -479,7 +479,125 @@
       opacity: 1 !important;
       visibility: visible !important;
     }
+
+    /* Planner Controls (Step 7B) */
+    .planner-controls {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin: 20px 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .planner-controls .row {
+      margin: 12px 0;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .planner-controls .row label {
+      font-weight: 500;
+      min-width: 120px;
+      color: #333;
+    }
+
+    .seg {
+      display: inline-flex;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .seg-btn {
+      padding: 8px 16px;
+      border: 0;
+      background: #f4f4f4;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+    }
+
+    .seg-btn:hover {
+      background: #e8e8e8;
+    }
+
+    .seg-btn.active {
+      background: #1976d2;
+      color: #fff;
+    }
+
+    .sliders {
+      flex-direction: column;
+      align-items: stretch !important;
+      gap: 16px;
+    }
+
+    .sliders .slider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sliders .slider label {
+      min-width: auto;
+      flex: 1;
+    }
+
+    .sliders .slider input[type="range"] {
+      flex: 2;
+      min-width: 150px;
+    }
+
+    .sliders .slider span {
+      min-width: 30px;
+      font-weight: 600;
+      color: #1976d2;
+    }
+
+    .planner-results {
+      background: white;
+      border-radius: 12px;
+      margin: 20px 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      max-height: 600px;
+      overflow-y: auto;
+    }
+
+    .planner-results .poi {
+      padding: 16px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .planner-results .poi:last-child {
+      border-bottom: none;
+    }
+
+    .poi .meta {
+      font-size: 13px;
+      opacity: 0.7;
+      margin-top: 4px;
+    }
+
+    .planner-results .header {
+      background: #f8fafc;
+      padding: 16px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    .planner-results .header div {
+      margin: 4px 0;
+      font-size: 14px;
+    }
+
+    .planner-results hr {
+      margin: 12px 0;
+      border: none;
+      border-top: 1px solid #e2e8f0;
+    }
   </style>
+  <script type="module" src="/src/main.ts"></script>
 </head>
 <body>
   <div class="app-container">
@@ -499,7 +617,7 @@
     <!-- Main Content -->
     <main class="app-main">
       <!-- Search View -->
-      <section id="searchView" class="app-view active" data-view="search">
+      <section id="page-search" class="app-view active" data-view="search">
         <div class="view-header">
           <h1>🔍 Find Places</h1>
           <p>Discover amazing places with AI-powered recommendations</p>
@@ -534,7 +652,7 @@
       </section>
 
       <!-- Trip Planning View -->
-      <section id="tripView" class="app-view" data-view="trip">
+      <section id="page-trip" class="app-view" data-view="trip">
         <div class="view-header">
           <h1>🗺️ Plan Your Trip</h1>
           <p>AI-powered trip planning with personalized recommendations</p>
@@ -574,7 +692,50 @@
             🤖 Generate Smart Trip
           </button>
         </div>
-        
+
+        <!-- Planner Controls (Step 7B) -->
+        <div id="planner-controls" class="planner-controls">
+          <h3 style="margin-bottom: 16px;">🗺️ Day Planner</h3>
+
+          <div class="row">
+            <label data-i18n="planner.start_from">Start from</label>
+            <div class="seg">
+              <button id="btnStartCurrent" class="seg-btn active" data-i18n="planner.my_location">📍 My location</button>
+              <button id="btnStartHotel" class="seg-btn" data-i18n="planner.my_hotel">🏨 My hotel</button>
+            </div>
+          </div>
+
+          <div class="row" id="hotelRow" style="display:none;">
+            <label data-i18n="planner.hotel_name">Hotel name</label>
+            <input id="hotelInput" type="text" placeholder="Hotel Splendido…" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:8px;" />
+          </div>
+
+          <div class="row">
+            <label data-i18n="planner.destination">Destination (optional)</label>
+            <input id="destInput" type="text" placeholder="Dolomites / Sirmione…" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:8px;" />
+          </div>
+
+          <div class="row sliders">
+            <div class="slider">
+              <label for="nearRadius" data-i18n="planner.near_radius">Nearby radius (km)</label>
+              <input id="nearRadius" type="range" min="1" max="30" step="1" value="5" />
+              <span id="nearRadiusVal">5</span>
+            </div>
+            <div class="slider">
+              <label for="detourMin" data-i18n="planner.detour_minutes">Along-route max detour (min)</label>
+              <input id="detourMin" type="range" min="5" max="30" step="1" value="15" />
+              <span id="detourMinVal">15</span>
+            </div>
+          </div>
+
+          <div class="row">
+            <button id="btnPlanDay" class="primary" data-i18n="planner.plan_day" style="width:100%; padding:12px; background:#1976d2; color:white; border:none; border-radius:8px; font-size:16px; cursor:pointer;">Plan Day</button>
+          </div>
+        </div>
+
+        <!-- Planner Results -->
+        <div id="planner-results" class="planner-results"></div>
+
         <div id="enhancedTripDisplay" class="trip-results">
           <div class="trip-result">
             <h3>🗺️ AI Trip Planning</h3>
@@ -589,12 +750,32 @@
                 <span class="stat-value">Ready</span>
               </div>
             </div>
+
+            <!-- Route Information Chips -->
+            <div id="route-chips" class="route-chips" style="display: none; margin-top: 16px; gap: 8px; flex-wrap: wrap;">
+              <span id="chip-distance" class="chip" data-testid="chip-distance"></span>
+              <span id="chip-duration" class="chip" data-testid="chip-duration"></span>
+              <span id="chip-avoid" class="chip" data-testid="chip-avoid"></span>
+            </div>
+
+            <!-- External Navigation Links -->
+            <div id="nav-links" class="nav-links" style="display: none; margin-top: 16px; gap: 12px;">
+              <a id="nav-waze" href="#" target="_blank" rel="noopener" data-testid="nav-waze" class="nav-link">
+                🚗 Waze
+              </a>
+              <a id="nav-google" href="#" target="_blank" rel="noopener" data-testid="nav-google" class="nav-link">
+                🗺️ Google Maps
+              </a>
+              <a id="nav-apple" href="#" target="_blank" rel="noopener" data-testid="nav-apple" class="nav-link">
+                🍎 Apple Maps
+              </a>
+            </div>
           </div>
         </div>
       </section>
 
       <!-- AI Assistant View -->
-      <section id="aiView" class="app-view" data-view="ai">
+      <section id="page-ai" class="app-view" data-view="ai">
         <div class="view-header">
           <h1>🤖 AI Assistant</h1>
           <p>Voice-powered travel companion</p>
@@ -623,7 +804,7 @@
       </section>
 
       <!-- Profile View -->
-      <section id="profileView" class="app-view" data-view="profile">
+      <section id="page-profile" class="app-view" data-view="profile">
         <div class="view-header">
           <h1>👤 Profile</h1>
           <p>Your travel preferences and history</p>
@@ -649,19 +830,19 @@
 
     <!-- Bottom Navigation -->
     <nav class="bottom-nav">
-      <button class="nav-btn active" data-view="search">
+      <button class="nav-btn active" data-view="search" data-testid="nav-search">
         <span class="nav-icon">🔍</span>
         <span class="nav-label">Search</span>
       </button>
-      <button class="nav-btn" data-view="ai">
+      <button class="nav-btn" data-view="ai" data-testid="nav-ai">
         <span class="nav-icon">🤖</span>
         <span class="nav-label">AI</span>
       </button>
-      <button class="nav-btn" data-view="trip">
+      <button class="nav-btn" data-view="trip" data-testid="nav-trip">
         <span class="nav-icon">🗺️</span>
         <span class="nav-label">Trip</span>
       </button>
-      <button class="nav-btn" data-view="profile">
+      <button class="nav-btn" data-view="profile" data-testid="nav-profile">
         <span class="nav-icon">👤</span>
         <span class="nav-label">Profile</span>
       </button>
@@ -669,7 +850,6 @@
   </div>
 
   <!-- JavaScript -->
-  <script type="module" src="app-main.js"></script>
   
   <!-- Inline navigation fix for immediate functionality -->
   <script>

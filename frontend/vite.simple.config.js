@@ -1,13 +1,27 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-  base: '/roamwise-app/',
+  base: process.env.VERCEL ? '/' : '/roamwise-app/',
   root: '.',
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+      '@/core': path.resolve(__dirname, 'src/core'),
+      '@/features': path.resolve(__dirname, 'src/features'),
+      '@/providers': path.resolve(__dirname, 'src/providers'),
+      '@/lib': path.resolve(__dirname, 'src/lib'),
+      '@/types': path.resolve(__dirname, 'src/types')
+    }
+  },
   build: {
     outDir: 'dist',
     rollupOptions: {
-      input: 'index.simple.html',
+      input: 'index.html',
       output: {
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',

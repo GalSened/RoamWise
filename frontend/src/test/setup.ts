@@ -1,4 +1,20 @@
+// @ts-nocheck - Test mocks don't need full type compliance
 import { vi } from 'vitest';
+
+// Mock matchMedia
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
 
 // Mock DOM APIs
 Object.defineProperty(window, 'navigator', {
@@ -96,36 +112,62 @@ global.PerformanceObserver = vi.fn(() => ({
   disconnect: vi.fn(),
 }));
 
-// Mock indexedDB
-const mockIDBRequest = {
-  onerror: null,
-  onsuccess: null,
-  result: null,
-  error: null,
+// Mock indexedDB with proper callback triggers
+const createMockIDBRequest = (result: any = null) => {
+  const request = {
+    onerror: null as any,
+    onsuccess: null as any,
+    result,
+    error: null,
+  };
+  // Trigger onsuccess asynchronously
+  setTimeout(() => {
+    if (request.onsuccess) request.onsuccess({ target: request });
+  }, 0);
+  return request;
 };
+
+const mockStore = new Map<string, any>();
 
 const mockIDBDatabase = {
   transaction: vi.fn(() => ({
     objectStore: vi.fn(() => ({
-      get: vi.fn(() => mockIDBRequest),
-      put: vi.fn(() => mockIDBRequest),
-      delete: vi.fn(() => mockIDBRequest),
-      clear: vi.fn(() => mockIDBRequest),
-      getAllKeys: vi.fn(() => mockIDBRequest),
+      get: vi.fn((key: string) => createMockIDBRequest(mockStore.get(key))),
+      put: vi.fn((value: any, key: string) => {
+        mockStore.set(key, value);
+        return createMockIDBRequest();
+      }),
+      delete: vi.fn((key: string) => {
+        mockStore.delete(key);
+        return createMockIDBRequest();
+      }),
+      clear: vi.fn(() => {
+        mockStore.clear();
+        return createMockIDBRequest();
+      }),
+      getAllKeys: vi.fn(() => createMockIDBRequest(Array.from(mockStore.keys()))),
     })),
   })),
   createObjectStore: vi.fn(),
   objectStoreNames: {
-    contains: vi.fn(() => false),
+    contains: vi.fn(() => true),
   },
 };
 
 global.indexedDB = {
-  open: vi.fn(() => ({
-    ...mockIDBRequest,
-    onupgradeneeded: null,
-    result: mockIDBDatabase,
-  })),
+  open: vi.fn(() => {
+    const request = {
+      onerror: null as any,
+      onsuccess: null as any,
+      onupgradeneeded: null as any,
+      result: mockIDBDatabase,
+      error: null,
+    };
+    setTimeout(() => {
+      if (request.onsuccess) request.onsuccess({ target: request });
+    }, 0);
+    return request;
+  }),
   deleteDatabase: vi.fn(),
   databases: vi.fn(),
 };

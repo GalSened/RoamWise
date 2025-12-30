@@ -1330,6 +1330,53 @@ app.get('/admin/health', async (req, res) => {
   }
 });
 
+// Forward /api/places/search to backend-v2 (Google Places search)
+app.post('/api/places/search', async (req, res) => {
+  if (!BACKEND_V2_URL) {
+    return res.status(503).json({ ok: false, code: 'backend_not_configured' });
+  }
+  try {
+    const r = await fetch(`${BACKEND_V2_URL}/api/places/search`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-lang': req.headers['x-lang'] || 'en',
+      },
+      body: JSON.stringify(req.body || {}),
+    });
+    const txt = await r.text();
+    res.status(r.status).set('content-type', r.headers.get('content-type') || 'application/json').send(txt);
+  } catch (error) {
+    logger.error('Backend-v2 places search error:', error);
+    res.status(502).json({ ok: false, code: 'backend_error' });
+  }
+});
+
+// Forward /planner/plan-day to backend-v2 (Trip planning)
+app.post('/planner/plan-day', async (req, res) => {
+  if (!BACKEND_V2_URL) {
+    return res.status(503).json({ ok: false, code: 'backend_not_configured' });
+  }
+  try {
+    const r = await fetch(`${BACKEND_V2_URL}/planner/plan-day`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-lang': req.headers['x-lang'] || 'en',
+        cookie: req.headers.cookie || '',
+      },
+      body: JSON.stringify(req.body || {}),
+    });
+    const setCookie = r.headers.get('set-cookie');
+    if (setCookie) res.setHeader('set-cookie', setCookie);
+    const txt = await r.text();
+    res.status(r.status).set('content-type', r.headers.get('content-type') || 'application/json').send(txt);
+  } catch (error) {
+    logger.error('Backend-v2 planner error:', error);
+    res.status(502).json({ ok: false, code: 'backend_error' });
+  }
+});
+
 // ✨ ENHANCED ERROR HANDLING & MONITORING
 
 // Global error handler

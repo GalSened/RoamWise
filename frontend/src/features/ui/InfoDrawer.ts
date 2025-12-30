@@ -65,14 +65,16 @@ export class InfoDrawer extends EventBus {
 
     const handle = this.container?.querySelector('.info-drawer-handle');
     
-    handle?.addEventListener('touchstart', (e) => {
-      startY = e.touches[0].clientY;
+    handle?.addEventListener('touchstart', (e: Event) => {
+      const touch = e as TouchEvent;
+      startY = touch.touches[0].clientY;
       isDragging = true;
     });
 
-    handle?.addEventListener('touchmove', (e) => {
+    handle?.addEventListener('touchmove', (e: Event) => {
       if (!isDragging) return;
-      currentY = e.touches[0].clientY;
+      const touch = e as TouchEvent;
+      currentY = touch.touches[0].clientY;
       const deltaY = currentY - startY;
       
       if (deltaY > 0) { // Swiping down

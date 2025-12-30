@@ -1,6 +1,9 @@
 // Simple JavaScript implementation to ensure navigation works
 console.log('Simple app starting...');
 
+// API Configuration - use environment variable or fallback to Cloud Run proxy
+const API_BASE_URL = import.meta.env.VITE_PROXY_URL || 'https://roamwise-proxy-971999716773.us-central1.run.app';
+
 class SimpleNavigation {
   constructor() {
     this.currentView = 'search';
@@ -132,51 +135,47 @@ document.addEventListener('DOMContentLoaded', () => {
         searchBtn.disabled = true;
         
         try {
-          // Use Personal AI for intelligent search
-          const response = await fetch('https://premium-hybrid-473405-g7.uc.r.appspot.com/api/intelligence/search', {
+          // Use Google Places API via backend proxy
+          const response = await fetch(`${API_BASE_URL}/api/places/search`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Lang': 'en'
+            },
             body: JSON.stringify({
               query: query,
-              location: 'Current Location',
-              preferences: {
-                budgetCategory: 'mid_range',
-                destinationTypes: ['urban', 'cultural'],
-                activityPreferences: ['food', 'sightseeing']
-              }
+              minRating: 3.5
             })
           });
-          
+
           const data = await response.json();
           const resultsList = document.getElementById('list');
-          
-          if (data.results && data.results.length > 0) {
-            resultsList.innerHTML = data.results.map(result => `
+
+          if (data.ok && data.items && data.items.length > 0) {
+            resultsList.innerHTML = data.items.map(place => `
               <div class="search-result ai-powered">
-                <h3>🤖 ${result.name}</h3>
-                <p>${result.description}</p>
-                <div class="result-rating">⭐ ${result.rating?.toFixed(1) || 'N/A'} • AI Score: ${result.personalizedScore?.toFixed(1) || 'N/A'}</div>
-                <div class="ai-reason">${result.personalizedReason}</div>
-                <div class="ai-tags">${result.personalizedTags?.join(', ') || ''}</div>
+                <h3>📍 ${place.displayName?.text || place.name || 'Unknown'}</h3>
+                <p>${place.formattedAddress || place.vicinity || ''}</p>
+                <div class="result-rating">⭐ ${place.rating?.toFixed(1) || 'N/A'} (${place.userRatingCount || 0} reviews)</div>
+                ${place.priceLevel ? `<div class="price-level">💰 ${place.priceLevel}</div>` : ''}
               </div>
             `).join('');
           } else {
             resultsList.innerHTML = `
               <div class="search-result">
-                <h3>🧠 AI Analysis for "${query}"</h3>
-                <p>Your Personal AI is learning about this search. Results will improve as you use the app!</p>
-                <div class="result-rating">🤖 Powered by o3-mini</div>
+                <h3>🔍 No results for "${query}"</h3>
+                <p>Try a different search term or location.</p>
               </div>
             `;
           }
         } catch (error) {
-          console.error('AI Search error:', error);
+          console.error('Search error:', error);
           const resultsList = document.getElementById('list');
           resultsList.innerHTML = `
             <div class="search-result">
-              <h3>🔄 AI Learning Mode</h3>
-              <p>Your Personal AI is initializing. This powerful backend with o3-mini reasoning will provide amazing results soon!</p>
-              <div class="result-rating">🧠 Personal AI Backend Active</div>
+              <h3>⚠️ Search Error</h3>
+              <p>Unable to connect to search service. Please try again.</p>
+              <div class="error-detail">${error.message}</div>
             </div>
           `;
         }
@@ -200,35 +199,46 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedDuration = document.querySelector('.duration-option.selected')?.textContent || 'Full day';
         const selectedInterests = Array.from(document.querySelectorAll('.interest-option.selected')).map(el => el.textContent);
         const budget = document.getElementById('budgetAmount')?.textContent || '300';
-        
-        // Call Personal AI for recommendations
-        const response = await fetch('https://premium-hybrid-473405-g7.uc.r.appspot.com/api/ai/recommend', {
+
+        // Map interests to Google Places types
+        const interestToType = {
+          '🍽️ Food': 'restaurant',
+          '🌿 Nature': 'park',
+          '🏛️ Culture': 'museum',
+          '🛍️ Shopping': 'shopping_mall',
+          '🎯 Entertainment': 'tourist_attraction',
+          '😌 Relaxation': 'spa'
+        };
+        const types = selectedInterests.map(i => interestToType[i] || 'tourist_attraction').filter(Boolean);
+
+        // Call planner API
+        const response = await fetch(`${API_BASE_URL}/planner/plan-day`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Lang': 'en'
+          },
           body: JSON.stringify({
-            preferences: {
-              duration: selectedDuration,
-              interests: selectedInterests,
-              budget: parseInt(budget),
-              destinationType: 'mixed',
-              activities: selectedInterests
-            },
-            context: {
-              userId: 'personal',
-              location: 'Current Location',
-              requestType: 'trip_planning'
+            origin: { lat: 32.0853, lon: 34.7818 }, // Tel Aviv default
+            mode: 'drive',
+            near_origin: {
+              radius_km: 10,
+              types: types.length > 0 ? types : ['tourist_attraction', 'restaurant'],
+              min_rating: 4.0,
+              limit: 10
             }
           })
         });
-        
+
         const data = await response.json();
         const tripDisplay = document.getElementById('enhancedTripDisplay');
-        
-        if (data.recommendations) {
+
+        if (data.ok && data.plan) {
+          const { summary, timeline } = data.plan;
           tripDisplay.style.display = 'block';
           tripDisplay.innerHTML = `
             <div class="trip-result ai-powered">
-              <h3>🧠 Your o3-mini AI Generated Trip!</h3>
+              <h3>🗺️ Your AI-Powered Trip!</h3>
               <div class="trip-summary">
                 <div class="trip-stat">
                   <span class="stat-label">Duration:</span>
@@ -239,45 +249,37 @@ document.addEventListener('DOMContentLoaded', () => {
                   <span class="stat-value">$${budget}</span>
                 </div>
                 <div class="trip-stat">
-                  <span class="stat-label">AI Confidence:</span>
-                  <span class="stat-value">${data.confidence || 85}%</span>
+                  <span class="stat-label">Stops:</span>
+                  <span class="stat-value">${summary.count || 0} places</span>
                 </div>
               </div>
-              <div class="ai-insight">
-                <strong>Personal Insight:</strong> ${data.personalizedInsight || 'Your AI is learning your preferences!'}
+              <div class="trip-timeline">
+                ${timeline.map((leg, idx) => `
+                  <div class="timeline-item">
+                    <div class="timeline-marker">${idx + 1}</div>
+                    <div class="timeline-content">
+                      <strong>${leg.to?.name || leg.to?.kind || 'Stop'}</strong>
+                      ${leg.leg_seconds ? `<span class="travel-time">🚗 ${Math.round(leg.leg_seconds / 60)} min</span>` : ''}
+                      ${leg.to?.rating ? `<span class="rating">⭐ ${leg.to.rating.toFixed(1)}</span>` : ''}
+                    </div>
+                  </div>
+                `).join('')}
               </div>
-              <div class="learning-note">
-                <strong>Learning:</strong> ${data.learningNote || 'Each interaction makes your AI smarter!'}
-              </div>
-              <p><strong>🤖 Powered by o3-mini reasoning</strong> - Your Personal AI is analyzing your preferences and creating the perfect trip just for you!</p>
             </div>
           `;
         } else {
-          throw new Error('No recommendations received');
+          throw new Error(data.error || 'No plan generated');
         }
-        
+
       } catch (error) {
-        console.error('AI Trip generation error:', error);
+        console.error('Trip generation error:', error);
         const tripDisplay = document.getElementById('enhancedTripDisplay');
         tripDisplay.style.display = 'block';
         tripDisplay.innerHTML = `
-          <div class="trip-result ai-learning">
-            <h3>🧠 AI Learning Your Preferences</h3>
-            <div class="trip-summary">
-              <div class="trip-stat">
-                <span class="stat-label">Duration:</span>
-                <span class="stat-value">${document.querySelector('.duration-option.selected')?.textContent || 'Full day'}</span>
-              </div>
-              <div class="trip-stat">
-                <span class="stat-label">Budget:</span>
-                <span class="stat-value">$${document.getElementById('budgetAmount')?.textContent || '300'}</span>
-              </div>
-              <div class="trip-stat">
-                <span class="stat-label">AI Status:</span>
-                <span class="stat-value">Learning Mode</span>
-              </div>
-            </div>
-            <p><strong>🚀 Your Personal AI (o3-mini) is initializing!</strong> Your travel intelligence system is setting up and will provide amazing personalized recommendations soon. Each interaction helps it learn your unique travel style!</p>
+          <div class="trip-result">
+            <h3>⚠️ Trip Planning Error</h3>
+            <p>Unable to generate trip plan. Please try again.</p>
+            <div class="error-detail">${error.message}</div>
           </div>
         `;
       }

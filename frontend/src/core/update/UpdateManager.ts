@@ -1,8 +1,9 @@
 import type { AppVersion, UpdateInfo } from '@/types';
 import { EventBus } from '@/lib/utils/events';
-// @ts-nocheck
-import { registerSW } from 'virtual:pwa-register';
 import { telemetry } from '@/lib/telemetry';
+
+// PWA registration handled separately - types not available
+declare const registerSW: ((options?: { immediate?: boolean }) => (reloadPage?: boolean) => Promise<void>) | undefined;
 
 interface UpdateConfig {
   checkInterval: number; // milliseconds
