@@ -1,0 +1,62 @@
+# Ignore OSRM routing data (for local/Docker routing only)
+routing/
+
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Backend (not used in Vercel - we use /api serverless)
+backend/
+
+# Proxy (not used in Vercel)
+proxy/
+
+# AI service (not used in Vercel)
+ai/
+
+# Build outputs (will be generated during build)
+dist/
+build/
+*/dist/
+*/build/
+
+# Environment files
+.env
+.env.*
+*/.env
+*/.env.*
+
+# Tests
+tests/
+*/tests/
+__tests__/
+*/__tests__/
+*.test.*
+*.spec.*
+
+# Development files
+.git/
+.github/
+.vscode/
+.idea/
+*.md
+!README.md
+*.log
+
+# Serena cache
+.serena/
+*/.serena/
+
+# Package lock files (npm install will regenerate)
+package-lock.json
+*/package-lock.json
+
+# Local development
+.local/
+local/
+*.backup/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
