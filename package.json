@@ -50,5 +50,8 @@
     "monorepo"
   ],
   "author": "RoamWise Team",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "jsonwebtoken": "^9.0.2"
+  }
 }

@@ -8,7 +8,7 @@
  * - Start Navigation primary CTA
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,12 +16,16 @@ import {
   TouchableOpacity,
   StyleSheet,
   Linking,
-  Alert,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
+import { haptics } from '../utils/haptics';
+import { useToast } from '../components/ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { Destination } from '../data/destinations';
+import { RootTabParamList } from '../navigation/BottomTabNavigator';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme/tokens';
 import { InteractiveMap } from '../components/map/InteractiveMap';
 import { SAMPLE_TRAIL } from '../hooks/useNavigationState';
@@ -149,10 +153,35 @@ function ModeCard({
 }
 
 /**
- * Mode Selector Section
+ * Mode Selector Section with staggered entry animations
  */
 function ModeSelector() {
   const [selectedMode, setSelectedMode] = useState('scenic');
+
+  // Animation values for each card
+  const cardAnims = useRef(
+    tripModes.map(() => new Animated.Value(0))
+  ).current;
+
+  // Staggered entry animation on mount
+  useEffect(() => {
+    Animated.stagger(
+      100,
+      cardAnims.map((anim) =>
+        Animated.spring(anim, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 80,
+          friction: 10,
+        })
+      )
+    ).start();
+  }, [cardAnims]);
+
+  const handleModeSelect = (modeId: string) => {
+    haptics.impact('light');
+    setSelectedMode(modeId);
+  };
 
   return (
     <View style={styles.modeSection}>
@@ -162,13 +191,33 @@ function ModeSelector() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.modeCardsContainer}
       >
-        {tripModes.map((mode) => (
-          <ModeCard
+        {tripModes.map((mode, index) => (
+          <Animated.View
             key={mode.id}
-            mode={mode}
-            selected={selectedMode === mode.id}
-            onPress={() => setSelectedMode(mode.id)}
-          />
+            style={{
+              opacity: cardAnims[index],
+              transform: [
+                {
+                  translateX: cardAnims[index].interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [50, 0],
+                  }),
+                },
+                {
+                  scale: cardAnims[index].interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.8, 1],
+                  }),
+                },
+              ],
+            }}
+          >
+            <ModeCard
+              mode={mode}
+              selected={selectedMode === mode.id}
+              onPress={() => handleModeSelect(mode.id)}
+            />
+          </Animated.View>
         ))}
       </ScrollView>
     </View>
@@ -311,8 +360,10 @@ function SmartBackpackButton() {
   const [modalVisible, setModalVisible] = useState(false);
   const [packingList, setPackingList] = useState<PackingList | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { show: showToast } = useToast();
 
   const handlePress = async () => {
+    haptics.impact('medium');
     setIsLoading(true);
 
     // Build trip context from current planner data
@@ -339,7 +390,7 @@ function SmartBackpackButton() {
       setPackingList(list);
       setModalVisible(true);
     } catch (error) {
-      Alert.alert('Error', 'Could not generate packing list. Please try again.');
+      showToast('Could not generate packing list', 'warning');
     } finally {
       setIsLoading(false);
     }
@@ -373,12 +424,15 @@ function SmartBackpackButton() {
 }
 
 /**
- * Start Navigation CTA
+ * Start Navigation CTA with haptic feedback
  */
 function StartNavigationButton() {
   const navigation = useNavigation();
+  const { show: showToast } = useToast();
 
   const handlePress = async () => {
+    haptics.impact('medium');
+
     // Open Waze with destination coordinates
     const wazeUrl = 'waze://?ll=31.4645,35.3890&navigate=yes';
     const canOpen = await Linking.canOpenURL(wazeUrl);
@@ -390,6 +444,8 @@ function StartNavigationButton() {
       const googleMapsUrl = 'https://maps.google.com/?daddr=31.4645,35.3890';
       await Linking.openURL(googleMapsUrl);
     }
+
+    showToast('Navigation started!', 'success');
 
     // Switch to Live tab
     navigation.navigate('Live' as never);
@@ -407,6 +463,15 @@ function StartNavigationButton() {
  * PlannerScreen Main Component
  */
 export function PlannerScreen() {
+  const route = useRoute<RouteProp<RootTabParamList, 'Planner'>>();
+  const destination = route.params?.destination;
+
+  // Dynamic header based on selected destination
+  const headerTitle = destination?.name || 'Ein Gedi Day Trip';
+  const headerSubtitle = destination
+    ? `${destination.region} • ${destination.duration} • ${destination.difficulty}`
+    : 'Today • 8.5 hrs total';
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
@@ -415,8 +480,8 @@ export function PlannerScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Ein Gedi Day Trip</Text>
-          <Text style={styles.headerSubtitle}>Today • 8.5 hrs total</Text>
+          <Text style={styles.headerTitle}>{headerTitle}</Text>
+          <Text style={styles.headerSubtitle}>{headerSubtitle}</Text>
         </View>
 
         <ModeSelector />

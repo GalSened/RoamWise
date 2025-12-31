@@ -23,12 +23,15 @@ import { ProfileScreen } from '../screens/ProfileScreen';
 // Theme
 import { colors, spacing } from '../theme/tokens';
 
+// Types
+import { Destination } from '../data/destinations';
+
 /**
  * Navigation Types
  */
 export type RootTabParamList = {
   Explore: undefined;
-  Planner: undefined;
+  Planner: { destination?: Destination } | undefined;
   Live: undefined;
   Profile: undefined;
 };

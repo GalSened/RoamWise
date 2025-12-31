@@ -316,3 +316,168 @@ export interface RouteOptions {
 }
 
 // Additional interfaces for the app
+
+// ═══════════════════════════════════════════════════════════════
+// SMART ROUTE OPTIMIZER TYPES
+// ═══════════════════════════════════════════════════════════════
+
+export type OptimizationMode = 'efficiency' | 'scenic' | 'foodie';
+
+export interface WeatherScores {
+  precipitation: number;
+  visibility: number;
+  temperature: number;
+  wind: number;
+  overall: number;
+}
+
+export interface OptimizedStop {
+  place_id: string;
+  name: string;
+  location: LatLng;
+  rating: number;
+  userRatingsTotal: number;
+  types: string[];
+  detourMinutes?: number;
+  score: number;
+  attributes?: string[];
+  priceLevel?: number;
+  whySelected?: string[];
+}
+
+export interface OptimizedRoute {
+  polyline: string;
+  duration: number;
+  distance: number;
+  trafficDelay?: number;
+  scenicScore?: number;
+}
+
+export interface ModePackage {
+  mode: OptimizationMode;
+  disabled: boolean;
+  reason?: string;
+  downgradeWarning?: boolean;
+  fallbackMode?: OptimizationMode;
+  route?: OptimizedRoute;
+  stops?: OptimizedStop[];
+  selectedRestaurant?: OptimizedStop;
+  alternatives?: OptimizedStop[];
+  routeToRestaurant?: OptimizedRoute;
+  routeFromRestaurant?: OptimizedRoute;
+  totalDuration?: number;
+  durationIncrease?: string;
+  hazardAlert?: boolean;
+  outdoorFiltered?: boolean;
+  combinedScore?: number;
+  weatherVisibility?: number;
+}
+
+export interface OptimizationResult {
+  ok: boolean;
+  recommended: OptimizationMode;
+  recommendationReason: string;
+  packages: {
+    efficiency: ModePackage;
+    scenic: ModePackage;
+    foodie: ModePackage;
+  };
+  weatherInsights: {
+    current: {
+      temperature: number;
+      precipitationProbability: number;
+      visibility: number;
+      windSpeed: number;
+      condition: string;
+    };
+    scores: WeatherScores;
+    alerts: string[];
+  };
+  disabledModes: {
+    mode: OptimizationMode;
+    reason: string;
+    icon: string;
+  }[];
+  metadata: {
+    requestId: string;
+    generatedAt: string;
+    processingTime: number;
+  };
+}
+
+export interface UserOptimizationPrefs {
+  preferScenic?: boolean;
+  preferCulinary?: boolean;
+  timeConstrained?: boolean;
+  avoidHighways?: boolean;
+  budgetLevel?: 'low' | 'medium' | 'high';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MONITOR AGENT / INTERVENTION TYPES
+// ═══════════════════════════════════════════════════════════════
+
+export type InterventionType =
+  | 'weather_outdoor_conflict'
+  | 'traffic_delay'
+  | 'weather_degradation';
+
+export type InterventionSeverity = 'info' | 'warning' | 'urgent';
+
+export type InterventionStatus = 'pending' | 'acknowledged' | 'accepted' | 'dismissed';
+
+export interface InterventionSuggestion {
+  id: string;
+  type: 'alternative_place' | 'route_change' | 'time_adjustment';
+  place?: {
+    name: string;
+    location: LatLng;
+    distance: number;
+    isIndoor: boolean;
+  };
+  route?: {
+    polyline: string;
+    newDuration: number;
+    timeSaved: number;
+  };
+  actionLabel: string;
+}
+
+export interface Intervention {
+  id: string;
+  type: InterventionType;
+  severity: InterventionSeverity;
+  title: string;
+  message: string;
+  reasoning: string[];
+  suggestions: InterventionSuggestion[];
+  status: InterventionStatus;
+  createdAt: string;
+  expiresAt?: string;
+}
+
+export interface TripContext {
+  tripId: string;
+  destination: {
+    location: LatLng;
+    name: string;
+    isOutdoor: boolean;
+  };
+  currentWeather: WeatherData;
+  previousWeather?: WeatherData;
+  liveTrafficDelay?: number;
+  plannedArrival?: Date;
+  stops?: OptimizedStop[];
+}
+
+export interface MonitorAgentConfig {
+  checkIntervalMs: number;
+  interventionCache: Map<string, Intervention>;
+  activeTrip?: TripContext;
+}
+
+export interface LocationClassification {
+  isOutdoor: boolean;
+  confidence: number;
+  types: string[];
+}

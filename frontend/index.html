@@ -532,6 +532,107 @@
       box-shadow: var(--shadow-sm);
     }
 
+    /* Mode Selector - Smart Route Optimizer */
+    .ios-mode-selector {
+      display: flex;
+      gap: var(--space-3);
+      margin-bottom: var(--space-4);
+    }
+
+    .ios-mode-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-1);
+      padding: var(--space-4) var(--space-3);
+      background: var(--bg-tertiary);
+      border: 2px solid transparent;
+      border-radius: var(--radius-lg);
+      cursor: pointer;
+      transition: all var(--duration-normal) var(--spring-bounce);
+      box-shadow: var(--shadow-card);
+      position: relative;
+    }
+
+    .ios-mode-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .ios-mode-btn.selected {
+      border-color: var(--ios-blue);
+      background: rgba(0, 122, 255, 0.08);
+    }
+
+    .ios-mode-btn.disabled {
+      opacity: 0.5;
+      pointer-events: none;
+      background: var(--fill-tertiary);
+    }
+
+    .ios-mode-icon {
+      font-size: 28px;
+      margin-bottom: var(--space-1);
+    }
+
+    .ios-mode-label {
+      font-size: var(--font-size-subhead);
+      font-weight: 600;
+      color: var(--label-primary);
+    }
+
+    .ios-mode-desc {
+      font-size: var(--font-size-caption-1);
+      color: var(--label-secondary);
+    }
+
+    .ios-mode-recommended {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      padding: 2px 8px;
+      font-size: var(--font-size-caption-2);
+      font-weight: 600;
+      color: white;
+      background: var(--ios-green);
+      border-radius: var(--radius-full);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .ios-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      font-size: var(--font-size-caption-2);
+      font-weight: 600;
+      border-radius: var(--radius-full);
+    }
+
+    .ios-badge-blue {
+      background: rgba(0, 122, 255, 0.15);
+      color: var(--ios-blue);
+    }
+
+    .ios-badge-green {
+      background: rgba(52, 199, 89, 0.15);
+      color: var(--ios-green);
+    }
+
+    .ios-badge-orange {
+      background: rgba(255, 149, 0, 0.15);
+      color: var(--ios-orange);
+    }
+
+    .ios-hint {
+      font-size: var(--font-size-caption-1);
+      margin-top: var(--space-2);
+    }
+
+    .ios-hint-warning {
+      color: var(--ios-orange);
+    }
+
     /* iOS Form Groups */
     .ios-form-group {
       margin-bottom: var(--space-6);
@@ -1184,6 +1285,35 @@
         <h1 class="ios-large-title"><span data-i18n="trip.title">Plan Your Trip</span></h1>
         <p class="ios-subtitle" data-i18n="trip.subtitle">AI-powered trip planning with personalized recommendations</p>
 
+        <!-- Trip Mode Selector (Smart Route Optimizer) -->
+        <div class="ios-form-group" id="tripModeGroup">
+          <label class="ios-form-label">
+            <span data-i18n="trip.mode">Trip Mode</span>
+            <span id="weatherScoreBadge" class="ios-badge ios-badge-blue" style="margin-left: 0.5rem; display: none;"></span>
+          </label>
+          <div class="ios-mode-selector" data-testid="mode-selector">
+            <button class="ios-mode-btn selected" data-mode="efficiency" data-testid="mode-efficiency">
+              <span class="ios-mode-icon">⚡</span>
+              <span class="ios-mode-label" data-i18n="trip.mode_efficiency">Efficiency</span>
+              <span class="ios-mode-desc" data-i18n="trip.mode_efficiency_desc">Fastest route</span>
+              <span class="ios-mode-recommended" style="display: none;" data-i18n="trip.recommended">Recommended</span>
+            </button>
+            <button class="ios-mode-btn" data-mode="scenic" data-testid="mode-scenic">
+              <span class="ios-mode-icon">🏞️</span>
+              <span class="ios-mode-label" data-i18n="trip.mode_scenic">Scenic</span>
+              <span class="ios-mode-desc" data-i18n="trip.mode_scenic_desc">Beautiful views</span>
+              <span class="ios-mode-recommended" style="display: none;" data-i18n="trip.recommended">Recommended</span>
+            </button>
+            <button class="ios-mode-btn" data-mode="foodie" data-testid="mode-foodie">
+              <span class="ios-mode-icon">🍽️</span>
+              <span class="ios-mode-label" data-i18n="trip.mode_foodie">Foodie</span>
+              <span class="ios-mode-desc" data-i18n="trip.mode_foodie_desc">Best restaurants</span>
+              <span class="ios-mode-recommended" style="display: none;" data-i18n="trip.recommended">Recommended</span>
+            </button>
+          </div>
+          <p id="modeDisabledHint" class="ios-hint ios-hint-warning" style="display: none;" data-i18n="trip.mode_disabled">Not available due to weather</p>
+        </div>
+
         <div class="ios-form-group">
           <label class="ios-form-label" data-i18n="trip.duration">Duration</label>
           <div class="ios-segmented">
@@ -1297,19 +1427,19 @@
 
     <!-- iOS Tab Bar -->
     <nav class="ios-tabbar">
-      <button class="ios-tab active" data-view="search">
+      <button class="ios-tab active" data-view="search" data-testid="nav-search">
         <span class="ios-tab-icon">🔍</span>
         <span class="ios-tab-label" data-i18n="nav.search">Search</span>
       </button>
-      <button class="ios-tab" data-view="ai">
+      <button class="ios-tab" data-view="ai" data-testid="nav-ai">
         <span class="ios-tab-icon">🤖</span>
         <span class="ios-tab-label" data-i18n="nav.ai">AI</span>
       </button>
-      <button class="ios-tab" data-view="trip">
+      <button class="ios-tab" data-view="trip" data-testid="nav-trip">
         <span class="ios-tab-icon">🗺️</span>
         <span class="ios-tab-label" data-i18n="nav.trip">Trip</span>
       </button>
-      <button class="ios-tab" data-view="profile">
+      <button class="ios-tab" data-view="profile" data-testid="nav-profile">
         <span class="ios-tab-icon">👤</span>
         <span class="ios-tab-label" data-i18n="nav.profile">Profile</span>
       </button>

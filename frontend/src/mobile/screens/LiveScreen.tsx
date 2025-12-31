@@ -11,7 +11,7 @@
  * NO FAKE DATA - uses real sensors, real math, real timestamps
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,8 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { haptics } from '../utils/haptics';
+import { useToast } from '../components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,6 +51,44 @@ function getSafetyColor(status: SafetyStatus): string {
     default:
       return colors.success;
   }
+}
+
+/**
+ * GPS Pulse Indicator - Animated breathing dot
+ */
+function GPSPulseIndicator() {
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.4,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [pulseAnim]);
+
+  return (
+    <View style={styles.trackingIndicator}>
+      <Animated.View
+        style={[
+          styles.trackingDot,
+          { transform: [{ scale: pulseAnim }] },
+        ]}
+      />
+      <Text style={styles.trackingText}>GPS Active</Text>
+    </View>
+  );
 }
 
 /**
@@ -122,19 +162,14 @@ function HUDOverlay({
         </View>
       )}
 
-      {/* Tracking Indicator */}
-      {isTracking && (
-        <View style={styles.trackingIndicator}>
-          <View style={styles.trackingDot} />
-          <Text style={styles.trackingText}>GPS Active</Text>
-        </View>
-      )}
+      {/* Tracking Indicator with Pulse Animation */}
+      {isTracking && <GPSPulseIndicator />}
     </View>
   );
 }
 
 /**
- * Action Button Component
+ * Action Button Component with haptic feedback
  */
 function ActionButton({
   icon,
@@ -147,8 +182,13 @@ function ActionButton({
   color: string;
   onPress: () => void;
 }) {
+  const handlePress = () => {
+    haptics.impact('light');
+    onPress();
+  };
+
   return (
-    <TouchableOpacity style={styles.actionButton} onPress={onPress}>
+    <TouchableOpacity style={styles.actionButton} onPress={handlePress}>
       <View style={[styles.actionButtonIcon, { backgroundColor: color }]}>
         <Ionicons name={icon} size={28} color={colors.textInverse} />
       </View>
@@ -205,11 +245,12 @@ function ActionGrid({ isTracking }: { isTracking: boolean }) {
 }
 
 /**
- * Slide to Confirm Component
+ * Slide to Confirm Component with haptic feedback
  */
 function SlideToConfirm({ onComplete }: { onComplete: () => void }) {
   const slideX = useRef(new Animated.Value(0)).current;
   const [isComplete, setIsComplete] = useState(false);
+  const hasTriggeredMidpoint = useRef(false);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -218,10 +259,21 @@ function SlideToConfirm({ onComplete }: { onComplete: () => void }) {
       onPanResponderMove: (_, gestureState) => {
         if (gestureState.dx >= 0 && gestureState.dx <= SLIDE_THRESHOLD) {
           slideX.setValue(gestureState.dx);
+
+          // Haptic feedback at 60% threshold (once)
+          if (gestureState.dx >= SLIDE_THRESHOLD * 0.6 && !hasTriggeredMidpoint.current) {
+            hasTriggeredMidpoint.current = true;
+            haptics.impact('medium');
+          }
         }
       },
       onPanResponderRelease: (_, gestureState) => {
+        hasTriggeredMidpoint.current = false;
+
         if (gestureState.dx >= SLIDE_THRESHOLD) {
+          // Success haptic
+          haptics.notification('success');
+
           Animated.timing(slideX, {
             toValue: SLIDE_THRESHOLD,
             duration: 100,
@@ -273,7 +325,7 @@ function SlideToConfirm({ onComplete }: { onComplete: () => void }) {
 }
 
 /**
- * Start Tracking Button
+ * Start Tracking Button with haptic feedback
  */
 function StartTrackingButton({
   onStart,
@@ -282,10 +334,15 @@ function StartTrackingButton({
   onStart: () => void;
   isLoading: boolean;
 }) {
+  const handlePress = () => {
+    haptics.impact('medium');
+    onStart();
+  };
+
   return (
     <TouchableOpacity
       style={styles.startButton}
-      onPress={onStart}
+      onPress={handlePress}
       disabled={isLoading}
     >
       {isLoading ? (
@@ -306,6 +363,7 @@ function StartTrackingButton({
 export function LiveScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const { show: showToast } = useToast();
 
   // Real navigation state from GPS + calculations
   const {
@@ -349,12 +407,9 @@ export function LiveScreen() {
     if (success) {
       // Record start time for duration calculation
       trackingStartTime.current = Date.now();
+      showToast('GPS tracking started', 'success');
     } else {
-      Alert.alert(
-        'Location Permission Required',
-        'Please enable location access to use Field Guardian mode.',
-        [{ text: 'OK' }]
-      );
+      showToast('Location permission required', 'warning');
     }
   };
 
@@ -394,16 +449,13 @@ export function LiveScreen() {
     stopTracking();
     trackingStartTime.current = null;
 
-    Alert.alert(
-      'Hike Completed!',
-      `Great job! You traveled ${distanceFormatted}.`,
-      [
-        {
-          text: 'View Summary',
-          onPress: () => navigation.navigate('Profile' as never),
-        },
-      ]
-    );
+    // Show success toast and navigate to profile
+    showToast(`Hike complete! ${distanceFormatted} traveled`, 'success');
+
+    // Navigate to profile after short delay for toast visibility
+    setTimeout(() => {
+      navigation.navigate('Profile' as never);
+    }, 500);
   };
 
   // Handle alert dismiss

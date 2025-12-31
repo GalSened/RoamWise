@@ -8,7 +8,7 @@
  * - Settings section with persistent toggles
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,11 +17,14 @@ import {
   StyleSheet,
   Switch,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme/tokens';
+import { haptics } from '../utils/haptics';
+import { useToast } from '../components/ui';
 import { ProfileManager } from '../features/profile';
 import type { ProfileStats, UserPreferences, CompletedTrip } from '../features/profile/types';
 
@@ -141,6 +144,54 @@ function TripCard({ trip }: { trip: CompletedTrip }) {
 }
 
 /**
+ * Animated Empty State with bouncing footsteps
+ */
+function AnimatedEmptyState() {
+  const bounceAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Fade in
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+
+    // Continuous bounce
+    const bounce = Animated.loop(
+      Animated.sequence([
+        Animated.timing(bounceAnim, {
+          toValue: -12,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bounceAnim, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    bounce.start();
+
+    return () => bounce.stop();
+  }, [bounceAnim, fadeAnim]);
+
+  return (
+    <Animated.View style={[styles.emptyState, { opacity: fadeAnim }]}>
+      <Animated.View style={{ transform: [{ translateY: bounceAnim }] }}>
+        <Ionicons name="footsteps" size={64} color={colors.primary} />
+      </Animated.View>
+      <Text style={styles.emptyStateText}>Your journey awaits</Text>
+      <Text style={styles.emptyStateSubtext}>
+        Complete your first hike to start your trail log!
+      </Text>
+    </Animated.View>
+  );
+}
+
+/**
  * Trip Log Section
  */
 function TripLog({ history }: { history: CompletedTrip[] }) {
@@ -154,13 +205,7 @@ function TripLog({ history }: { history: CompletedTrip[] }) {
           <Ionicons name="camera" size={20} color={colors.primary} />
           <Text style={styles.sectionTitle}>Trip Log</Text>
         </View>
-        <View style={styles.emptyState}>
-          <Ionicons name="map-outline" size={48} color={colors.textTertiary} />
-          <Text style={styles.emptyStateText}>No trips yet</Text>
-          <Text style={styles.emptyStateSubtext}>
-            Complete your first hike to see it here!
-          </Text>
-        </View>
+        <AnimatedEmptyState />
       </View>
     );
   }
@@ -184,7 +229,7 @@ function TripLog({ history }: { history: CompletedTrip[] }) {
 }
 
 /**
- * Toggle Setting Component
+ * Toggle Setting Component with haptic feedback
  */
 function ToggleSetting({
   label,
@@ -195,12 +240,17 @@ function ToggleSetting({
   value: boolean;
   onValueChange: (value: boolean) => void;
 }) {
+  const handleValueChange = (newValue: boolean) => {
+    haptics.impact('light');
+    onValueChange(newValue);
+  };
+
   return (
     <View style={styles.settingRow}>
       <Text style={styles.settingLabel}>{label}</Text>
       <Switch
         value={value}
-        onValueChange={onValueChange}
+        onValueChange={handleValueChange}
         trackColor={{ false: colors.borderLight, true: colors.success }}
         thumbColor={colors.surface}
         ios_backgroundColor={colors.borderLight}
@@ -210,18 +260,28 @@ function ToggleSetting({
 }
 
 /**
- * Selector Setting Component
+ * Selector Setting Component with haptic feedback
  */
 function SelectorSetting({
   label,
   options,
   selected,
+  onValueChange,
 }: {
   label: string;
   options: string[];
   selected: string;
+  onValueChange?: (value: string) => void;
 }) {
   const [currentSelected, setCurrentSelected] = useState(selected);
+
+  const handleSelect = (option: string) => {
+    if (option !== currentSelected) {
+      haptics.impact('light');
+      setCurrentSelected(option);
+      onValueChange?.(option);
+    }
+  };
 
   return (
     <View style={styles.settingRow}>
@@ -234,7 +294,7 @@ function SelectorSetting({
               styles.selectorOption,
               currentSelected === option && styles.selectorOptionSelected,
             ]}
-            onPress={() => setCurrentSelected(option)}
+            onPress={() => handleSelect(option)}
           >
             <Text
               style={[
@@ -326,6 +386,7 @@ function SettingsSection({
  * ProfileScreen Main Component
  */
 export function ProfileScreen() {
+  const { show: showToast } = useToast();
   const [stats, setStats] = useState<ProfileStats | null>(null);
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [history, setHistory] = useState<CompletedTrip[]>([]);
@@ -357,7 +418,7 @@ export function ProfileScreen() {
   );
 
   /**
-   * Handle preference changes
+   * Handle preference changes with toast feedback
    */
   const handlePreferenceChange = useCallback(
     async (key: keyof UserPreferences, value: boolean | string) => {
@@ -367,11 +428,13 @@ export function ProfileScreen() {
         setPreferences((prev) =>
           prev ? { ...prev, [key]: value } : null
         );
+        showToast('Preferences saved', 'success');
       } catch (error) {
         console.error('Failed to update preference:', error);
+        showToast('Failed to save preference', 'warning');
       }
     },
-    []
+    [showToast]
   );
 
   // Show loading state

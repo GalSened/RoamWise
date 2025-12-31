@@ -10,6 +10,7 @@ import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { BottomTabNavigator } from './navigation/BottomTabNavigator';
+import { ToastProvider } from './components/ui';
 import { colors } from './theme/tokens';
 
 /**
@@ -32,6 +33,7 @@ const navigationTheme = {
  *
  * Sets up:
  * - SafeAreaProvider for notch/home indicator handling
+ * - ToastProvider for app-wide toast notifications
  * - NavigationContainer for React Navigation
  * - Bottom Tab Navigator with 4 screens
  * - Status bar configuration
@@ -39,13 +41,15 @@ const navigationTheme = {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor={colors.background}
-      />
-      <NavigationContainer theme={navigationTheme}>
-        <BottomTabNavigator />
-      </NavigationContainer>
+      <ToastProvider>
+        <StatusBar
+          barStyle="dark-content"
+          backgroundColor={colors.background}
+        />
+        <NavigationContainer theme={navigationTheme}>
+          <BottomTabNavigator />
+        </NavigationContainer>
+      </ToastProvider>
     </SafeAreaProvider>
   );
 }

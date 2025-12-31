@@ -242,6 +242,9 @@ class SimpleNavigation {
     // Interest options with counter and validation (support both old and new class names)
     this.setupInterestSelection();
 
+    // Mode selection (Smart Route Optimizer)
+    this.setupModeSelection();
+
     this.setupSearch();
     this.setupTripGeneration();
     this.setupVoiceButton();
@@ -320,6 +323,107 @@ class SimpleNavigation {
 
     // Initialize UI state
     updateInterestUI();
+  }
+
+  setupModeSelection() {
+    const modeButtons = document.querySelectorAll('.ios-mode-btn');
+    const modeDisabledHint = document.getElementById('modeDisabledHint');
+    const weatherScoreBadge = document.getElementById('weatherScoreBadge');
+
+    // Track selected mode
+    this.selectedMode = 'efficiency';
+
+    modeButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        // Don't allow selecting disabled modes
+        if (btn.classList.contains('disabled')) {
+          if (modeDisabledHint) {
+            modeDisabledHint.style.display = 'block';
+            setTimeout(() => {
+              modeDisabledHint.style.display = 'none';
+            }, 3000);
+          }
+          return;
+        }
+
+        // Update selection
+        modeButtons.forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+
+        this.selectedMode = btn.getAttribute('data-mode');
+        console.log('Mode selected:', this.selectedMode);
+
+        // iOS spring animation
+        btn.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+          btn.style.transform = '';
+        }, 100);
+      });
+    });
+
+    // Method to update mode availability based on optimization result
+    this.updateModeAvailability = (optimizationResult) => {
+      if (!optimizationResult) return;
+
+      const { packages, recommended, weatherInsights } = optimizationResult;
+
+      // Update weather score badge
+      if (weatherScoreBadge && weatherInsights?.scores?.overall) {
+        const score = Math.round(weatherInsights.scores.overall * 100);
+        weatherScoreBadge.textContent = `${this.t('trip.weather_score') || 'Weather'}: ${score}%`;
+        weatherScoreBadge.style.display = 'inline-flex';
+
+        // Color based on score
+        weatherScoreBadge.className = 'ios-badge';
+        if (score >= 80) {
+          weatherScoreBadge.classList.add('ios-badge-green');
+        } else if (score >= 60) {
+          weatherScoreBadge.classList.add('ios-badge-blue');
+        } else {
+          weatherScoreBadge.classList.add('ios-badge-orange');
+        }
+      }
+
+      // Update each mode button
+      modeButtons.forEach(btn => {
+        const mode = btn.getAttribute('data-mode');
+        const pkg = packages[mode];
+        const recommendedBadge = btn.querySelector('.ios-mode-recommended');
+
+        // Reset state
+        btn.classList.remove('disabled', 'selected');
+        if (recommendedBadge) recommendedBadge.style.display = 'none';
+
+        if (pkg?.disabled) {
+          btn.classList.add('disabled');
+          btn.setAttribute('title', pkg.reason || 'Not available');
+        }
+
+        // Show recommended badge
+        if (mode === recommended && recommendedBadge) {
+          recommendedBadge.style.display = 'block';
+        }
+
+        // Auto-select recommended mode
+        if (mode === recommended && !pkg?.disabled) {
+          btn.classList.add('selected');
+          this.selectedMode = mode;
+        }
+      });
+
+      // If selected mode is disabled, fall back to efficiency
+      const selectedBtn = document.querySelector(`.ios-mode-btn[data-mode="${this.selectedMode}"]`);
+      if (selectedBtn?.classList.contains('disabled')) {
+        const efficiencyBtn = document.querySelector('.ios-mode-btn[data-mode="efficiency"]');
+        if (efficiencyBtn && !efficiencyBtn.classList.contains('disabled')) {
+          modeButtons.forEach(b => b.classList.remove('selected'));
+          efficiencyBtn.classList.add('selected');
+          this.selectedMode = 'efficiency';
+        }
+      }
+    };
+
+    console.log('Mode selection setup complete');
   }
 
   setupSearch() {
@@ -478,6 +582,7 @@ class SimpleNavigation {
             body: JSON.stringify({
               origin: { lat: 32.0853, lon: 34.7818 }, // Tel Aviv default
               mode: 'drive',
+              optimizationMode: this.selectedMode || 'efficiency', // Smart Route Optimizer mode
               near_origin: {
                 radius_km: 10,
                 types: types.length > 0 ? types : ['tourist_attraction', 'restaurant'],
@@ -633,27 +738,259 @@ class SimpleNavigation {
 
   setupVoiceButton() {
     const voiceBtn = document.getElementById('voiceBtn');
-    if (voiceBtn) {
-      // Voice feature is Coming Soon - show demo only
-      voiceBtn.addEventListener('click', () => {
-        const responseEl = document.getElementById('voiceResponse') || document.getElementById('aiResponse');
+    if (!voiceBtn) return;
+
+    // Voice recording state
+    this.isRecording = false;
+    this.mediaRecorder = null;
+    this.audioChunks = [];
+
+    voiceBtn.addEventListener('click', async () => {
+      const responseEl = document.getElementById('voiceResponse') || document.getElementById('aiResponse');
+
+      if (this.isRecording) {
+        // Stop recording
+        this.stopVoiceRecording();
+        return;
+      }
+
+      // Start recording
+      try {
+        // Request microphone permission
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        // Show recording state
+        this.isRecording = true;
+        voiceBtn.classList.add('recording');
+        voiceBtn.innerHTML = '<span class="voice-icon recording-pulse">🔴</span>';
+
         if (responseEl) {
           responseEl.innerHTML = `
-            <div class="ios-card" style="background: var(--ios-blue-bg, #E0F2FE); border: 1px solid var(--ios-blue);">
+            <div class="ios-card" style="background: var(--ios-red-bg, #FEE2E2); border: 1px solid var(--ios-red);">
               <div class="ios-card-content" style="text-align: center; padding: 1.5rem;">
-                <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎤</div>
-                <h4 style="margin: 0 0 0.5rem;">${this.t('voice.coming_soon') || 'Voice Feature Coming Soon!'}</h4>
-                <p style="margin: 0; color: var(--label-secondary); font-size: 13px;">${this.t('voice.demo') || 'Voice recognition will be available in a future update.'}</p>
+                <div class="recording-indicator" style="font-size: 2rem; margin-bottom: 0.5rem; animation: pulse 1s infinite;">🎤</div>
+                <h4 style="margin: 0 0 0.5rem; color: var(--ios-red);">${this.t('voice.listening') || 'Listening...'}</h4>
+                <p style="margin: 0; color: var(--label-secondary); font-size: 13px;">${this.t('voice.tap_stop') || 'Tap microphone again to stop'}</p>
               </div>
             </div>
           `;
           responseEl.style.display = 'block';
         }
-      });
-    }
+
+        // Setup MediaRecorder
+        this.audioChunks = [];
+        this.mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+
+        this.mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            this.audioChunks.push(event.data);
+          }
+        };
+
+        this.mediaRecorder.onstop = async () => {
+          // Stop all tracks
+          stream.getTracks().forEach(track => track.stop());
+
+          // Process the recording
+          await this.processVoiceRecording(responseEl);
+        };
+
+        // Start recording
+        this.mediaRecorder.start();
+
+        // Auto-stop after 30 seconds
+        setTimeout(() => {
+          if (this.isRecording) {
+            this.stopVoiceRecording();
+          }
+        }, 30000);
+
+      } catch (error) {
+        console.error('Microphone error:', error);
+        this.isRecording = false;
+
+        if (responseEl) {
+          let errorMsg = this.t('voice.mic_error') || 'Unable to access microphone';
+          if (error.name === 'NotAllowedError') {
+            errorMsg = this.t('voice.mic_denied') || 'Microphone access denied. Please allow microphone access in your browser settings.';
+          } else if (error.name === 'NotFoundError') {
+            errorMsg = this.t('voice.mic_not_found') || 'No microphone found. Please connect a microphone.';
+          }
+
+          responseEl.innerHTML = `
+            <div class="ios-card" style="background: var(--ios-red-bg, #FEE2E2); border: 1px solid var(--ios-red);">
+              <div class="ios-card-content" style="text-align: center; padding: 1.5rem;">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚠️</div>
+                <h4 style="margin: 0 0 0.5rem;">${this.t('voice.error') || 'Microphone Error'}</h4>
+                <p style="margin: 0; color: var(--label-secondary); font-size: 13px;">${errorMsg}</p>
+              </div>
+            </div>
+          `;
+          responseEl.style.display = 'block';
+        }
+      }
+    });
 
     // Setup quick action buttons
     this.setupQuickActions();
+  }
+
+  stopVoiceRecording() {
+    if (this.mediaRecorder && this.isRecording) {
+      this.isRecording = false;
+      this.mediaRecorder.stop();
+
+      const voiceBtn = document.getElementById('voiceBtn');
+      if (voiceBtn) {
+        voiceBtn.classList.remove('recording');
+        voiceBtn.innerHTML = '<span class="voice-icon">🎤</span>';
+      }
+    }
+  }
+
+  async processVoiceRecording(responseEl) {
+    if (this.audioChunks.length === 0) return;
+
+    // Show processing state
+    if (responseEl) {
+      responseEl.innerHTML = `
+        <div class="ios-card" style="background: var(--ios-blue-bg, #E0F2FE); border: 1px solid var(--ios-blue);">
+          <div class="ios-card-content" style="text-align: center; padding: 1.5rem;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🧠</div>
+            <h4 style="margin: 0 0 0.5rem;">${this.t('voice.processing') || 'Processing...'}</h4>
+            <p style="margin: 0; color: var(--label-secondary); font-size: 13px;">${this.t('voice.ai_thinking') || 'AI is transcribing your voice...'}</p>
+          </div>
+        </div>
+      `;
+    }
+
+    try {
+      // Create audio blob
+      const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+
+      // Get current location for context
+      let location = null;
+      try {
+        const pos = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            timeout: 5000,
+            enableHighAccuracy: false,
+            maximumAge: 300000
+          });
+        });
+        location = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+      } catch (e) {
+        console.warn('Could not get location for voice context');
+      }
+
+      // Send to Whisper API
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'voice.webm');
+      formData.append('language', this.currentLang || 'he');
+      if (location) {
+        formData.append('location', JSON.stringify(location));
+      }
+
+      const response = await fetch(`${API_BASE_URL}/whisper-intent`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.ok !== false) {
+        // Show transcription and response
+        if (responseEl) {
+          responseEl.innerHTML = `
+            <div class="ios-card" style="background: var(--ios-green-bg, #D1FAE5); border: 1px solid var(--ios-green);">
+              <div class="ios-card-content" style="padding: 1.5rem;">
+                <div style="margin-bottom: 1rem;">
+                  <span style="font-size: 13px; color: var(--label-secondary);">${this.t('voice.you_said') || 'You said:'}</span>
+                  <p style="margin: 0.25rem 0 0; font-size: 17px; font-weight: 500;">"${data.text}"</p>
+                </div>
+                <div style="padding-top: 1rem; border-top: 1px solid var(--separator);">
+                  <span style="font-size: 13px; color: var(--label-secondary);">🤖 ${this.t('voice.ai_response') || 'AI Response:'}</span>
+                  <p style="margin: 0.25rem 0 0; font-size: 15px;">${data.response || data.intent?.response || this.t('voice.understood') || 'I understood your request!'}</p>
+                </div>
+                ${data.mock ? `<p style="margin: 1rem 0 0; font-size: 11px; color: var(--label-tertiary); text-align: center;">⚠️ Demo mode - Connect API for real transcription</p>` : ''}
+              </div>
+            </div>
+          `;
+        }
+
+        // Execute intent if recognized
+        if (data.intent) {
+          await this.executeVoiceIntent(data.intent);
+        }
+
+      } else {
+        throw new Error(data.error || 'Transcription failed');
+      }
+
+    } catch (error) {
+      console.error('Voice processing error:', error);
+      if (responseEl) {
+        responseEl.innerHTML = `
+          <div class="ios-card" style="background: var(--ios-red-bg, #FEE2E2); border: 1px solid var(--ios-red);">
+            <div class="ios-card-content" style="text-align: center; padding: 1.5rem;">
+              <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚠️</div>
+              <h4 style="margin: 0 0 0.5rem;">${this.t('voice.process_error') || 'Processing Error'}</h4>
+              <p style="margin: 0; color: var(--label-secondary); font-size: 13px;">${this.t('voice.try_again') || 'Unable to process voice. Please try again.'}</p>
+            </div>
+          </div>
+        `;
+      }
+    }
+  }
+
+  async executeVoiceIntent(intent) {
+    console.log('Executing voice intent:', intent);
+
+    // Map intents to actions
+    switch (intent.intent) {
+      case 'find_food':
+      case 'ai_recommendations':
+        if (intent.params?.type === 'restaurant') {
+          await this.handleFindFood();
+        } else {
+          await this.handleRecommendations();
+        }
+        break;
+
+      case 'check_weather':
+      case 'weather':
+        const responseEl = document.getElementById('voiceResponse') || document.getElementById('aiResponse');
+        await this.handleCheckWeather(responseEl);
+        break;
+
+      case 'navigate':
+      case 'directions':
+        this.handleGetDirections();
+        break;
+
+      case 'plan_trip':
+        this.showView('trip');
+        break;
+
+      case 'search':
+        if (intent.params?.query) {
+          this.showView('search');
+          const searchInput = document.getElementById('freeText') || document.getElementById('searchInput');
+          const searchBtn = document.getElementById('searchBtn');
+          if (searchInput && searchBtn) {
+            searchInput.value = intent.params.query;
+            searchBtn.click();
+          }
+        }
+        break;
+
+      default:
+        console.log('Unknown intent, no action taken:', intent.intent);
+    }
   }
 
   setupQuickActions() {

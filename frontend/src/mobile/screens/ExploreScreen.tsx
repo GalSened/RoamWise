@@ -3,74 +3,95 @@
  *
  * Main discovery screen with:
  * - Header with greeting + Weather Widget
- * - AI-powered search bar with voice input
- * - Horizontal filter chips
- * - AI recommendation cards
+ * - Functional search bar with clear button
+ * - Horizontal filter chips with tag filtering
+ * - Destination cards with navigation to Planner
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   FlatList,
   TextInput,
   TouchableOpacity,
   StyleSheet,
   Image,
+  Keyboard,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme/tokens';
+import { DESTINATIONS, FILTER_TAGS, Destination, FilterTag } from '../data/destinations';
+import { haptics } from '../utils/haptics';
 
 /**
- * Filter Chip Data
+ * Custom hook for search and filtering with debounce
  */
-const filterChips = [
-  { id: 'water', label: 'Water', icon: '💧' },
-  { id: 'caves', label: 'Caves', icon: '🕳️' },
-  { id: 'family', label: 'Family', icon: '👨‍👩‍👧' },
-  { id: 'short', label: 'Short', icon: '⏱️' },
-  { id: 'scenic', label: 'Scenic', icon: '🏞️' },
-  { id: 'challenging', label: 'Challenging', icon: '🏔️' },
-];
+function useSearch(destinations: Destination[]) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTags, setActiveTags] = useState<string[]>([]);
+  const [debouncedQuery, setDebouncedQuery] = useState('');
 
-/**
- * Mock Recommendation Data
- */
-const recommendations = [
-  {
-    id: '1',
-    title: 'Ein Gedi Nature Reserve',
-    subtitle: 'Desert oasis with waterfalls',
-    distance: '45 km',
-    duration: '3-4 hrs',
-    difficulty: 'Moderate',
-    image: 'https://via.placeholder.com/300x200',
-    tags: ['Water', 'Family'],
-  },
-  {
-    id: '2',
-    title: 'Makhtesh Ramon',
-    subtitle: 'World\'s largest erosion crater',
-    distance: '120 km',
-    duration: '5-6 hrs',
-    difficulty: 'Hard',
-    image: 'https://via.placeholder.com/300x200',
-    tags: ['Scenic', 'Challenging'],
-  },
-  {
-    id: '3',
-    title: 'Stalactite Cave',
-    subtitle: 'Ancient underground wonder',
-    distance: '25 km',
-    duration: '2 hrs',
-    difficulty: 'Easy',
-    image: 'https://via.placeholder.com/300x200',
-    tags: ['Caves', 'Family'],
-  },
-];
+  // Debounce search query (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Filter logic
+  const filteredDestinations = useMemo(() => {
+    return destinations.filter((dest) => {
+      // Text search (case-insensitive match on name and description)
+      const matchesText =
+        debouncedQuery === '' ||
+        dest.name.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
+        dest.description.toLowerCase().includes(debouncedQuery.toLowerCase());
+
+      // Tag filter (destination must match at least one active tag)
+      const matchesTags =
+        activeTags.length === 0 ||
+        activeTags.some((tag) =>
+          dest.tags.map((t) => t.toLowerCase()).includes(tag.toLowerCase())
+        );
+
+      return matchesText && matchesTags;
+    });
+  }, [destinations, debouncedQuery, activeTags]);
+
+  const toggleTag = useCallback((tagId: string) => {
+    haptics.impact('light');
+    setActiveTags((prev) =>
+      prev.includes(tagId) ? prev.filter((t) => t !== tagId) : [...prev, tagId]
+    );
+  }, []);
+
+  const clearSearch = useCallback(() => {
+    setSearchQuery('');
+    setDebouncedQuery('');
+  }, []);
+
+  const clearAll = useCallback(() => {
+    setSearchQuery('');
+    setDebouncedQuery('');
+    setActiveTags([]);
+  }, []);
+
+  return {
+    searchQuery,
+    setSearchQuery,
+    activeTags,
+    toggleTag,
+    filteredDestinations,
+    clearSearch,
+    clearAll,
+    hasActiveFilters: searchQuery !== '' || activeTags.length > 0,
+  };
+}
 
 /**
  * Weather Widget Component
@@ -107,25 +128,35 @@ function Header() {
 }
 
 /**
- * AI Search Bar Component
+ * Search Bar Component with clear button
  */
-function SearchBar() {
-  const [query, setQuery] = useState('');
-
+function SearchBar({
+  query,
+  onChangeText,
+  onClear,
+}: {
+  query: string;
+  onChangeText: (text: string) => void;
+  onClear: () => void;
+}) {
   return (
     <View style={styles.searchContainer}>
       <View style={styles.searchBar}>
         <Ionicons name="search" size={20} color={colors.textSecondary} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Where do you want to travel?"
+          placeholder="Search destinations..."
           placeholderTextColor={colors.textSecondary}
           value={query}
-          onChangeText={setQuery}
+          onChangeText={onChangeText}
+          returnKeyType="search"
+          autoCorrect={false}
         />
-        <TouchableOpacity style={styles.voiceButton}>
-          <Ionicons name="mic" size={20} color={colors.primary} />
-        </TouchableOpacity>
+        {query.length > 0 && (
+          <TouchableOpacity onPress={onClear} style={styles.clearButton}>
+            <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -149,6 +180,7 @@ function FilterChip({
     <TouchableOpacity
       style={[styles.chip, selected && styles.chipSelected]}
       onPress={onPress}
+      activeOpacity={0.7}
     >
       <Text style={styles.chipIcon}>{icon}</Text>
       <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>
@@ -161,28 +193,29 @@ function FilterChip({
 /**
  * Filter Chips Row
  */
-function FilterChips() {
-  const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
-
-  const toggleFilter = (id: string) => {
-    setSelectedFilters((prev) =>
-      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
-    );
-  };
-
+function FilterChipsRow({
+  tags,
+  activeTags,
+  onToggleTag,
+}: {
+  tags: FilterTag[];
+  activeTags: string[];
+  onToggleTag: (id: string) => void;
+}) {
   return (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.chipsContainer}
+      keyboardShouldPersistTaps="handled"
     >
-      {filterChips.map((chip) => (
+      {tags.map((chip) => (
         <FilterChip
           key={chip.id}
           label={chip.label}
           icon={chip.icon}
-          selected={selectedFilters.includes(chip.id)}
-          onPress={() => toggleFilter(chip.id)}
+          selected={activeTags.includes(chip.id)}
+          onPress={() => onToggleTag(chip.id)}
         />
       ))}
     </ScrollView>
@@ -190,28 +223,59 @@ function FilterChips() {
 }
 
 /**
- * Recommendation Card Component
+ * Empty State Component
  */
-function RecommendationCard({
+function EmptyState() {
+  return (
+    <View style={styles.emptyState}>
+      <Ionicons name="search-outline" size={64} color={colors.textTertiary} />
+      <Text style={styles.emptyStateTitle}>No destinations found</Text>
+      <Text style={styles.emptyStateSubtitle}>
+        Try a different search term or adjust your filters
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * Destination Card Component
+ */
+function DestinationCard({
   item,
   onPress,
 }: {
-  item: typeof recommendations[0];
+  item: Destination;
   onPress: () => void;
 }) {
+  const [imageError, setImageError] = useState(false);
+
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress}>
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>
       <View style={styles.cardImageContainer}>
-        <View style={styles.cardImagePlaceholder}>
-          <Ionicons name="image" size={40} color={colors.textTertiary} />
-        </View>
+        {!imageError ? (
+          <Image
+            source={{ uri: item.imageUrl }}
+            style={styles.cardImage}
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <View style={styles.cardImagePlaceholder}>
+            <Ionicons name="image" size={40} color={colors.textTertiary} />
+          </View>
+        )}
         <View style={styles.cardDifficulty}>
           <Text style={styles.cardDifficultyText}>{item.difficulty}</Text>
         </View>
+        <View style={styles.cardRating}>
+          <Ionicons name="star" size={12} color={colors.warning} />
+          <Text style={styles.cardRatingText}>{item.rating}</Text>
+        </View>
       </View>
       <View style={styles.cardContent}>
-        <Text style={styles.cardTitle}>{item.title}</Text>
-        <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
+        <Text style={styles.cardTitle}>{item.name}</Text>
+        <Text style={styles.cardSubtitle} numberOfLines={2}>
+          {item.description}
+        </Text>
         <View style={styles.cardMeta}>
           <View style={styles.cardMetaItem}>
             <Ionicons name="navigate" size={14} color={colors.textSecondary} />
@@ -221,9 +285,13 @@ function RecommendationCard({
             <Ionicons name="time" size={14} color={colors.textSecondary} />
             <Text style={styles.cardMetaText}>{item.duration}</Text>
           </View>
+          <View style={styles.cardMetaItem}>
+            <Ionicons name="location" size={14} color={colors.textSecondary} />
+            <Text style={styles.cardMetaText}>{item.region}</Text>
+          </View>
         </View>
         <View style={styles.cardTags}>
-          {item.tags.map((tag) => (
+          {item.tags.slice(0, 3).map((tag) => (
             <View key={tag} style={styles.cardTag}>
               <Text style={styles.cardTagText}>{tag}</Text>
             </View>
@@ -239,31 +307,65 @@ function RecommendationCard({
  */
 export function ExploreScreen() {
   const navigation = useNavigation();
+  const {
+    searchQuery,
+    setSearchQuery,
+    activeTags,
+    toggleTag,
+    filteredDestinations,
+    clearSearch,
+    hasActiveFilters,
+  } = useSearch(DESTINATIONS);
 
-  const handleCardPress = (item: typeof recommendations[0]) => {
-    // Navigate to Planner tab with selected destination
-    navigation.navigate('Planner' as never);
-  };
+  const handleCardPress = useCallback(
+    (destination: Destination) => {
+      haptics.impact('medium');
+      navigation.navigate('Planner' as never, { destination } as never);
+    },
+    [navigation]
+  );
+
+  const renderItem = useCallback(
+    ({ item }: { item: Destination }) => (
+      <DestinationCard item={item} onPress={() => handleCardPress(item)} />
+    ),
+    [handleCardPress]
+  );
+
+  const keyExtractor = useCallback((item: Destination) => item.id, []);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <Header />
-      <SearchBar />
-      <FilterChips />
+      <SearchBar
+        query={searchQuery}
+        onChangeText={setSearchQuery}
+        onClear={clearSearch}
+      />
+      <FilterChipsRow
+        tags={FILTER_TAGS}
+        activeTags={activeTags}
+        onToggleTag={toggleTag}
+      />
 
       <View style={styles.sectionHeader}>
         <Ionicons name="sparkles" size={20} color={colors.primary} />
-        <Text style={styles.sectionTitle}>AI Picks for Today</Text>
+        <Text style={styles.sectionTitle}>
+          {hasActiveFilters
+            ? `${filteredDestinations.length} Results`
+            : 'AI Picks for Today'}
+        </Text>
       </View>
 
       <FlatList
-        data={recommendations}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <RecommendationCard item={item} onPress={() => handleCardPress(item)} />
-        )}
+        data={filteredDestinations}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
+        onScrollBeginDrag={Keyboard.dismiss}
+        keyboardShouldPersistTaps="handled"
+        ListEmptyComponent={EmptyState}
       />
     </SafeAreaView>
   );
@@ -329,7 +431,7 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text,
   },
-  voiceButton: {
+  clearButton: {
     padding: spacing.xs,
   },
 
@@ -383,6 +485,27 @@ const styles = StyleSheet.create({
   listContainer: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xl,
+    flexGrow: 1,
+  },
+
+  // Empty State
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing.xxl,
+  },
+  emptyStateTitle: {
+    ...typography.title3,
+    color: colors.text,
+    marginTop: spacing.lg,
+  },
+  emptyStateSubtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.xl,
   },
 
   // Card
@@ -394,8 +517,13 @@ const styles = StyleSheet.create({
     ...shadows.medium,
   },
   cardImageContainer: {
-    height: 150,
+    height: 160,
     position: 'relative',
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   cardImagePlaceholder: {
     flex: 1,
@@ -413,6 +541,23 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
   },
   cardDifficultyText: {
+    ...typography.caption1,
+    color: colors.text,
+    fontWeight: '600',
+  },
+  cardRating: {
+    position: 'absolute',
+    top: spacing.sm,
+    left: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+    gap: 2,
+  },
+  cardRatingText: {
     ...typography.caption1,
     color: colors.text,
     fontWeight: '600',

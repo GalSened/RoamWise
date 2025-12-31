@@ -1,0 +1,389 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://roamwise.app/schemas/offline-trail-package.json",
+  "title": "OfflineTrailPackage",
+  "description": "Complete offline data package for hiking trail safety and navigation",
+  "type": "object",
+  "required": [
+    "version",
+    "downloadedAt",
+    "expiresAt",
+    "trail",
+    "boundingBox",
+    "mapTiles",
+    "ephemeris",
+    "checksum"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Package format version (semver)",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "examples": ["1.0.0", "2.1.3"]
+    },
+    "downloadedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when package was downloaded"
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when package expires and should be refreshed"
+    },
+    "trail": {
+      "$ref": "#/definitions/TrailData"
+    },
+    "boundingBox": {
+      "$ref": "#/definitions/BoundingBox"
+    },
+    "mapTiles": {
+      "$ref": "#/definitions/MapTiles"
+    },
+    "pois": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/POI"
+      },
+      "description": "Points of interest along the trail"
+    },
+    "emergencyContacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/EmergencyContact"
+      },
+      "description": "Emergency contact information for the region"
+    },
+    "ephemeris": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Ephemeris"
+      },
+      "minItems": 1,
+      "description": "Sunrise/sunset data for each day of the trip"
+    },
+    "weatherForecast": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/WeatherForecast"
+      },
+      "description": "Cached weather forecast data"
+    },
+    "checksum": {
+      "type": "string",
+      "description": "SHA-256 checksum of package contents for verification",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "definitions": {
+    "GeoPoint": {
+      "type": "object",
+      "required": ["lat", "lon"],
+      "properties": {
+        "lat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90,
+          "description": "Latitude in decimal degrees"
+        },
+        "lon": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180,
+          "description": "Longitude in decimal degrees"
+        },
+        "altitude": {
+          "type": "number",
+          "description": "Altitude in meters above sea level"
+        },
+        "accuracy": {
+          "type": "number",
+          "minimum": 0,
+          "description": "GPS accuracy in meters"
+        },
+        "timestamp": {
+          "type": "integer",
+          "description": "Unix timestamp in milliseconds"
+        }
+      }
+    },
+    "TrailSegment": {
+      "type": "object",
+      "required": ["start", "end", "distance", "elevationGain", "elevationLoss", "averageSlope"],
+      "properties": {
+        "start": {
+          "$ref": "#/definitions/GeoPoint"
+        },
+        "end": {
+          "$ref": "#/definitions/GeoPoint"
+        },
+        "distance": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Segment distance in meters"
+        },
+        "elevationGain": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Elevation gain in meters (positive = uphill)"
+        },
+        "elevationLoss": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Elevation loss in meters (positive = downhill)"
+        },
+        "averageSlope": {
+          "type": "number",
+          "description": "Average grade as decimal (-0.1 = 10% downhill, 0.1 = 10% uphill)"
+        }
+      }
+    },
+    "TrailData": {
+      "type": "object",
+      "required": ["id", "name", "segments", "totalDistance", "trailhead", "destination"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique trail identifier"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable trail name"
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TrailSegment"
+          },
+          "minItems": 1,
+          "description": "Ordered list of trail segments from trailhead to destination"
+        },
+        "totalDistance": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total trail distance in meters"
+        },
+        "totalElevationGain": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total elevation gain in meters"
+        },
+        "totalElevationLoss": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total elevation loss in meters"
+        },
+        "trailhead": {
+          "$ref": "#/definitions/GeoPoint",
+          "description": "Starting point of the trail"
+        },
+        "destination": {
+          "$ref": "#/definitions/GeoPoint",
+          "description": "End point of the trail"
+        },
+        "waypoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GeoPoint"
+          },
+          "description": "Key waypoints along the trail"
+        }
+      }
+    },
+    "BoundingBox": {
+      "type": "object",
+      "required": ["north", "south", "east", "west"],
+      "properties": {
+        "north": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90,
+          "description": "Northern latitude boundary"
+        },
+        "south": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90,
+          "description": "Southern latitude boundary"
+        },
+        "east": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180,
+          "description": "Eastern longitude boundary"
+        },
+        "west": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180,
+          "description": "Western longitude boundary"
+        }
+      }
+    },
+    "MapTiles": {
+      "type": "object",
+      "required": ["format", "zoomLevels", "sizeBytes", "url"],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["mvt", "pbf", "mbtiles"],
+          "description": "Vector tile format"
+        },
+        "zoomLevels": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 22
+          },
+          "minItems": 1,
+          "description": "Available zoom levels"
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total size of map tiles in bytes"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL or local path to map tile data"
+        }
+      }
+    },
+    "POI": {
+      "type": "object",
+      "required": ["id", "name", "type", "location"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique POI identifier"
+        },
+        "name": {
+          "type": "string",
+          "description": "POI name"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["viewpoint", "water", "shelter", "campsite", "hazard", "intersection", "emergency"],
+          "description": "POI category"
+        },
+        "location": {
+          "$ref": "#/definitions/GeoPoint"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description"
+        },
+        "audioUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to cached audio guide"
+        }
+      }
+    },
+    "EmergencyContact": {
+      "type": "object",
+      "required": ["name", "phone", "type", "available24h"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Contact name or organization"
+        },
+        "phone": {
+          "type": "string",
+          "pattern": "^[+]?[0-9\\-\\s]+$",
+          "description": "Phone number"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["ranger", "rescue", "hospital", "personal"],
+          "description": "Contact type"
+        },
+        "available24h": {
+          "type": "boolean",
+          "description": "Whether contact is available 24/7"
+        }
+      }
+    },
+    "Ephemeris": {
+      "type": "object",
+      "required": ["sunrise", "sunset", "date"],
+      "properties": {
+        "sunrise": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Sunrise time (ISO 8601)"
+        },
+        "sunset": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Sunset time (ISO 8601)"
+        },
+        "civilTwilightEnd": {
+          "type": "string",
+          "format": "date-time",
+          "description": "End of civil twilight (ISO 8601)"
+        },
+        "moonPhase": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Moon phase (0 = new moon, 0.5 = full moon)"
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "Date for this ephemeris entry"
+        }
+      }
+    },
+    "WeatherForecast": {
+      "type": "object",
+      "required": ["timestamp", "temperature", "condition"],
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Forecast timestamp (ISO 8601)"
+        },
+        "temperature": {
+          "type": "number",
+          "description": "Temperature in Celsius"
+        },
+        "feelsLike": {
+          "type": "number",
+          "description": "Feels-like temperature in Celsius"
+        },
+        "precipitation": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Precipitation in mm"
+        },
+        "windSpeed": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Wind speed in m/s"
+        },
+        "windDirection": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 360,
+          "description": "Wind direction in degrees (0 = North)"
+        },
+        "condition": {
+          "type": "string",
+          "enum": ["clear", "cloudy", "rain", "storm", "snow", "fog"],
+          "description": "Weather condition"
+        },
+        "uvIndex": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 11,
+          "description": "UV index"
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

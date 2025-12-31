@@ -1,311 +1,297 @@
-# RoamWise - AI-Powered Travel Companion
+# RoamWise: AI-Powered Hiking Companion
 
-A modern, production-ready travel application featuring weather-aware routing, voice AI assistance, and comprehensive trip planning capabilities.
+**The app that plans, guides, and protects hikers using AI and real-time data.**
 
-## 🏗️ Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        Frontend App                         │
-├─────────────────────────────────────────────────────────────┤
-│  UI Layer (Modern HTML5/CSS3 + TypeScript)                 │
-│  ├─ Search View      ├─ Trip Planning   ├─ AI Assistant    │
-│  ├─ Map Integration  ├─ Profile/Stats   └─ Navigation      │
-├─────────────────────────────────────────────────────────────┤
-│  Core Systems                                               │
-│  ├─ Theme Provider (Dark/Light Mode)                       │
-│  ├─ Update Manager (PWA + Version Control)                 │
-│  ├─ Event Bus (Decoupled Communication)                    │
-│  └─ Storage Abstraction (IndexedDB + localStorage)         │
-├─────────────────────────────────────────────────────────────┤
-│  Feature Modules                                            │
-│  ├─ Planning Manager (CRUD, Validation, Optimization)      │
-│  ├─ Voice Manager (STT, Intent Processing)                 │
-│  ├─ Navigation Manager (Turn-by-turn, Progress Tracking)   │
-│  └─ AI Orchestrator (Planning Agent, Recommendations)      │
-├─────────────────────────────────────────────────────────────┤
-│  Provider Layer (Swappable Services)                       │
-│  ├─ Places Provider   ├─ Weather Provider                  │
-│  ├─ Routing Provider  └─ Geocoding Provider                │
-├─────────────────────────────────────────────────────────────┤
-│  External APIs                                              │
-│  ├─ Google Maps (Places, Routes, Geocoding)                │
-│  ├─ OpenWeatherMap (Weather Data)                          │
-│  ├─ Web Speech API (Voice Recognition)                     │
-│  └─ Leaflet Maps (Map Rendering)                           │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## 🚀 Features
-
-### Core Functionality
-- **🔍 Smart Search**: AI-powered place discovery with category filtering
-- **🗺️ Trip Planning**: Day-by-day itinerary builder with optimization
-- **🤖 Voice AI**: Press-and-hold voice interface with Hebrew support
-- **📍 Navigation**: In-app turn-by-turn guidance with real-time tracking
-- **🌓 Dark Mode**: Global theme system with zero-flash persistence
-
-### Advanced Features
-- **🌤️ Weather Integration**: Weather-aware recommendations and routing
-- **⬆️ Auto Updates**: PWA update system with release notes
-- **📊 Analytics**: Comprehensive telemetry and performance monitoring
-- **🔄 Offline Support**: Service worker with intelligent caching
-- **♿ Accessibility**: WCAG compliant with full keyboard navigation
-
-## 🛠️ Setup & Installation
-
-### Prerequisites
-- Node.js 18+ and npm/yarn
-- Google Maps API key with Places & Routes APIs enabled
-- OpenWeatherMap API key
-
-### Environment Configuration
-
-Create `.env` file:
-```bash
-# Google Maps Integration
-VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
-
-# Weather Service
-VITE_OPENWEATHERMAP_API_KEY=your_openweather_api_key_here
-
-# App Configuration
-VITE_APP_NAME="RoamWise"
-VITE_APP_VERSION="2.0.0"
-VITE_UPDATE_CHECK_URL="https://api.yourapp.com/version"
-
-# Optional: Analytics & Telemetry
-VITE_ANALYTICS_ENDPOINT="https://analytics.yourapp.com/events"
-```
-
-### Google Maps Setup
-1. Enable these APIs in Google Cloud Console:
-   - Maps JavaScript API
-   - Places API
-   - Routes API (new)
-   - Geocoding API
-
-2. Set up API key restrictions for security
-
-### Installation
-```bash
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Run tests
-npm run test
-npm run e2e
-
-# Type checking
-npm run typecheck
-
-# Linting
-npm run lint
-```
-
-## 🧪 Testing
-
-### Test Structure
-```
-tests/
-├── unit/              # Unit tests for core logic
-│   ├── theme.test.ts      # Theme provider tests
-│   ├── planning.test.ts   # Trip planning tests
-│   └── voice.test.ts      # Voice AI tests
-├── integration/       # Integration tests
-│   ├── providers.test.ts  # Provider integration tests
-│   └── weather.test.ts    # Weather integration tests
-└── e2e/              # End-to-end tests
-    └── app.spec.ts       # Full user flow tests
-```
-
-### Running Tests
-```bash
-# Unit tests (fast feedback)
-npm run test
-
-# E2E tests (full browser testing)
-npm run e2e
-
-# Test coverage
-npm run test:coverage
-
-# CI pipeline (all checks)
-npm run ci
-```
-
-## 📱 Progressive Web App
-
-### PWA Features
-- **Installable**: Add to home screen on mobile/desktop
-- **Offline Support**: Cache-first strategy for core features
-- **Background Sync**: Queue actions when offline
-- **Push Notifications**: Smart travel alerts
-
-### Manifest Configuration
-The app includes a complete PWA manifest with:
-- Multiple icon sizes (192x192, 512x512)
-- Splash screen configuration
-- Theme color matching
-- Display mode optimization
-
-## 🎨 Theming System
-
-### Theme Structure
-```typescript
-interface ThemeColors {
-  primary: string;
-  secondary: string;
-  background: string;
-  surface: string;
-  text: string;
-  // ... additional color definitions
-}
-```
-
-### Usage
-```typescript
-import { themeProvider } from '@/core/theme/ThemeProvider';
-
-// Get current theme
-const currentTheme = themeProvider.getTheme(); // 'light' | 'dark' | 'system'
-
-// Switch themes
-themeProvider.setTheme('dark');
-
-// Listen for changes
-themeProvider.on('theme-changed', ({ theme }) => {
-  console.log('Theme changed to:', theme);
-});
-```
-
-## 🗺️ Provider System
-
-### Swappable Service Architecture
-The app uses a provider pattern for easy service swapping:
-
-```typescript
-// Example: Switch from Google to OpenStreetMap
-import { OSMPlacesProvider } from '@/providers/osm/places';
-
-const placesProvider = new OSMPlacesProvider();
-// App automatically uses new provider
-```
-
-### Available Providers
-- **Places**: Google Places API, OpenStreetMap Nominatim
-- **Routing**: Google Routes API, OSRM, GraphHopper
-- **Weather**: OpenWeatherMap, WeatherAPI
-- **Geocoding**: Google Geocoding, Nominatim
-
-## 🤖 AI Features
-
-### Voice Interface
-```typescript
-import { voiceManager } from '@/features/voice/VoiceManager';
-
-// Start voice recognition
-voiceManager.startListening();
-
-// Process voice commands
-voiceManager.on('intent-recognized', ({ intent, entities }) => {
-  // Handle parsed voice command
-});
-```
-
-### Planning AI
-The AI orchestrator provides:
-- **Mood-based recommendations**: Adventurous, romantic, relaxed modes
-- **Weather-aware planning**: Indoor alternatives for rainy days
-- **Multi-factor scoring**: Rating, distance, cost, timing optimization
-- **Real-time adaptation**: Dynamic re-planning based on conditions
-
-## 📊 Monitoring & Analytics
-
-### Telemetry
-Built-in telemetry tracks:
-- **Performance**: Core Web Vitals, load times
-- **User Behavior**: Feature usage, conversion funnels
-- **Errors**: JavaScript errors, API failures
-- **Business Metrics**: Trip completions, user engagement
-
-### Privacy Compliance
-- **Opt-in tracking**: Users control their data
-- **Anonymized data**: No personal information stored
-- **GDPR compliant**: Full data deletion support
-
-## 🚀 Deployment
-
-### Build Optimization
-```bash
-# Production build with optimizations
-npm run build
-
-# Preview production build locally
-npm run preview
-
-# Bundle analysis
-npm run analyze
-```
-
-### Deployment Targets
-- **Static Hosting**: Netlify, Vercel, GitHub Pages
-- **CDN Deployment**: AWS CloudFront, Cloudflare
-- **Container Deployment**: Docker with nginx
-- **Mobile Apps**: Capacitor for iOS/Android
-
-### Performance
-- **Lighthouse Score**: 95+ across all categories
-- **Bundle Size**: < 200KB gzipped
-- **First Paint**: < 1.5s on 3G
-- **Interactive**: < 3s on mobile
-
-## 🔧 Development
-
-### Code Structure
-```
-src/
-├── core/              # Core systems (theme, storage, events)
-├── features/          # Feature modules (planning, voice, navigation)
-├── providers/         # Service provider implementations
-├── lib/              # Shared utilities and helpers
-├── types/            # TypeScript type definitions
-└── main.ts           # Application entry point
-```
-
-### Key Design Principles
-- **Modular Architecture**: Loosely coupled, highly cohesive modules
-- **Provider Pattern**: Swappable service integrations
-- **Event-Driven**: Decoupled communication via EventBus
-- **Type Safety**: Comprehensive TypeScript coverage
-- **Performance First**: Lazy loading, code splitting, caching
-
-### Contributing
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open pull request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-- **Documentation**: Full API docs in `/docs` folder
-- **Issues**: GitHub issues for bugs and feature requests
-- **Community**: Discord server for discussions
-- **Enterprise**: Contact for commercial support
+RoamWise transforms outdoor adventures by combining intelligent trip planning, real-time safety monitoring, and personalized recommendations into a single, beautifully designed mobile experience.
 
 ---
 
-Built with ❤️ using modern web technologies. Ready for production deployment.
-<!-- index bump יום ו׳ אוק׳ 03 2025 00:35:19 UTC -->
-<!-- index bump יום ו׳ אוק׳ 03 2025 01:13:07 UTC -->
+## Key Features
+
+### Smart Mix Engine
+Generate personalized hiking plans with AI-powered trip variants:
+- **Efficient Route** - Optimized for time and distance
+- **Scenic Route** - Curated viewpoints and photo opportunities
+- **Culinary Route** - Local food stops and refreshment points
+- **Adventure Route** - Off-the-beaten-path discoveries
+
+Each variant includes duration estimates, difficulty ratings, and points of interest.
+
+### Field Guardian
+Real-time offline safety monitoring that keeps you protected:
+- **Sunset Safety Assessment** - SAFE/WARNING/DANGER status based on ETA vs. sunset
+- **Off-Trail Detection** - 50-meter threshold alerts when you deviate from the path
+- **Live ETA Calculation** - Haversine formula for accurate distance/time estimates
+- **High-Contrast Alert Modal** - Critical safety information when you need it most
+
+### Scientific Backpack
+Dynamic packing lists generated by AI based on real conditions:
+- Weather-aware recommendations (rain gear, sun protection)
+- Duration-based water calculations
+- Categorized items (Essentials, Clothing, Gear)
+- Interactive checklist with progress tracking
+
+### Memories
+Automated trip logging and lifetime statistics:
+- Distance traveled, days in nature, trips completed
+- Trip history with photos and metadata
+- Achievement levels (Trail Seeker, Mountain Explorer, etc.)
+- Persistent preferences and personalization
+
+---
+
+## Tech Stack
+
+| Category | Technology |
+|----------|------------|
+| **Framework** | React Native (Expo) |
+| **Language** | TypeScript |
+| **Navigation** | React Navigation v6 (Bottom Tabs) |
+| **Maps** | react-native-maps, expo-location |
+| **State Management** | Singleton Managers + React Hooks |
+| **Persistence** | AsyncStorage |
+| **Animations** | React Native Animated API |
+| **Haptics** | Vibration API |
+| **UI Components** | Custom design system with theme tokens |
+
+---
+
+## Installation & Setup
+
+### Prerequisites
+
+- **Node.js** v18 or higher
+- **npm** or **yarn**
+- **Expo Go** app on your iOS/Android device
+- (Optional) Xcode for iOS Simulator / Android Studio for Emulator
+
+### Quick Start
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/your-username/roamwise.git
+cd roamwise/frontend
+
+# 2. Install dependencies
+npm install
+
+# 3. Start the Expo development server
+npm run start
+
+# 4. Scan the QR code with Expo Go (iOS/Android)
+#    or press 'i' for iOS Simulator / 'a' for Android Emulator
+```
+
+### Configuration
+
+Create a `.env` file in the project root for API keys:
+
+```env
+# Maps API (required for production)
+GOOGLE_MAPS_API_KEY=your_api_key_here
+
+# Weather API (optional, for packing recommendations)
+OPENWEATHER_API_KEY=your_api_key_here
+```
+
+> **Note:** The app includes sample trail data for development/demo purposes.
+
+---
+
+## Project Structure
+
+```
+src/mobile/
+├── App.tsx                    # Root component with providers
+├── navigation/
+│   └── BottomTabNavigator.tsx # Tab navigation setup
+├── screens/
+│   ├── ExploreScreen.tsx      # Tab 1: Discovery feed
+│   ├── PlannerScreen.tsx      # Tab 2: Smart Mix trip planning
+│   ├── LiveScreen.tsx         # Tab 3: Field Guardian navigation
+│   └── ProfileScreen.tsx      # Tab 4: User profile & settings
+├── components/
+│   ├── explore/               # Explore screen components
+│   ├── planner/               # Planner components (ModeCard, BackpackModal)
+│   ├── live/                  # Live mode components (AlertModal)
+│   ├── map/                   # InteractiveMap component
+│   └── ui/                    # Shared UI components (Toast, LoadingState)
+├── managers/
+│   └── NavigationManager.ts   # GPS tracking, ETA, safety calculations
+├── features/
+│   ├── profile/               # ProfileManager, types, persistence
+│   └── packing/               # PackingManager, types, AI generation
+├── hooks/
+│   └── useNavigationState.ts  # Navigation state hook
+├── theme/
+│   └── tokens.ts              # Design system (colors, typography, spacing)
+└── utils/
+    └── haptics.ts             # Vibration patterns utility
+```
+
+### Architecture: Manager Pattern
+
+RoamWise uses a **Singleton Manager Pattern** for complex domain logic:
+
+```typescript
+// Example: NavigationManager
+const manager = NavigationManager.getInstance();
+await manager.startTracking(trailData);
+const state = manager.getNavigationState(); // ETA, safety status, progress
+```
+
+**Key Managers:**
+- `NavigationManager` - GPS tracking, Haversine calculations, sunset safety
+- `ProfileManager` - User preferences, trip history, statistics
+- `PackingManager` - AI-powered packing list generation
+
+This pattern provides:
+- Clean separation between UI and business logic
+- Singleton instances for consistent state
+- Easy testing and mocking
+- Framework-agnostic core logic
+
+---
+
+## Design System
+
+RoamWise implements a cohesive design system via `theme/tokens.ts`:
+
+```typescript
+// Colors
+colors.primary      // #2E7D32 (Forest Green)
+colors.success      // #4CAF50 (Safe Green)
+colors.warning      // #FF9800 (Caution Orange)
+colors.danger       // #F44336 (Alert Red)
+
+// Typography
+typography.title1   // 28px Bold
+typography.headline // 17px Semibold
+typography.body     // 17px Regular
+
+// Spacing
+spacing.xs  // 4px
+spacing.sm  // 8px
+spacing.md  // 12px
+spacing.lg  // 16px
+spacing.xl  // 24px
+```
+
+---
+
+## UX Polish
+
+### Haptic Feedback
+Every interaction provides tactile response:
+- **Light tap** - Toggle switches, checkboxes
+- **Medium tap** - Button presses, navigation
+- **Success pattern** - Hike completion, achievements
+- **Warning pattern** - Safety alerts
+
+### Animations
+- **Staggered card entry** - Smart Mix options glide in sequentially
+- **GPS pulse indicator** - Breathing animation shows active tracking
+- **Progress bar transitions** - Smooth animated fills
+- **Toast notifications** - Slide-up/fade non-intrusive feedback
+- **Empty state bounce** - Engaging footsteps animation
+
+---
+
+## App Screens
+
+### Tab 1: Explore
+Discovery feed with curated hiking destinations featuring:
+- Hero banners for featured trails
+- Category filtering (Nature, History, Adventure)
+- Trail cards with distance, duration, difficulty
+
+### Tab 2: Planner (Smart Mix)
+AI-powered trip planning with:
+- Start/destination input with autocomplete
+- Duration selector chips
+- 4 route variants with animated entry
+- Scientific Backpack modal integration
+
+### Tab 3: Live (Field Guardian)
+Full-screen navigation mode with:
+- Interactive map with route polyline
+- Real-time HUD (ETA, sunset, progress)
+- GPS pulse indicator
+- Slide-to-confirm end hike
+- Safety alert modal for dangers
+
+### Tab 4: Profile (Memories)
+User profile and settings with:
+- Stats board (distance, trips, days)
+- Trip log with history
+- Preference toggles with haptics
+- Animated empty state for new users
+
+---
+
+## Scripts
+
+```bash
+npm run start       # Start Expo development server
+npm run ios         # Run on iOS Simulator
+npm run android     # Run on Android Emulator
+npm run web         # Run in web browser (limited features)
+npm run lint        # Run ESLint
+npm run typecheck   # Run TypeScript compiler check
+npm run test        # Run unit tests
+npm run e2e         # Run end-to-end tests
+```
+
+---
+
+## Future Roadmap
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **Social Sharing** | Share completed trips with friends | Planned |
+| **AR Peaks View** | Identify mountains using camera | Planned |
+| **Apple Watch Support** | Wrist-based navigation alerts | Planned |
+| **Offline Maps** | Download trail maps for offline use | Planned |
+| **Multi-language** | Hebrew, Spanish, German support | Planned |
+| **Group Hikes** | Real-time location sharing for groups | Planned |
+| **Trail Reviews** | Community ratings and comments | Planned |
+
+---
+
+## Contributing
+
+We welcome contributions! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Code Style
+- TypeScript strict mode enabled
+- ESLint + Prettier for formatting
+- Functional components with hooks
+- Manager pattern for business logic
+
+---
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## Acknowledgments
+
+- Trail data provided by Israel Nature and Parks Authority
+- Weather data from OpenWeatherMap API
+- Map tiles from Google Maps Platform
+- Icons from Ionicons (Expo)
+
+---
+
+<p align="center">
+  <strong>Built with love for the hiking community</strong><br>
+  <em>Plan smart. Hike safe. Create memories.</em>
+</p>
