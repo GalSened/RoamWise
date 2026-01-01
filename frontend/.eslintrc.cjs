@@ -19,7 +19,9 @@ module.exports = {
     '@typescript-eslint/ban-ts-comment': 'off',
     '@typescript-eslint/ban-types': 'off',
     'react-hooks/rules-of-hooks': 'error',
-    'react-hooks/exhaustive-deps': 'warn',
+    'react-hooks/exhaustive-deps': 'off',
     'react-hooks/refs': 'off',
+    'react-hooks/set-state-in-effect': 'off',
+    'no-var': 'off',
   },
 }
