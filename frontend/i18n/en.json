@@ -1,5 +1,5 @@
 {
-  "app.name": "RoamWise",
+  "app.name": "Traveling",
   "nav.search": "Search",
   "nav.ai": "AI",
   "nav.trip": "Trip",
@@ -113,7 +113,7 @@
   "search.add_to_trip": "Add to Trip",
   "search.added": "Added",
   "search.view_map": "View Map",
-  "welcome.title": "Welcome to RoamWise!",
+  "welcome.title": "Welcome to Traveling!",
   "welcome.subtitle": "Enter your name to personalize your experience",
   "welcome.placeholder": "Your name",
   "welcome.start": "Get Started",

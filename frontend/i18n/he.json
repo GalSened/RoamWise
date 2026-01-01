@@ -1,5 +1,5 @@
 {
-  "app.name": "RoamWise",
+  "app.name": "Traveling",
   "nav.search": "חיפוש",
   "nav.ai": "AI",
   "nav.trip": "טיול",
@@ -113,7 +113,7 @@
   "search.add_to_trip": "הוסף לטיול",
   "search.added": "נוסף",
   "search.view_map": "צפה במפה",
-  "welcome.title": "ברוכים הבאים ל-RoamWise!",
+  "welcome.title": "!ברוכים הבאים ל-Traveling",
   "welcome.subtitle": "הזן את שמך כדי להתאים אישית את החוויה",
   "welcome.placeholder": "השם שלך",
   "welcome.start": "בואו נתחיל",

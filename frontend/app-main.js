@@ -1,5 +1,5 @@
-// RoamWise iOS-style App - Full implementation with bug fixes
-console.log('RoamWise iOS App starting...');
+// Traveling iOS-style App - Full implementation with bug fixes
+console.log('Traveling iOS App starting...');
 
 // API Configuration - use environment variable or fallback to Cloud Run proxy
 const API_BASE_URL = 'https://roamwise-proxy-971999716773.us-central1.run.app';
@@ -2166,4 +2166,4 @@ if (document.readyState === 'loading') {
   window.simpleApp = new SimpleNavigation();
 }
 
-console.log('RoamWise iOS App loaded');
+console.log('Traveling iOS App loaded');
