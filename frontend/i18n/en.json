@@ -117,5 +117,15 @@
   "welcome.subtitle": "Enter your name to personalize your experience",
   "welcome.placeholder": "Your name",
   "welcome.start": "Get Started",
-  "welcome.hint": "Enter at least 2 characters"
+  "welcome.hint": "Enter at least 2 characters",
+  "greeting.welcome_home": "Welcome home, {name}!",
+  "greeting.youre_in": "You're in {city}!",
+  "greeting.exploring": "Exploring {country}?",
+  "greeting.plan_next": "Plan your next adventure",
+  "greeting.find_nearby": "Find places nearby",
+  "greeting.skip": "Maybe later",
+  "greeting.loading": "Detecting your location...",
+  "profile.home_base": "Home Base",
+  "profile.home_country": "Home Country",
+  "profile.home_city": "Home City (optional)"
 }

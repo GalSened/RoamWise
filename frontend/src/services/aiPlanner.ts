@@ -9,6 +9,7 @@
 import OpenAI from 'openai';
 import Groq from 'groq-sdk';
 import { config } from '../config/env';
+import { travelContextManager, type TravelContext } from './TravelContextManager';
 
 // ============================================================================
 // AI Provider Configuration
@@ -42,15 +43,14 @@ if (config.app.isDev) {
   }
 }
 
-// System prompt for the AI travel agent
-const SYSTEM_PROMPT = `
-You are an expert Travel Co-Pilot for Israel.
+// Base system prompt for the AI travel agent
+const BASE_SYSTEM_PROMPT = `
+You are an expert Travel Co-Pilot.
 Your goal: create specific, actionable daily itineraries.
-Current Location context: User is in Israel.
 
 PROTOCOL:
 1. If the user request is VAGUE (e.g., "I'm hungry", "somewhere nice"), return a JSON with type "question" and ask for clarification with helpful options.
-2. If you have enough info to suggest places, generate a ROUTE with real Israeli locations.
+2. If you have enough info to suggest places, generate a ROUTE with real locations.
 3. Always respond with valid JSON only. No markdown, no extra text.
 
 RESPONSE SCHEMA (Route):
@@ -70,11 +70,18 @@ RESPONSE SCHEMA (Question):
 }
 
 IMPORTANT:
-- Use real coordinates for Israeli locations
-- Popular destinations: Ein Gedi (31.45, 35.38), Masada (31.31, 35.35), Dead Sea (31.50, 35.47), Jerusalem Old City (31.77, 35.23), Tel Aviv beaches (32.08, 34.77), Haifa/Bahai (32.79, 34.99)
-- For food, suggest real Israeli cuisines: hummus, falafel, shakshuka, shawarma
+- Use real coordinates for the user's current location
+- Suggest local cuisines and authentic experiences
 - Keep routes practical and drivable within a day
 `;
+
+/**
+ * Build context-aware system prompt based on travel context
+ */
+function buildSystemPrompt(): string {
+  const contextPrompt = travelContextManager.getAIContextPrompt();
+  return BASE_SYSTEM_PROMPT + '\n' + contextPrompt;
+}
 
 export interface RouteWaypoint {
   id: string;
@@ -176,7 +183,7 @@ export function createWelcomeMessage(): ChatMessage {
   return {
     id: `welcome-${Date.now()}`,
     role: 'assistant',
-    content: "Hey! I'm your AI travel co-pilot. Where would you like to go today?",
+    content: "\u200EHey! I'm your AI travel co-pilot. Where would you like to go today?",
     timestamp: new Date(),
     metadata: {
       type: 'question',
@@ -349,19 +356,89 @@ export type AIResponse = AIRouteResponse | AIQuestionResponse;
  * @param history - Previous chat messages for context
  * @returns Parsed AI response (route or question)
  */
+
+// ============================================================================
+// Client-Side Security (Defense in Depth)
+// ============================================================================
+
+const CLIENT_SECURITY_PATTERNS = {
+  promptInjection: [
+    /ignore\s*(all\s*)?(previous|prior|above)\s*(instructions?|prompts?|rules?)/i,
+    /disregard\s*(all\s*)?(previous|prior)\s*(instructions?|prompts?)/i,
+    /forget\s*(all\s*)?(previous|prior|your)\s*(instructions?|prompts?|rules?)/i,
+    /override\s*(your|all|the)\s*(instructions?|rules?|constraints?)/i,
+    /you\s*are\s*now\s*(a|an|my)\s*(new|different)/i,
+    /jailbreak/i,
+    /bypass\s*(all\s*)?(filters?|restrictions?|rules?|safety)/i,
+    /reveal\s*(your|the)\s*(system|original)\s*prompt/i,
+  ],
+  securityExploits: [
+    /sql\s*injection/i,
+    /xss\s*(attack)?/i,
+    /how\s*to\s*hack/i,
+    /malware/i,
+    /ransomware/i,
+    /api\s*key/i,
+    /password\s*(dump|crack|leak)/i,
+  ],
+};
+
+/**
+ * Check if input contains malicious patterns (client-side validation)
+ */
+function isInputMalicious(text: string): boolean {
+  if (!text || typeof text !== 'string') return false;
+  
+  const normalizedText = text.toLowerCase();
+  
+  for (const patterns of Object.values(CLIENT_SECURITY_PATTERNS)) {
+    if (patterns.some(pattern => pattern.test(normalizedText))) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * Sanitize user input before sending to AI
+ */
+function sanitizeUserInput(text: string): string {
+  if (!text || typeof text !== 'string') return '';
+  return text
+    .replace(/<[^>]*>/g, '')           // Remove HTML tags
+    .replace(/javascript:/gi, '')       // Remove script patterns
+    .replace(/\s+/g, ' ')               // Normalize whitespace
+    .substring(0, 2000)                 // Limit length
+    .trim();
+}
+
 export async function interactWithAI(
   userMessage: string,
   history: ChatMessage[]
 ): Promise<AIResponse> {
+  // Client-side security validation (defense in depth)
+  const sanitizedMessage = sanitizeUserInput(userMessage);
+  
+  if (isInputMalicious(sanitizedMessage)) {
+    console.warn('[aiPlanner] Blocked potentially malicious input');
+    return {
+      type: 'question',
+      content: "\u200EI'm here to help with travel planning! Where would you like to go?",
+      options: ['Ein Gedi', 'Dead Sea', 'Jerusalem', 'Tel Aviv']
+    };
+  }
+
   try {
-    // Build messages array with system prompt and history
+    // Build messages array with context-aware system prompt and history
+    const systemPrompt = buildSystemPrompt();
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: systemPrompt },
       ...history.map(msg => ({
         role: msg.role === 'user' ? 'user' as const : 'assistant' as const,
         content: msg.content
       })),
-      { role: 'user', content: userMessage }
+      { role: 'user', content: sanitizedMessage }
     ];
 
     let content: string | null = null;
@@ -403,7 +480,7 @@ export async function interactWithAI(
     // Return a fallback question response
     return {
       type: 'question',
-      content: "Sorry, I had trouble connecting. Can you try again?",
+      content: "\u200ESorry, I had trouble connecting. Can you try again?",
       options: ['Try again', 'Start over']
     };
   }

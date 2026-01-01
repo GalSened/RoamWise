@@ -117,5 +117,15 @@
   "welcome.subtitle": "הזן את שמך כדי להתאים אישית את החוויה",
   "welcome.placeholder": "השם שלך",
   "welcome.start": "בואו נתחיל",
-  "welcome.hint": "הזן לפחות 2 תווים"
+  "welcome.hint": "הזן לפחות 2 תווים",
+  "greeting.welcome_home": "!ברוך שובך, {name}",
+  "greeting.youre_in": "!אתה ב{city}",
+  "greeting.exploring": "?מטייל ב{country}",
+  "greeting.plan_next": "תכנן את ההרפתקה הבאה",
+  "greeting.find_nearby": "מצא מקומות קרובים",
+  "greeting.skip": "אולי אחר כך",
+  "greeting.loading": "...מזהה את המיקום שלך",
+  "profile.home_base": "בסיס בית",
+  "profile.home_country": "מדינת מגורים",
+  "profile.home_city": "עיר מגורים (אופציונלי)"
 }

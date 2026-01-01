@@ -1584,6 +1584,167 @@
       font-weight: 600;
       margin: 0;
     }
+
+    /* Greeting Modal - Travel Context Aware */
+    .greeting-modal {
+      position: fixed;
+      inset: 0;
+      background: var(--bg-primary);
+      z-index: 9998;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: greetingFadeIn 0.3s ease;
+    }
+
+    @keyframes greetingFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .greeting-content {
+      text-align: center;
+      padding: 48px 24px;
+      max-width: 340px;
+    }
+
+    .greeting-location-icon {
+      font-size: 72px;
+      margin-bottom: 16px;
+      animation: greetingBounce 0.5s ease;
+    }
+
+    @keyframes greetingBounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .greeting-content h1 {
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--label-primary);
+    }
+
+    .greeting-content > p {
+      color: var(--label-secondary);
+      margin-bottom: 24px;
+      font-size: 16px;
+    }
+
+    .greeting-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .greeting-action-btn {
+      padding: 14px 24px;
+      border-radius: var(--radius-md);
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: all var(--duration-fast) var(--spring-bounce);
+    }
+
+    .greeting-action-btn:active {
+      transform: scale(0.97);
+    }
+
+    .greeting-action-primary {
+      background: var(--ios-blue);
+      color: white;
+    }
+
+    .greeting-action-secondary {
+      background: var(--fill-tertiary);
+      color: var(--label-primary);
+    }
+
+    .greeting-skip {
+      background: none;
+      border: none;
+      color: var(--label-tertiary);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 8px;
+      transition: color var(--duration-fast);
+    }
+
+    .greeting-skip:hover {
+      color: var(--label-secondary);
+    }
+
+    .greeting-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .greeting-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--fill-tertiary);
+      border-top-color: var(--ios-blue);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Home Base Settings in Profile */
+    .home-base-select {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: var(--font-size-body);
+      font-family: var(--font-family);
+      background: var(--bg-primary);
+      border: 1px solid var(--separator);
+      border-radius: var(--radius-md);
+      color: var(--label-primary);
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+    }
+
+    [dir="rtl"] .home-base-select {
+      background-position: left 12px center;
+    }
+
+    .home-base-select:focus {
+      outline: none;
+      border-color: var(--ios-blue);
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+    }
+
+    .home-base-input {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: var(--font-size-body);
+      font-family: var(--font-family);
+      background: var(--bg-primary);
+      border: 1px solid var(--separator);
+      border-radius: var(--radius-md);
+      color: var(--label-primary);
+      margin-top: 8px;
+    }
+
+    .home-base-input:focus {
+      outline: none;
+      border-color: var(--ios-blue);
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+    }
+
+    .home-base-input::placeholder {
+      color: var(--label-tertiary);
+    }
   </style>
 </head>
 <body>
@@ -1603,6 +1764,19 @@
       <button id="welcomeStartBtn" class="welcome-btn" disabled>
         <span data-i18n="welcome.start">Get Started</span>
       </button>
+    </div>
+  </div>
+
+  <!-- Greeting Modal - Travel Context Aware -->
+  <div id="greetingModal" class="greeting-modal" style="display: none;">
+    <div class="greeting-content">
+      <div class="greeting-location-icon" id="greetingIcon">📍</div>
+      <h1 id="greetingTitle">Welcome!</h1>
+      <p id="greetingSubtitle"></p>
+      <div class="greeting-actions" id="greetingActions">
+        <!-- Dynamic buttons inserted here -->
+      </div>
+      <button class="greeting-skip" id="greetingSkip" data-i18n="greeting.skip">Maybe later</button>
     </div>
   </div>
 
@@ -1888,6 +2062,42 @@
           </div>
           <div id="savedTripsList" class="saved-list">
             <p class="ios-empty-state" style="text-align: center; padding: 16px; color: var(--ios-secondary-text);" data-i18n="profile.no_trips">No trips yet. Plan your first adventure!</p>
+          </div>
+        </div>
+
+        <!-- Home Base Settings -->
+        <div style="margin-top: var(--space-6);">
+          <label class="ios-form-label" data-i18n="profile.home_base">Home Base</label>
+          <div class="ios-card" style="padding: var(--space-4);">
+            <div class="ios-list-row" style="border: none; padding: 0 0 var(--space-3) 0;">
+              <span class="ios-list-icon">🏠</span>
+              <div class="ios-list-content">
+                <div class="ios-list-title" data-i18n="profile.home_country">Home Country</div>
+              </div>
+            </div>
+            <select id="homeCountrySelect" class="home-base-select">
+              <option value="IL">Israel 🇮🇱</option>
+              <option value="US">United States 🇺🇸</option>
+              <option value="GB">United Kingdom 🇬🇧</option>
+              <option value="FR">France 🇫🇷</option>
+              <option value="DE">Germany 🇩🇪</option>
+              <option value="IT">Italy 🇮🇹</option>
+              <option value="ES">Spain 🇪🇸</option>
+              <option value="JP">Japan 🇯🇵</option>
+              <option value="AU">Australia 🇦🇺</option>
+              <option value="CA">Canada 🇨🇦</option>
+              <option value="NL">Netherlands 🇳🇱</option>
+              <option value="CH">Switzerland 🇨🇭</option>
+              <option value="SE">Sweden 🇸🇪</option>
+              <option value="BR">Brazil 🇧🇷</option>
+              <option value="IN">India 🇮🇳</option>
+            </select>
+            <input type="text"
+                   id="homeCityInput"
+                   class="home-base-input"
+                   placeholder="City (optional)"
+                   data-i18n-placeholder="profile.home_city"
+                   maxlength="50">
           </div>
         </div>
 

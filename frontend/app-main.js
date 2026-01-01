@@ -86,14 +86,20 @@ class SimpleNavigation {
 
   init() {
     console.log('Initializing iOS-style navigation...');
-    this.checkFirstTimeUser();
+    const isFirstTime = this.checkFirstTimeUser();
     this.loadTenantStats();
     this.setupNavigation();
     this.setupThemeToggle();
     this.setupLanguageToggle();
     this.setupFormInteractions();
+    this.setupHomeBaseSettings();
     this.updateProfileStats();
     this.showView('search');
+
+    // Show greeting on every launch (after welcome modal for new users)
+    if (!isFirstTime) {
+      this.showTravelGreeting();
+    }
   }
 
   checkFirstTimeUser() {
@@ -136,8 +142,11 @@ class SimpleNavigation {
       if (name.length >= 2) {
         TenantStorage.setTenantId(name);
         modal.classList.remove('welcome-modal-visible');
-        setTimeout(() => modal.style.display = 'none', 200);
-        this.showToast(`Welcome, ${name}!`);
+        setTimeout(() => {
+          modal.style.display = 'none';
+          // Show travel greeting after welcome for new users
+          this.showTravelGreeting();
+        }, 200);
         // Update profile immediately
         this.updateProfileHeader();
       }
@@ -326,9 +335,16 @@ class SimpleNavigation {
       console.log('Language changed to:', lang);
     };
 
-    // Expose translation helper
-    this.t = (key) => {
-      return this.translations[this.currentLang]?.[key] || key;
+    // Expose translation helper with parameter support
+    this.t = (key, params = {}) => {
+      let text = this.translations[this.currentLang]?.[key] || key;
+      // Replace placeholders like {name}, {city}, {country}
+      if (params && typeof params === 'object') {
+        Object.entries(params).forEach(([k, v]) => {
+          text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
+        });
+      }
+      return text;
     };
 
     if (langHe) {
@@ -2153,6 +2169,159 @@ class SimpleNavigation {
           btnPlanDay.textContent = this.t('planner.plan_day') || 'Plan Day';
         }
       });
+    }
+  }
+
+  // ===== HOME BASE SETTINGS =====
+  setupHomeBaseSettings() {
+    const countrySelect = document.getElementById('homeCountrySelect');
+    const cityInput = document.getElementById('homeCityInput');
+
+    if (countrySelect) {
+      // Load saved value
+      const savedCountry = localStorage.getItem('traveling-home-country') || 'IL';
+      countrySelect.value = savedCountry;
+
+      countrySelect.addEventListener('change', () => {
+        localStorage.setItem('traveling-home-country', countrySelect.value);
+        console.log('[HomeBase] Country set to:', countrySelect.value);
+      });
+    }
+
+    if (cityInput) {
+      // Load saved value
+      const savedCity = localStorage.getItem('traveling-home-city') || '';
+      cityInput.value = savedCity;
+
+      cityInput.addEventListener('blur', () => {
+        localStorage.setItem('traveling-home-city', cityInput.value.trim());
+        console.log('[HomeBase] City set to:', cityInput.value.trim());
+      });
+    }
+  }
+
+  // ===== TRAVEL GREETING LIFECYCLE =====
+  async showTravelGreeting() {
+    const modal = document.getElementById('greetingModal');
+    if (!modal) {
+      console.warn('[Greeting] Modal not found');
+      return;
+    }
+
+    const iconEl = document.getElementById('greetingIcon');
+    const titleEl = document.getElementById('greetingTitle');
+    const subtitleEl = document.getElementById('greetingSubtitle');
+    const actionsEl = document.getElementById('greetingActions');
+    const skipBtn = document.getElementById('greetingSkip');
+    const loadingEl = document.getElementById('greetingLoading');
+    const contentEl = modal.querySelector('.greeting-content');
+
+    // Show modal with loading state
+    modal.style.display = 'flex';
+    if (loadingEl) loadingEl.style.display = 'flex';
+    if (contentEl) contentEl.style.display = 'none';
+
+    try {
+      // Import TravelContextManager dynamically
+      const { travelContextManager } = await import('./src/services/TravelContextManager.ts');
+
+      // Refresh context (detect location)
+      const context = await travelContextManager.refreshContext();
+
+      // Get user name and translation function
+      const userName = TenantStorage.getTenantName() || 'Traveler';
+      const greeting = travelContextManager.getGreeting(userName, this.t.bind(this));
+
+      // Hide loading, show content
+      if (loadingEl) loadingEl.style.display = 'none';
+      if (contentEl) contentEl.style.display = 'block';
+
+      // Update greeting UI
+      if (iconEl) iconEl.textContent = greeting.icon;
+      if (titleEl) titleEl.textContent = greeting.title;
+      if (subtitleEl) subtitleEl.textContent = greeting.subtitle;
+
+      // Build action buttons based on travel mode
+      if (actionsEl) {
+        actionsEl.innerHTML = '';
+
+        if (context.travelMode === 'international' || context.travelMode === 'domestic') {
+          // Traveling - show explore actions
+          actionsEl.innerHTML = `
+            <button class="greeting-action-btn greeting-action-primary" data-action="search">
+              ${this.t('greeting.find_nearby') || 'Find Places Nearby'}
+            </button>
+            <button class="greeting-action-btn greeting-action-secondary" data-action="trip">
+              ${this.t('trip.generate') || 'Plan a Trip'}
+            </button>
+          `;
+        } else {
+          // At home - show planning actions
+          actionsEl.innerHTML = `
+            <button class="greeting-action-btn greeting-action-primary" data-action="trip">
+              ${this.t('greeting.plan_next') || 'Plan Next Adventure'}
+            </button>
+            <button class="greeting-action-btn greeting-action-secondary" data-action="profile">
+              ${this.t('profile.my_places') || 'View Saved Places'}
+            </button>
+          `;
+        }
+
+        // Add action handlers
+        actionsEl.querySelectorAll('[data-action]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const action = btn.getAttribute('data-action');
+            this.hideGreetingModal();
+            if (action) this.showView(action);
+          });
+        });
+      }
+
+      // Skip button handler
+      if (skipBtn) {
+        skipBtn.onclick = () => this.hideGreetingModal();
+      }
+
+      console.log('[Greeting] Showing greeting for mode:', context.travelMode);
+
+    } catch (error) {
+      console.warn('[Greeting] Failed to detect location:', error);
+
+      // Show simple welcome without location context
+      if (loadingEl) loadingEl.style.display = 'none';
+      if (contentEl) contentEl.style.display = 'block';
+
+      const userName = TenantStorage.getTenantName() || 'Traveler';
+      if (iconEl) iconEl.textContent = '👋';
+      if (titleEl) titleEl.textContent = this.t('greeting.welcome_home', { name: userName }) || `Welcome, ${userName}!`;
+      if (subtitleEl) subtitleEl.textContent = this.t('greeting.plan_next') || 'Plan your next adventure';
+
+      if (actionsEl) {
+        actionsEl.innerHTML = `
+          <button class="greeting-action-btn greeting-action-primary" data-action="search">
+            ${this.t('search.title') || 'Find Places'}
+          </button>
+        `;
+        actionsEl.querySelector('[data-action]')?.addEventListener('click', () => {
+          this.hideGreetingModal();
+          this.showView('search');
+        });
+      }
+
+      if (skipBtn) {
+        skipBtn.onclick = () => this.hideGreetingModal();
+      }
+    }
+  }
+
+  hideGreetingModal() {
+    const modal = document.getElementById('greetingModal');
+    if (modal) {
+      modal.style.opacity = '0';
+      setTimeout(() => {
+        modal.style.display = 'none';
+        modal.style.opacity = '1';
+      }, 300);
     }
   }
 }
