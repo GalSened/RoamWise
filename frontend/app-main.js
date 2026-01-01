@@ -32,23 +32,130 @@ function truncateText(text, maxLength = 50) {
   return text.substring(0, maxLength) + '...';
 }
 
+// Multi-tenant storage manager - prefixes all keys with tenant ID
+const TenantStorage = {
+  getTenantId() {
+    return localStorage.getItem('roamwise-tenant-id');
+  },
+
+  setTenantId(name) {
+    const id = name.trim().toLowerCase().replace(/\s+/g, '-');
+    localStorage.setItem('roamwise-tenant-id', id);
+    localStorage.setItem('roamwise-tenant-name', name.trim());
+    return id;
+  },
+
+  getTenantName() {
+    return localStorage.getItem('roamwise-tenant-name') || '';
+  },
+
+  getKey(key) {
+    const tenant = this.getTenantId();
+    return tenant ? `${tenant}:${key}` : key;
+  },
+
+  get(key, defaultValue = null) {
+    const stored = localStorage.getItem(this.getKey(key));
+    if (stored === null) return defaultValue;
+    try { return JSON.parse(stored); } catch { return stored; }
+  },
+
+  set(key, value) {
+    const data = typeof value === 'object' ? JSON.stringify(value) : value;
+    localStorage.setItem(this.getKey(key), data);
+  },
+
+  remove(key) {
+    localStorage.removeItem(this.getKey(key));
+  }
+};
+
 class SimpleNavigation {
   constructor() {
     this.currentView = 'search';
     this.selectedInterests = [];
-    this.tripsPlanned = parseInt(localStorage.getItem('tripsPlanned') || '0');
-    this.placesVisited = parseInt(localStorage.getItem('placesVisited') || '0');
+    this.tripsPlanned = 0;
+    this.placesVisited = 0;
     this.init();
+  }
+
+  loadTenantStats() {
+    this.tripsPlanned = TenantStorage.get('stats-trips', 0);
+    this.placesVisited = TenantStorage.get('stats-places', 0);
   }
 
   init() {
     console.log('Initializing iOS-style navigation...');
+    this.checkFirstTimeUser();
+    this.loadTenantStats();
     this.setupNavigation();
     this.setupThemeToggle();
     this.setupLanguageToggle();
     this.setupFormInteractions();
     this.updateProfileStats();
     this.showView('search');
+  }
+
+  checkFirstTimeUser() {
+    if (!TenantStorage.getTenantId()) {
+      this.showWelcomeModal();
+      return true;
+    }
+    return false;
+  }
+
+  showWelcomeModal() {
+    const modal = document.getElementById('welcomeModal');
+    const input = document.getElementById('tenantNameInput');
+    const btn = document.getElementById('welcomeStartBtn');
+    const hint = document.getElementById('welcomeHint');
+
+    if (!modal || !input || !btn) return;
+
+    modal.style.display = 'flex';
+
+    // Add entrance animation
+    requestAnimationFrame(() => {
+      modal.classList.add('welcome-modal-visible');
+    });
+
+    // Auto-focus input after animation
+    setTimeout(() => input.focus(), 300);
+
+    input.addEventListener('input', () => {
+      const valid = input.value.trim().length >= 2;
+      btn.disabled = !valid;
+      // Show/hide validation hint
+      if (hint) {
+        hint.style.opacity = input.value.length > 0 && !valid ? '1' : '0';
+      }
+    });
+
+    btn.addEventListener('click', () => {
+      const name = input.value.trim();
+      if (name.length >= 2) {
+        TenantStorage.setTenantId(name);
+        modal.classList.remove('welcome-modal-visible');
+        setTimeout(() => modal.style.display = 'none', 200);
+        this.showToast(`Welcome, ${name}!`);
+        // Update profile immediately
+        this.updateProfileHeader();
+      }
+    });
+
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && !btn.disabled) btn.click();
+    });
+  }
+
+  updateProfileHeader() {
+    const name = TenantStorage.getTenantName();
+    if (name) {
+      const profileName = document.getElementById('profileName');
+      const profileAvatar = document.getElementById('profileAvatar');
+      if (profileName) profileName.textContent = name;
+      if (profileAvatar) profileAvatar.textContent = name.charAt(0).toUpperCase();
+    }
   }
 
   setupNavigation() {
@@ -103,6 +210,17 @@ class SimpleNavigation {
     });
 
     this.currentView = viewName;
+
+    // View-specific actions
+    if (viewName === 'trip') {
+      this.renderQueuedPlaces();
+      this.loadPreselectedInterests();
+    } else if (viewName === 'profile') {
+      this.updateProfileHeader();
+      this.renderProfileData();
+    } else if (viewName === 'ai') {
+      this.renderActiveTrip();
+    }
   }
 
   setupThemeToggle() {
@@ -169,6 +287,13 @@ class SimpleNavigation {
           } else {
             el.textContent = translations[key];
           }
+        }
+      });
+      // Handle placeholder translations
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (translations[key]) {
+          el.placeholder = translations[key];
         }
       });
     };
@@ -246,6 +371,7 @@ class SimpleNavigation {
     this.setupModeSelection();
 
     this.setupSearch();
+    this.setupCategoryButtons();
     this.setupTripGeneration();
     this.setupVoiceButton();
     this.setupPlannerUI();
@@ -474,26 +600,46 @@ class SimpleNavigation {
           if (data.ok && data.items && data.items.length > 0) {
             // Track places visited
             this.placesVisited += data.items.length;
-            localStorage.setItem('placesVisited', this.placesVisited.toString());
+            TenantStorage.set('stats-places', this.placesVisited);
             this.updateProfileStats();
 
-            resultsList.innerHTML = data.items.map(place => {
+            // Store places data for action handlers
+            window._searchResults = data.items;
+
+            resultsList.innerHTML = data.items.map((place, index) => {
               // FIX: Format price level properly
               const priceDisplay = formatPriceLevel(place.priceLevel);
+              const isSaved = this.isPlaceSaved(place.placeId);
 
               return `
-                <div class="ios-card search-result" style="cursor: pointer;" onclick="window.open('https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.displayName?.text || place.name || '')}', '_blank')">
+                <div class="ios-card search-result" data-place-index="${index}">
                   <div class="ios-card-content">
-                    <h3 style="margin: 0 0 0.25rem; font-size: 17px; font-weight: 600;">📍 ${place.displayName?.text || place.name || 'Unknown'}</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                      <h3 style="margin: 0 0 0.25rem; font-size: 17px; font-weight: 600; flex: 1;">📍 ${place.displayName?.text || place.name || 'Unknown'}</h3>
+                      <button class="save-place-btn" data-index="${index}" style="background: none; border: none; font-size: 22px; cursor: pointer; padding: 0 4px;">
+                        ${isSaved ? '❤️' : '🤍'}
+                      </button>
+                    </div>
                     <p style="margin: 0 0 0.5rem; color: var(--label-secondary); font-size: 15px;">${place.formattedAddress || place.vicinity || ''}</p>
-                    <div style="display: flex; gap: 1rem; font-size: 13px; color: var(--label-secondary);">
+                    <div style="display: flex; gap: 1rem; font-size: 13px; color: var(--label-secondary); margin-bottom: 0.75rem;">
                       <span>⭐ ${place.rating?.toFixed(1) || 'N/A'} (${place.userRatingCount || 0})</span>
                       ${priceDisplay ? `<span>💰 ${priceDisplay}</span>` : ''}
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                      <button class="add-to-trip-btn ios-button-small" data-index="${index}" style="flex: 1; padding: 8px 12px; font-size: 13px; border-radius: 8px; background: var(--ios-blue, #007AFF); color: white; border: none; cursor: pointer;">
+                        📍 ${this.t('search.add_to_trip') || 'Add to Trip'}
+                      </button>
+                      <button class="open-maps-btn ios-button-small" data-index="${index}" style="flex: 1; padding: 8px 12px; font-size: 13px; border-radius: 8px; background: var(--fill-tertiary, #E5E5EA); color: var(--label-primary); border: none; cursor: pointer;">
+                        🗺️ ${this.t('search.view_map') || 'View Map'}
+                      </button>
                     </div>
                   </div>
                 </div>
               `;
             }).join('');
+
+            // Attach event handlers
+            this.attachSearchResultActions();
           } else {
             // FIX: Truncate long query in error message
             const displayQuery = truncateText(query, 40);
@@ -501,8 +647,8 @@ class SimpleNavigation {
               <div class="ios-empty-state" style="text-align: center; padding: 3rem 1.5rem;">
                 <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
                 <h3 style="margin: 0 0 0.5rem;">${this.t('search.no_results') || 'No Results'}</h3>
-                <p style="margin: 0; color: var(--label-secondary);">${this.t('search.no_results_for') || 'No results for'} "<span class="ios-error-query">${displayQuery}</span>"</p>
-                <p style="margin: 0.5rem 0 0; color: var(--label-tertiary); font-size: 13px;">${this.t('search.try_different') || 'Try a different search term'}</p>
+                <p style="margin: 0; color: var(--label-secondary);">${this.t('search.no_results') || 'No results for'} "<span class="ios-error-query">${displayQuery}</span>"</p>
+                <p style="margin: 0.5rem 0 0; color: var(--label-tertiary); font-size: 13px;">${this.t('search.no_results_hint') || 'Try a different search term'}</p>
               </div>
             `;
           }
@@ -522,6 +668,475 @@ class SimpleNavigation {
       });
     } else {
       console.error('Search elements not found - Button:', !!searchBtn, 'Input:', !!searchInput);
+    }
+  }
+
+  setupCategoryButtons() {
+    // Category chip buttons trigger search with that category
+    document.querySelectorAll('.ios-chip[data-category]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const category = btn.getAttribute('data-category');
+        const searchInput = document.getElementById('freeText') || document.getElementById('searchInput');
+
+        // Fill search input with readable name
+        const categoryNames = {
+          restaurant: 'restaurants near me',
+          attraction: 'attractions and sights',
+          shopping: 'shopping',
+          entertainment: 'entertainment and fun'
+        };
+
+        if (searchInput) {
+          searchInput.value = categoryNames[category] || category;
+          document.getElementById('searchBtn')?.click();
+        }
+
+        // Also pre-select matching interest on Trip tab
+        this.preselectInterest(category);
+      });
+    });
+    console.log('Category buttons setup complete');
+  }
+
+  preselectInterest(category) {
+    const interestMap = {
+      restaurant: 'Food',
+      attraction: 'Culture',
+      shopping: 'Shopping',
+      entertainment: 'Entertainment'
+    };
+
+    const interestName = interestMap[category];
+    if (interestName) {
+      localStorage.setItem('preselected-interest', interestName);
+    }
+  }
+
+  // ===== SAVED PLACES FUNCTIONALITY =====
+  getSavedPlaces() {
+    return TenantStorage.get('saved-places', []);
+  }
+
+  isPlaceSaved(placeId) {
+    return this.getSavedPlaces().some(p => p.placeId === placeId);
+  }
+
+  toggleSavePlace(placeData) {
+    const saved = this.getSavedPlaces();
+    const index = saved.findIndex(p => p.placeId === placeData.placeId);
+
+    if (index > -1) {
+      saved.splice(index, 1);
+      this.showToast(this.t('toast.place_removed') || 'Removed from saved places');
+    } else {
+      saved.push({
+        placeId: placeData.placeId,
+        name: placeData.displayName?.text || placeData.name,
+        address: placeData.formattedAddress || placeData.vicinity,
+        rating: placeData.rating,
+        lat: placeData.location?.latitude,
+        lon: placeData.location?.longitude,
+        savedAt: new Date().toISOString()
+      });
+      this.showToast(this.t('toast.place_added') || 'Saved to My Places!');
+    }
+
+    TenantStorage.set('saved-places', saved);
+    this.updateProfileStats();
+    return !saved.some(p => p.placeId === placeData.placeId); // returns true if removed
+  }
+
+  // ===== TRIP QUEUE FUNCTIONALITY =====
+  getTripQueue() {
+    return TenantStorage.get('trip-queue', []);
+  }
+
+  addToTripQueue(place) {
+    const queue = this.getTripQueue();
+    if (!queue.some(p => p.placeId === place.placeId)) {
+      queue.push({
+        placeId: place.placeId,
+        name: place.displayName?.text || place.name,
+        address: place.formattedAddress || place.vicinity,
+        lat: place.location?.latitude || place.lat,
+        lon: place.location?.longitude || place.lon,
+        rating: place.rating
+      });
+      TenantStorage.set('trip-queue', queue);
+      this.showToast(this.t('toast.added_to_trip') || `${place.displayName?.text || place.name} added to trip!`);
+      return true;
+    }
+    return false;
+  }
+
+  clearTripQueue() {
+    TenantStorage.remove('trip-queue');
+  }
+
+  // ===== TOAST NOTIFICATION =====
+  showToast(message, duration = 3000) {
+    // Remove existing toast
+    const existing = document.querySelector('.roamwise-toast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.className = 'roamwise-toast';
+    toast.textContent = message;
+    toast.style.cssText = `
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.85);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 25px;
+      z-index: 10000;
+      font-size: 14px;
+      animation: fadeInUp 0.3s ease;
+    `;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.animation = 'fadeOut 0.3s ease';
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  }
+
+  // ===== SEARCH RESULT ACTIONS =====
+  attachSearchResultActions() {
+    // Save place buttons
+    document.querySelectorAll('.save-place-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const index = parseInt(btn.dataset.index);
+        const place = window._searchResults?.[index];
+        if (place) {
+          this.toggleSavePlace(place);
+          const isSaved = this.isPlaceSaved(place.placeId);
+          btn.textContent = isSaved ? '❤️' : '🤍';
+        }
+      });
+    });
+
+    // Add to trip buttons
+    document.querySelectorAll('.add-to-trip-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const index = parseInt(btn.dataset.index);
+        const place = window._searchResults?.[index];
+        if (place) {
+          const added = this.addToTripQueue(place);
+          if (added) {
+            btn.textContent = '✅ ' + (this.t('search.added') || 'Added!');
+            btn.disabled = true;
+            btn.style.background = 'var(--ios-green, #34C759)';
+          } else {
+            this.showToast(this.t('toast.already_in_trip') || 'Already in your trip!');
+          }
+        }
+      });
+    });
+
+    // Open maps buttons
+    document.querySelectorAll('.open-maps-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const index = parseInt(btn.dataset.index);
+        const place = window._searchResults?.[index];
+        if (place) {
+          const query = encodeURIComponent(place.displayName?.text || place.name || '');
+          window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+        }
+      });
+    });
+  }
+
+  // ===== QUEUED PLACES RENDERING =====
+  renderQueuedPlaces() {
+    const queue = this.getTripQueue();
+    const section = document.getElementById('queuedPlacesSection');
+    const list = document.getElementById('queuedPlacesList');
+    const countBadge = document.getElementById('queuedCount');
+
+    if (queue.length > 0 && section && list) {
+      section.style.display = 'block';
+      if (countBadge) countBadge.textContent = queue.length;
+
+      list.innerHTML = queue.map((place, i) => `
+        <div class="queued-place" style="display: flex; align-items: center; gap: 10px; padding: 12px; background: var(--fill-tertiary, #F2F2F7); border-radius: 10px; margin-bottom: 8px;">
+          <span class="place-number" style="width: 24px; height: 24px; background: var(--ios-blue, #007AFF); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">${i + 1}</span>
+          <div style="flex: 1;">
+            <div style="font-weight: 600; font-size: 15px;">${place.name}</div>
+            ${place.rating ? `<span style="font-size: 12px; color: var(--label-secondary);">⭐ ${place.rating.toFixed(1)}</span>` : ''}
+          </div>
+          <button class="remove-queue-btn" data-index="${i}" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--ios-red, #FF3B30);">✕</button>
+        </div>
+      `).join('');
+
+      // Attach remove handlers
+      document.querySelectorAll('.remove-queue-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const queue = this.getTripQueue();
+          queue.splice(parseInt(btn.dataset.index), 1);
+          TenantStorage.set('trip-queue', queue);
+          this.renderQueuedPlaces();
+        });
+      });
+
+      // Clear all button
+      const clearBtn = document.getElementById('clearQueueBtn');
+      if (clearBtn) {
+        clearBtn.onclick = () => {
+          this.clearTripQueue();
+          this.renderQueuedPlaces();
+          this.showToast(this.t('toast.queue_cleared') || 'Trip queue cleared');
+        };
+      }
+    } else if (section) {
+      section.style.display = 'none';
+    }
+  }
+
+  loadPreselectedInterests() {
+    const preselected = localStorage.getItem('preselected-interest');
+    if (preselected) {
+      // Find and select matching interest button
+      const interestBtns = document.querySelectorAll('.ios-interest, .interest-option');
+      interestBtns.forEach(btn => {
+        const btnText = btn.textContent.toLowerCase();
+        if (btnText.includes(preselected.toLowerCase())) {
+          btn.click();
+        }
+      });
+      localStorage.removeItem('preselected-interest');
+    }
+  }
+
+  // ===== PROFILE DATA RENDERING =====
+  renderProfileData() {
+    const places = this.getSavedPlaces();
+    const trips = this.getSavedTrips();
+
+    // Update counts
+    const placesCount = document.getElementById('placesCount') || document.getElementById('savedPlacesCount');
+    const tripsCount = document.getElementById('tripsCount') || document.getElementById('savedTripsCount');
+
+    if (placesCount) placesCount.textContent = places.length;
+    if (tripsCount) tripsCount.textContent = trips.length;
+
+    // Render saved places list
+    const placesList = document.getElementById('savedPlacesList');
+    if (placesList) {
+      if (places.length > 0) {
+        placesList.innerHTML = places.map(place => `
+          <div class="saved-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--fill-tertiary, #F2F2F7); border-radius: 10px; margin-bottom: 8px;">
+            <div class="saved-item-info" style="flex: 1;">
+              <strong style="display: block; font-size: 15px;">${place.name}</strong>
+              <small style="color: var(--label-secondary); font-size: 12px;">${place.address || ''}</small>
+            </div>
+            <div class="saved-item-actions" style="display: flex; gap: 8px;">
+              <button class="add-saved-to-trip" data-place='${JSON.stringify(place).replace(/'/g, "&#39;")}' style="background: none; border: none; font-size: 18px; cursor: pointer;">📍</button>
+              <button class="remove-saved-place" data-id="${place.placeId}" style="background: none; border: none; font-size: 18px; cursor: pointer;">🗑️</button>
+            </div>
+          </div>
+        `).join('');
+
+        // Attach handlers
+        this.attachProfileActions();
+      } else {
+        placesList.innerHTML = `<p class="empty-state" style="text-align: center; color: var(--label-secondary); padding: 20px; font-size: 14px;">${this.t('profile.no_places') || 'No saved places yet. Search and save your favorites!'}</p>`;
+      }
+    }
+
+    // Render saved trips list
+    const tripsList = document.getElementById('savedTripsList');
+    if (tripsList) {
+      if (trips.length > 0) {
+        tripsList.innerHTML = trips.map(trip => `
+          <div class="saved-item trip-item" data-trip-id="${trip.id}" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--fill-tertiary, #F2F2F7); border-radius: 10px; margin-bottom: 8px;">
+            <div class="saved-item-info" style="flex: 1;">
+              <strong style="display: block; font-size: 15px;">${trip.summary?.count || 0} ${this.t('profile.stops') || 'stops'}</strong>
+              <small style="color: var(--label-secondary); font-size: 12px;">${new Date(trip.createdAt).toLocaleDateString()}</small>
+            </div>
+            <div class="saved-item-actions" style="display: flex; gap: 8px;">
+              <button class="start-saved-trip" data-trip='${JSON.stringify(trip).replace(/'/g, "&#39;")}' style="background: none; border: none; font-size: 18px; cursor: pointer;">🚀</button>
+              <button class="delete-saved-trip" data-id="${trip.id}" style="background: none; border: none; font-size: 18px; cursor: pointer;">🗑️</button>
+            </div>
+          </div>
+        `).join('');
+      } else {
+        tripsList.innerHTML = `<p class="empty-state" style="text-align: center; color: var(--label-secondary); padding: 20px; font-size: 14px;">${this.t('profile.no_trips') || 'No trips yet. Plan your first adventure!'}</p>`;
+      }
+    }
+  }
+
+  attachProfileActions() {
+    // Add saved place to trip
+    document.querySelectorAll('.add-saved-to-trip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const place = JSON.parse(btn.dataset.place);
+        if (this.addToTripQueue(place)) {
+          btn.textContent = '✅';
+        }
+      });
+    });
+
+    // Remove saved place
+    document.querySelectorAll('.remove-saved-place').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const saved = this.getSavedPlaces();
+        const filtered = saved.filter(p => p.placeId !== btn.dataset.id);
+        TenantStorage.set('saved-places', filtered);
+        this.renderProfileData();
+        this.showToast(this.t('toast.place_removed') || 'Removed from saved places');
+      });
+    });
+
+    // Start saved trip
+    document.querySelectorAll('.start-saved-trip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const trip = JSON.parse(btn.dataset.trip);
+        this.setActiveTrip(trip);
+        this.showView('ai');
+      });
+    });
+
+    // Delete saved trip
+    document.querySelectorAll('.delete-saved-trip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const trips = this.getSavedTrips();
+        const filtered = trips.filter(t => t.id !== parseInt(btn.dataset.id));
+        TenantStorage.set('trips', filtered);
+        this.renderProfileData();
+        this.showToast(this.t('toast.trip_deleted') || 'Trip deleted');
+      });
+    });
+  }
+
+  // ===== TRIP STORAGE =====
+  getSavedTrips() {
+    return TenantStorage.get('trips', []);
+  }
+
+  saveGeneratedTrip(plan) {
+    const trips = this.getSavedTrips();
+    const newTrip = {
+      id: Date.now(),
+      createdAt: new Date().toISOString(),
+      summary: plan.summary,
+      timeline: plan.timeline,
+      status: 'saved'
+    };
+    trips.push(newTrip);
+    TenantStorage.set('trips', trips);
+    this.showToast(this.t('toast.trip_saved') || 'Trip saved! View it in your Profile.');
+    this.clearTripQueue();
+    return newTrip;
+  }
+
+  setActiveTrip(plan) {
+    TenantStorage.set('active-trip', {
+      ...plan,
+      currentStopIndex: 0,
+      startedAt: new Date().toISOString()
+    });
+  }
+
+  getActiveTrip() {
+    return TenantStorage.get('active-trip', null);
+  }
+
+  clearActiveTrip() {
+    TenantStorage.remove('active-trip');
+  }
+
+  // ===== ACTIVE TRIP RENDERING =====
+  renderActiveTrip() {
+    const activeTrip = this.getActiveTrip();
+    const section = document.getElementById('activeTripSection');
+
+    if (!section) return;
+
+    if (activeTrip && activeTrip.timeline) {
+      section.style.display = 'block';
+      const timeline = document.getElementById('activeTripTimeline');
+
+      if (timeline) {
+        timeline.innerHTML = activeTrip.timeline.map((leg, idx) => {
+          const isCompleted = idx < activeTrip.currentStopIndex;
+          const isCurrent = idx === activeTrip.currentStopIndex;
+
+          return `
+            <div class="timeline-stop ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}" style="display: flex; align-items: flex-start; gap: 12px; padding: 12px; ${isCurrent ? 'background: var(--ios-blue-bg, rgba(0,122,255,0.1)); border-radius: 12px;' : ''} border-left: 2px solid ${isCompleted ? 'var(--ios-green, #34C759)' : isCurrent ? 'var(--ios-blue, #007AFF)' : 'var(--fill-tertiary, #E5E5EA)'}; margin-left: 12px;">
+              <div class="stop-marker" style="width: 28px; height: 28px; background: ${isCompleted ? 'var(--ios-green, #34C759)' : isCurrent ? 'var(--ios-blue, #007AFF)' : 'var(--fill-secondary, #E5E5EA)'}; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px;">
+                ${isCompleted ? '✓' : idx + 1}
+              </div>
+              <div class="stop-info" style="flex: 1; ${isCompleted ? 'opacity: 0.5;' : ''}">
+                <strong style="display: block;">${leg.to?.name || 'Stop ' + (idx + 1)}</strong>
+                ${leg.leg_seconds ? `<span style="font-size: 12px; color: var(--label-secondary);">🚗 ${Math.round(leg.leg_seconds / 60)} min</span>` : ''}
+                ${leg.to?.rating ? `<span style="font-size: 12px; color: var(--label-secondary); margin-left: 8px;">⭐ ${leg.to.rating.toFixed(1)}</span>` : ''}
+              </div>
+              ${isCurrent ? `
+                <div class="stop-actions" style="display: flex; gap: 8px;">
+                  <button class="navigate-btn" data-lat="${leg.to?.lat || ''}" data-lon="${leg.to?.lon || ''}" data-name="${leg.to?.name || ''}" style="padding: 6px 12px; background: var(--ios-blue, #007AFF); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 12px;">
+                    🧭 ${this.t('ai.navigate') || 'Navigate'}
+                  </button>
+                  <button class="mark-visited-btn" data-index="${idx}" style="padding: 6px 12px; background: var(--ios-green, #34C759); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 12px;">
+                    ✓ ${this.t('ai.visited') || 'Visited'}
+                  </button>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }).join('');
+
+        // Attach handlers
+        document.querySelectorAll('.navigate-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const lat = btn.dataset.lat;
+            const lon = btn.dataset.lon;
+            const name = btn.dataset.name;
+            if (lat && lon) {
+              window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`, '_blank');
+            } else if (name) {
+              window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`, '_blank');
+            }
+          });
+        });
+
+        document.querySelectorAll('.mark-visited-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const trip = this.getActiveTrip();
+            trip.currentStopIndex++;
+
+            if (trip.currentStopIndex >= trip.timeline.length) {
+              this.showToast(this.t('toast.trip_complete') || 'Congratulations! Trip completed! 🎉');
+              this.clearActiveTrip();
+              // Increment trips completed
+              this.tripsGenerated++;
+              TenantStorage.set('stats-trips-completed', this.tripsGenerated);
+            } else {
+              TenantStorage.set('active-trip', trip);
+            }
+
+            this.renderActiveTrip();
+            this.updateProfileStats();
+          });
+        });
+
+        // End trip button
+        const endBtn = document.getElementById('endTripBtn');
+        if (endBtn) {
+          endBtn.onclick = () => {
+            this.clearActiveTrip();
+            this.renderActiveTrip();
+            this.showToast(this.t('toast.trip_ended') || 'Trip ended');
+          };
+        }
+      }
+    } else {
+      section.style.display = 'none';
     }
   }
 
@@ -607,13 +1222,13 @@ class SimpleNavigation {
 
             // FIX: Increment trip counter
             this.tripsPlanned++;
-            localStorage.setItem('tripsPlanned', this.tripsPlanned.toString());
+            TenantStorage.set('stats-trips', this.tripsPlanned);
             this.updateProfileStats();
 
             tripDisplay.innerHTML = `
               <div class="ios-card trip-result">
                 <div class="ios-card-content">
-                  <h3 style="margin: 0 0 1rem; font-size: 20px; font-weight: 600;">🗺️ ${this.t('trip.your_trip') || 'Your AI-Powered Trip!'}</h3>
+                  <h3 style="margin: 0 0 1rem; font-size: 20px; font-weight: 600;">🗺️ ${this.t('trip.result_title') || 'Your AI-Powered Trip!'}</h3>
 
                   <div class="trip-summary" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; padding: 1rem; background: var(--bg-secondary); border-radius: 12px;">
                     <div style="text-align: center;">
@@ -625,7 +1240,7 @@ class SimpleNavigation {
                       <div style="font-size: 17px; font-weight: 600;">$${budget}</div>
                     </div>
                     <div style="text-align: center;">
-                      <div style="font-size: 13px; color: var(--label-secondary);">${this.t('trip.stops') || 'Stops'}</div>
+                      <div style="font-size: 13px; color: var(--label-secondary);">${this.t('trip.stops_label') || 'Stops'}</div>
                       <div style="font-size: 17px; font-weight: 600;">${stopCount} ${this.t('trip.places') || 'places'}</div>
                     </div>
                   </div>
@@ -651,9 +1266,35 @@ class SimpleNavigation {
                       `;
                     }).join('')}
                   </div>
+
+                  <!-- Trip Action Buttons -->
+                  <div class="trip-actions" style="display: flex; gap: 12px; margin-top: 1.5rem;">
+                    <button id="saveTripBtn" class="ios-button" style="flex: 1; padding: 14px; background: var(--ios-blue, #007AFF); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer;">
+                      💾 ${this.t('trip.save_trip') || 'Save Trip'}
+                    </button>
+                    <button id="startTripBtn" class="ios-button" style="flex: 1; padding: 14px; background: var(--ios-green, #34C759); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer;">
+                      🚀 ${this.t('trip.start_now') || 'Start Now'}
+                    </button>
+                  </div>
                 </div>
               </div>
             `;
+
+            // Store plan for button handlers
+            window._generatedPlan = data.plan;
+
+            // Attach button handlers
+            document.getElementById('saveTripBtn')?.addEventListener('click', () => {
+              const savedTrip = this.saveGeneratedTrip(window._generatedPlan);
+              document.getElementById('saveTripBtn').textContent = '✅ ' + (this.t('trip.saved') || 'Saved!');
+              document.getElementById('saveTripBtn').disabled = true;
+            });
+
+            document.getElementById('startTripBtn')?.addEventListener('click', () => {
+              this.setActiveTrip(window._generatedPlan);
+              this.showToast(this.t('toast.trip_started') || 'Trip started! Head to AI tab for navigation.');
+              this.showView('ai');
+            });
 
             // Render weather insights after trip display
             if (insightsData.insights.length > 0) {
@@ -1465,7 +2106,7 @@ class SimpleNavigation {
 
           // FIX: Increment trip counter
           this.tripsPlanned++;
-          localStorage.setItem('tripsPlanned', this.tripsPlanned.toString());
+          TenantStorage.set('stats-trips', this.tripsPlanned);
           this.updateProfileStats();
 
           let html = '<div class="ios-card"><div class="ios-card-content">';

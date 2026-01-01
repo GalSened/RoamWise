@@ -1177,9 +1177,434 @@
       display: inline-block;
       vertical-align: bottom;
     }
+
+    /* Saved items (places and trips) */
+    .saved-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .saved-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      background: var(--fill-tertiary);
+      border-radius: 10px;
+    }
+
+    .saved-item-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .saved-item-info strong {
+      display: block;
+      font-size: 15px;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .saved-item-info small {
+      color: var(--ios-secondary-text);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: block;
+    }
+
+    .saved-item-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .saved-item-actions button {
+      background: none;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    /* Queued places on Trip tab */
+    .queued-places-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .queued-place {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--ios-blue-bg, rgba(0, 122, 255, 0.1));
+      border-radius: 8px;
+    }
+
+    .place-number {
+      width: 24px;
+      height: 24px;
+      background: var(--ios-blue);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .place-name {
+      flex: 1;
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .remove-queue-btn {
+      background: none;
+      border: none;
+      color: var(--ios-red, #FF3B30);
+      font-size: 16px;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    /* Active trip timeline */
+    .trip-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .timeline-stop {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px;
+      border-left: 2px solid var(--ios-separator, #E5E5E5);
+      margin-left: 14px;
+      position: relative;
+    }
+
+    .timeline-stop.completed {
+      opacity: 0.5;
+    }
+
+    .timeline-stop.current {
+      background: var(--ios-blue-bg, rgba(0, 122, 255, 0.1));
+      border-radius: 12px;
+      border-left-color: var(--ios-blue);
+    }
+
+    .stop-marker {
+      width: 28px;
+      height: 28px;
+      background: var(--ios-gray, #8E8E93);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 13px;
+      flex-shrink: 0;
+      position: absolute;
+      left: -15px;
+    }
+
+    .timeline-stop.current .stop-marker {
+      background: var(--ios-blue);
+    }
+
+    .timeline-stop.completed .stop-marker {
+      background: var(--ios-green, #34C759);
+    }
+
+    .stop-info {
+      flex: 1;
+      margin-left: 20px;
+    }
+
+    .stop-info strong {
+      display: block;
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .stop-info span {
+      font-size: 13px;
+      color: var(--ios-secondary-text);
+    }
+
+    .stop-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .stop-actions button {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: none;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .navigate-btn {
+      background: var(--ios-blue);
+      color: white;
+    }
+
+    .mark-visited-btn {
+      background: var(--ios-green, #34C759);
+      color: white;
+    }
+
+    /* Search result actions */
+    .search-result-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .search-result-actions button {
+      flex: 1;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .save-place-btn {
+      background: var(--fill-tertiary);
+      color: var(--label-primary);
+    }
+
+    .save-place-btn.saved {
+      background: var(--ios-pink-bg, rgba(255, 45, 85, 0.1));
+      color: var(--ios-pink, #FF2D55);
+    }
+
+    .add-to-trip-btn {
+      background: var(--ios-blue);
+      color: white;
+    }
+
+    .add-to-trip-btn:disabled {
+      background: var(--ios-green, #34C759);
+      opacity: 1;
+    }
+
+    .view-map-btn {
+      background: var(--fill-tertiary);
+      color: var(--label-primary);
+    }
+
+    /* Trip actions after generation */
+    .trip-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 1.5rem;
+    }
+
+    .trip-actions button {
+      flex: 1;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .trip-actions .save-btn {
+      background: var(--fill-tertiary);
+      color: var(--label-primary);
+    }
+
+    .trip-actions .save-btn.saved {
+      background: var(--ios-green, #34C759);
+      color: white;
+    }
+
+    .trip-actions .start-btn {
+      background: linear-gradient(135deg, var(--ios-blue), #0051D5);
+      color: white;
+    }
+
+    /* Welcome Modal - Multi-tenant Onboarding */
+    .welcome-modal {
+      position: fixed;
+      inset: 0;
+      background: var(--bg-primary);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.25s ease-out;
+    }
+
+    .welcome-modal-visible {
+      opacity: 1;
+    }
+
+    .welcome-content {
+      text-align: center;
+      padding: 40px 24px;
+      max-width: 320px;
+      transform: translateY(20px);
+      transition: transform 0.3s ease-out;
+    }
+
+    .welcome-modal-visible .welcome-content {
+      transform: translateY(0);
+    }
+
+    .welcome-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      animation: wave 1.5s ease-in-out infinite;
+    }
+
+    @keyframes wave {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(20deg); }
+      75% { transform: rotate(-10deg); }
+    }
+
+    .welcome-content h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+    }
+
+    .welcome-content > p {
+      color: var(--text-secondary);
+      margin-bottom: 32px;
+    }
+
+    .welcome-input {
+      width: 100%;
+      padding: 16px;
+      font-size: 17px;
+      border: none;
+      background: var(--fill-tertiary);
+      border-radius: var(--radius-md);
+      text-align: center;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .welcome-input:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.3);
+      transform: scale(1.02);
+    }
+
+    .welcome-hint {
+      font-size: 13px;
+      color: var(--ios-orange, #FF9500);
+      margin: 0 0 16px 0;
+      height: 18px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .welcome-btn {
+      width: 100%;
+      padding: 16px;
+      font-size: 17px;
+      font-weight: 600;
+      color: white;
+      background: var(--ios-blue);
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.2s ease;
+    }
+
+    .welcome-btn:not(:disabled):hover {
+      transform: scale(1.02);
+    }
+
+    .welcome-btn:not(:disabled):active {
+      transform: scale(0.98);
+    }
+
+    .welcome-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Profile Header with User Name */
+    .profile-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 0;
+      margin-bottom: 16px;
+    }
+
+    .profile-avatar {
+      width: 80px;
+      height: 80px;
+      background: var(--ios-blue);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .profile-header h2 {
+      font-size: 22px;
+      font-weight: 600;
+      margin: 0;
+    }
   </style>
 </head>
 <body>
+  <!-- Welcome Modal - Multi-tenant Onboarding -->
+  <div id="welcomeModal" class="welcome-modal" style="display: none;">
+    <div class="welcome-content">
+      <div class="welcome-icon">👋</div>
+      <h1 data-i18n="welcome.title">Welcome to RoamWise!</h1>
+      <p data-i18n="welcome.subtitle">Enter your name to personalize your experience</p>
+      <input type="text" id="tenantNameInput"
+             data-i18n-placeholder="welcome.placeholder"
+             placeholder="Your name"
+             class="welcome-input"
+             maxlength="30"
+             autocomplete="name">
+      <p id="welcomeHint" class="welcome-hint" data-i18n="welcome.hint">Enter at least 2 characters</p>
+      <button id="welcomeStartBtn" class="welcome-btn" disabled>
+        <span data-i18n="welcome.start">Get Started</span>
+      </button>
+    </div>
+  </div>
+
   <div class="app-container">
     <!-- iOS Navigation Bar -->
     <header class="ios-navbar">
@@ -1248,7 +1673,7 @@
         <div class="ios-voice-container">
           <button id="voiceBtn" class="ios-voice-btn">
             <span class="ios-voice-icon">🎤</span>
-            <span class="ios-voice-text" data-i18n="ai.hold">Hold</span>
+            <span class="ios-voice-text" data-i18n="voice.hold">Hold</span>
           </button>
           <p class="ios-voice-label" data-i18n="ai.press_speak">Press & Hold to Speak</p>
         </div>
@@ -1259,6 +1684,13 @@
         <h3 style="margin-top: var(--space-6); margin-bottom: var(--space-3); font-size: var(--font-size-headline);">
           <span data-i18n="ai.quick_actions">Quick Actions</span>
         </h3>
+
+        <!-- Full AI Planner Button -->
+        <a href="planner.html" class="ios-action-btn" style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 16px; margin-bottom: 16px; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); color: white; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 17px;">
+          <span>✨</span>
+          <span data-i18n="ai.open_planner">Open AI Trip Planner</span>
+          <span>→</span>
+        </a>
 
         <div class="ios-actions-grid">
           <button class="ios-action-btn" data-action="find-food">
@@ -1278,12 +1710,48 @@
             <span data-i18n="ai.recommendations">Explore</span>
           </button>
         </div>
+
+        <!-- Active Trip Section -->
+        <div id="activeTripSection" class="ios-active-trip" style="display: none; margin-top: var(--space-6);">
+          <div class="ios-section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="margin: 0; font-size: var(--font-size-headline);">
+              <span data-i18n="ai.current_trip">Current Trip</span>
+            </h3>
+            <button id="endTripBtn" class="ios-button-text" style="color: var(--ios-red, #FF3B30);">
+              <span data-i18n="ai.end_trip">End Trip</span>
+            </button>
+          </div>
+          <div id="activeTripTimeline" class="trip-timeline">
+            <!-- Dynamically filled with current trip stops -->
+          </div>
+        </div>
+
+        <!-- No Active Trip State -->
+        <div id="noActiveTripSection" class="ios-empty-state" style="margin-top: var(--space-6); text-align: center; padding: 24px; background: var(--fill-tertiary); border-radius: 12px;">
+          <div style="font-size: 48px; margin-bottom: 12px;">🗺️</div>
+          <h3 style="margin: 0 0 8px 0; font-size: var(--font-size-headline);" data-i18n="ai.no_active_trip">No active trip</h3>
+          <p style="margin: 0; color: var(--ios-secondary-text); font-size: var(--font-size-callout);" data-i18n="ai.start_trip_hint">Plan a trip and tap 'Start Now' to see it here!</p>
+        </div>
       </section>
 
       <!-- Trip Planning View -->
       <section id="tripView" class="ios-view" data-view="trip">
         <h1 class="ios-large-title"><span data-i18n="trip.title">Plan Your Trip</span></h1>
         <p class="ios-subtitle" data-i18n="trip.subtitle">AI-powered trip planning with personalized recommendations</p>
+
+        <!-- Queued Places Section -->
+        <div class="ios-card-section" id="queuedPlacesSection" style="display: none;">
+          <div class="ios-section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <span class="ios-section-label" data-i18n="trip.queued_places">Your Selected Places</span>
+            <span id="queuedCount" class="ios-badge ios-badge-blue">0</span>
+          </div>
+          <div id="queuedPlacesList" class="queued-places-list">
+            <!-- Dynamically filled -->
+          </div>
+          <button id="clearQueueBtn" class="ios-button-text" style="width: 100%; margin-top: 8px; color: var(--ios-red, #FF3B30);">
+            <span data-i18n="trip.clear_queue">Clear All</span>
+          </button>
+        </div>
 
         <!-- Trip Mode Selector (Smart Route Optimizer) -->
         <div class="ios-form-group" id="tripModeGroup">
@@ -1382,14 +1850,43 @@
         <h1 class="ios-large-title"><span data-i18n="profile.title">Profile</span></h1>
         <p class="ios-subtitle" data-i18n="profile.subtitle">Your travel preferences and history</p>
 
+        <!-- User Profile Header -->
+        <div class="profile-header">
+          <div class="profile-avatar" id="profileAvatar">👤</div>
+          <h2 id="profileName">User</h2>
+        </div>
+
         <div class="ios-stats-grid">
           <div class="ios-stat-card">
             <div class="ios-stat-value" id="tripsPlannedCount">0</div>
-            <div class="ios-stat-label" data-i18n="profile.trips_planned">Trips Planned</div>
+            <div class="ios-stat-label" data-i18n="profile.trips_saved">Trips Saved</div>
           </div>
           <div class="ios-stat-card">
             <div class="ios-stat-value" id="placesVisitedCount">0</div>
-            <div class="ios-stat-label" data-i18n="profile.places_visited">Places Visited</div>
+            <div class="ios-stat-label" data-i18n="profile.places_saved">Places Saved</div>
+          </div>
+        </div>
+
+        <!-- My Places Section -->
+        <div class="ios-card-section" style="margin-top: var(--space-6);">
+          <div class="ios-section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <span class="ios-section-label" data-i18n="profile.my_places">My Places</span>
+            <button id="clearPlacesBtn" class="ios-button-text" style="color: var(--ios-red, #FF3B30);">
+              <span data-i18n="profile.clear_all">Clear All</span>
+            </button>
+          </div>
+          <div id="savedPlacesList" class="saved-list">
+            <p class="ios-empty-state" style="text-align: center; padding: 16px; color: var(--ios-secondary-text);" data-i18n="profile.no_places">No saved places yet. Search and save your favorites!</p>
+          </div>
+        </div>
+
+        <!-- My Trips Section -->
+        <div class="ios-card-section" style="margin-top: var(--space-4);">
+          <div class="ios-section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <span class="ios-section-label" data-i18n="profile.my_trips">My Trips</span>
+          </div>
+          <div id="savedTripsList" class="saved-list">
+            <p class="ios-empty-state" style="text-align: center; padding: 16px; color: var(--ios-secondary-text);" data-i18n="profile.no_trips">No trips yet. Plan your first adventure!</p>
           </div>
         </div>
 
