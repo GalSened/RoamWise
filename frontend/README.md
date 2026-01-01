@@ -4,6 +4,10 @@
 
 RoamWise transforms outdoor adventures by combining intelligent trip planning, real-time safety monitoring, and personalized recommendations into a single, beautifully designed mobile experience.
 
+## 🚀 Live Demo
+
+**[https://frontend-gamma-dun.vercel.app](https://frontend-gamma-dun.vercel.app)**
+
 ---
 
 ## Key Features
