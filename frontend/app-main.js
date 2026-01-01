@@ -673,8 +673,8 @@ class SimpleNavigation {
           resultsList.innerHTML = `
             <div class="ios-empty-state" style="text-align: center; padding: 3rem 1.5rem;">
               <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
-              <h3 style="margin: 0 0 0.5rem;">${this.t('error.search') || 'Search Error'}</h3>
-              <p style="margin: 0; color: var(--label-secondary);">${this.t('error.try_again') || 'Unable to connect. Please try again.'}</p>
+              <h3 style="margin: 0 0 0.5rem;">${this.t('search.error') || 'Search Error'}</h3>
+              <p style="margin: 0; color: var(--label-secondary);">${this.t('search.error_hint') || 'Unable to connect. Please try again.'}</p>
             </div>
           `;
         }
@@ -1327,8 +1327,8 @@ class SimpleNavigation {
             <div class="ios-card" style="background: var(--ios-red-bg, #FEE2E2); border: 1px solid var(--ios-red, #FF3B30);">
               <div class="ios-card-content" style="text-align: center; padding: 2rem;">
                 <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚠️</div>
-                <h3 style="margin: 0 0 0.5rem;">${this.t('error.trip') || 'Trip Planning Error'}</h3>
-                <p style="margin: 0; color: var(--label-secondary);">${this.t('error.try_again') || 'Unable to generate trip. Please try again.'}</p>
+                <h3 style="margin: 0 0 0.5rem;">${this.t('trip.error') || 'Trip Planning Error'}</h3>
+                <p style="margin: 0; color: var(--label-secondary);">${this.t('trip.error_hint') || 'Unable to generate trip. Please try again.'}</p>
               </div>
             </div>
           `;
@@ -1689,6 +1689,45 @@ class SimpleNavigation {
     }
   }
 
+  // Convert WMO weather codes to descriptions
+  getWeatherDescription(code) {
+    const descriptions = {
+      0: 'Clear sky',
+      1: 'Mainly clear',
+      2: 'Partly cloudy',
+      3: 'Overcast',
+      45: 'Foggy',
+      48: 'Depositing rime fog',
+      51: 'Light drizzle',
+      53: 'Moderate drizzle',
+      55: 'Dense drizzle',
+      61: 'Slight rain',
+      63: 'Moderate rain',
+      65: 'Heavy rain',
+      71: 'Slight snow',
+      73: 'Moderate snow',
+      75: 'Heavy snow',
+      80: 'Slight rain showers',
+      81: 'Moderate rain showers',
+      82: 'Violent rain showers',
+      95: 'Thunderstorm',
+      96: 'Thunderstorm with hail',
+      99: 'Thunderstorm with heavy hail'
+    };
+    return descriptions[code] || 'Clear';
+  }
+
+  // Derive weather description from precipitation amount
+  getWeatherDescFromPrecip(precipitation, isDay) {
+    if (precipitation === undefined || precipitation === null) {
+      return isDay ? 'Clear' : 'Clear night';
+    }
+    if (precipitation > 5) return 'Heavy rain';
+    if (precipitation > 1) return 'Rainy';
+    if (precipitation > 0.1) return 'Light rain';
+    return isDay ? 'Clear' : 'Clear night';
+  }
+
   async handleCheckWeather(responseEl) {
     if (responseEl) {
       responseEl.innerHTML = `
@@ -1739,22 +1778,32 @@ class SimpleNavigation {
         await new Promise(r => setTimeout(r, 1500)); // Show notice briefly
       }
 
-      // Fetch weather from hazards API
-      const response = await fetch(
-        `${API_BASE_URL}/api/hazards?lat=${lat}&lon=${lon}&radius=5000`
-      );
+      // Fetch weather from weather API (POST endpoint)
+      const response = await fetch(`${API_BASE_URL}/weather`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lat, lng: lon })
+      });
 
       if (response.ok) {
         const data = await response.json();
-        const weather = data.conditions || {};
+        const weather = data.weather?.current || {};
 
         if (responseEl) {
-          const temp = weather.temperature !== undefined
-            ? `${Math.round(weather.temperature)}°C`
-            : 'N/A';
-          const desc = weather.description || 'Clear';
-          const humidity = weather.humidity ? `${weather.humidity}%` : 'N/A';
-          const wind = weather.windSpeed ? `${weather.windSpeed} m/s` : 'N/A';
+          // Parse Open-Meteo format from /weather endpoint
+          const tempValue = weather.temperature_2m;
+          const temp = tempValue !== undefined
+            ? `${Math.round(tempValue)}°C`
+            : '--';
+          // Derive description from weather_code or precipitation
+          const desc = weather.weather_code !== undefined
+            ? this.getWeatherDescription(weather.weather_code)
+            : this.getWeatherDescFromPrecip(weather.precipitation, weather.is_day);
+          const windValue = weather.wind_speed_10m;
+          const wind = windValue !== undefined ? `${Math.round(windValue)} km/h` : '--';
+          const feelsLike = weather.apparent_temperature !== undefined
+            ? `${Math.round(weather.apparent_temperature)}°C`
+            : '--';
 
           responseEl.innerHTML = `
             <div class="ios-card weather-card" style="background: linear-gradient(135deg, var(--ios-blue), #3B82F6); color: white;">
@@ -1763,7 +1812,7 @@ class SimpleNavigation {
                 <p style="margin: 0; font-size: 2.5rem; font-weight: 700;">${temp}</p>
                 <p style="margin: 0.25rem 0; font-size: 17px;">${desc}</p>
                 <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.2); display: flex; gap: 1.5rem; font-size: 13px; opacity: 0.9;">
-                  <span>💧 ${humidity}</span>
+                  <span>🌡️ Feels ${feelsLike}</span>
                   <span>💨 ${wind}</span>
                 </div>
               </div>
@@ -1824,21 +1873,26 @@ class SimpleNavigation {
 
   async getAIWeatherInsights(lat, lon, locationName = '') {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/hazards?lat=${lat}&lon=${lon}&radius=10000`
-      );
+      const response = await fetch(`${API_BASE_URL}/weather`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lat, lng: lon })
+      });
 
       if (!response.ok) throw new Error('Weather API failed');
 
       const data = await response.json();
-      const weather = data.conditions || {};
-      const alerts = data.alerts || [];
+      const weather = data.weather?.current || {};
 
       const insights = [];
-      const temp = weather.temperature;
-      const description = (weather.description || '').toLowerCase();
-      const windSpeed = weather.windSpeed || 0;
-      const humidity = weather.humidity || 0;
+      // Parse Open-Meteo format from /weather endpoint
+      const temp = weather.temperature_2m;
+      const precipitation = weather.precipitation ?? 0;
+      // Derive description from weather_code or precipitation
+      const description = (weather.weather_code !== undefined
+        ? this.getWeatherDescription(weather.weather_code)
+        : this.getWeatherDescFromPrecip(precipitation, weather.is_day)).toLowerCase();
+      const windSpeed = weather.wind_speed_10m ?? 0;
 
       // Rain insights
       if (description.includes('rain') || description.includes('shower') || description.includes('drizzle')) {
@@ -1904,18 +1958,6 @@ class SimpleNavigation {
           icon: '❄️',
           title: this.t('insight.snow_title') || 'Snow Expected',
           message: this.t('insight.snow') || "Snow is expected. Check road conditions and consider alternative routes."
-        });
-      }
-
-      // Add any official alerts
-      if (alerts.length > 0) {
-        alerts.forEach(alert => {
-          insights.push({
-            type: 'alert',
-            icon: '⚠️',
-            title: alert.event || 'Weather Alert',
-            message: alert.description || 'Check local weather services for details.'
-          });
         });
       }
 
