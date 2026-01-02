@@ -1,11 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { waitForPlannerOK } from './utils/waits';
+import { dismissModals } from './utils/dismissModals';
 
 test.describe('Planner - UI Comfort & Consistency', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    await dismissModals(page);
     await page.click('[data-testid="nav-trip"]');
-    await expect(page.locator('#page-trip')).toHaveClass(/active/);
+    await expect(page.locator('#tripView')).toHaveClass(/active/);
   });
 
   test('loading state renders correctly', async ({ page }) => {

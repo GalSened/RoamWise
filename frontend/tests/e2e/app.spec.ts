@@ -1,13 +1,15 @@
 import { test, expect } from '@playwright/test';
 import { waitForPlannerOK } from './utils/waits';
+import { dismissModals } from './utils/dismissModals';
 
 test.describe('RoamWise App', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    await dismissModals(page);
   });
 
   test('should display the app title', async ({ page }) => {
-    await expect(page).toHaveTitle(/RoamWise/i);
+    await expect(page).toHaveTitle(/Traveling/i);
   });
 
   test('should have working navigation', async ({ page }) => {
@@ -111,7 +113,7 @@ test.describe('RoamWise App', () => {
     await page.click('.ios-tab[data-view="trip"]');
 
     // Trip planner should be visible
-    await expect(page.locator('#page-trip')).toBeVisible();
+    await expect(page.locator('#tripView')).toBeVisible();
 
     // Duration chips should be present
     await expect(page.locator('[data-duration]').first()).toBeVisible();

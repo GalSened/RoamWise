@@ -1,11 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { waitForPlannerOK } from './utils/waits';
+import { dismissModals } from './utils/dismissModals';
 
 test.describe('Route - Chips and Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    await dismissModals(page);
     await page.click('[data-testid="nav-trip"]');
-    await expect(page.locator('#page-trip')).toHaveClass(/active/);
+    await expect(page.locator('#tripView')).toHaveClass(/active/);
   });
 
   test('route chips become visible after trip generation', async ({ page }) => {

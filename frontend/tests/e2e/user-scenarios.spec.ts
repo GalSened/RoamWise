@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { waitForPlannerOK, waitForApiResponse } from './utils/waits';
+import { dismissModals } from './utils/dismissModals';
 
 /**
  * Comprehensive User Scenario Tests for RoamWise
@@ -10,6 +11,7 @@ test.describe('User Scenarios', () => {
     // Clear localStorage to start fresh
     await page.addInitScript(() => localStorage.clear());
     await page.goto('/');
+    await dismissModals(page);
     // Wait for app to initialize (nav buttons get active class after JS loads)
     await page.waitForSelector('.ios-tab.active', { timeout: 10000 });
   });
@@ -155,18 +157,19 @@ test.describe('User Scenarios', () => {
       // Wait for language to initialize
       await expect(page.locator('[data-testid="lang-he"]')).toHaveClass(/active/, { timeout: 10000 });
 
-      // Get Hebrew title first
-      const hebrewTitle = await page.locator('h1').first().textContent();
+      // Get Hebrew title from search view (not from any modals)
+      const searchTitle = page.locator('#searchView h1');
+      const hebrewTitle = await searchTitle.textContent();
 
       // Switch to English
       await page.click('[data-testid="lang-en"]');
       await expect(page.locator('[data-testid="lang-en"]')).toHaveClass(/active/, { timeout: 5000 });
 
       // Wait for translations to load and apply (async operation)
-      await expect(page.locator('h1').first()).toContainText('Find Places', { timeout: 5000 });
+      await expect(searchTitle).toContainText('Find Places', { timeout: 5000 });
 
       // Title should have changed
-      const englishTitle = await page.locator('h1').first().textContent();
+      const englishTitle = await searchTitle.textContent();
       expect(hebrewTitle).not.toBe(englishTitle);
     });
 
@@ -246,6 +249,7 @@ test.describe('User Scenarios', () => {
       // Create a new page without the localStorage clearing script
       const newPage = await context.newPage();
       await newPage.goto('/');
+      await dismissModals(newPage);
 
       // Get current theme and toggle it
       const initialTheme = await newPage.locator('html').getAttribute('data-theme');
@@ -255,6 +259,7 @@ test.describe('User Scenarios', () => {
 
       // Reload without clearing localStorage
       await newPage.reload();
+      await dismissModals(newPage);
 
       // Should still be the toggled theme
       await expect(newPage.locator('html')).toHaveAttribute('data-theme', newTheme || 'dark');
@@ -400,8 +405,10 @@ test.describe('User Scenarios', () => {
 
       // Stats section should be visible
       await expect(page.locator('#profileView')).toBeVisible();
-      await expect(page.locator('text=/trips planned|טיולים מתוכננים/i')).toBeVisible();
-      await expect(page.locator('text=/places visited|מקומות שביקרת/i')).toBeVisible();
+      // Check for stats labels (HTML uses "Trips Saved" / "Places Saved")
+      await expect(page.locator('.ios-stat-label').first()).toBeVisible();
+      await expect(page.locator('#tripsPlannedCount')).toBeVisible();
+      await expect(page.locator('#placesVisitedCount')).toBeVisible();
     });
   });
 });

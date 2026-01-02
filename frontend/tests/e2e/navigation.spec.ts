@@ -1,45 +1,47 @@
 import { test, expect } from '@playwright/test';
+import { dismissModals } from './utils/dismissModals';
 
 test.describe('Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    await dismissModals(page);
   });
 
   test('exactly one page visible at a time', async ({ page }) => {
     // Initially search view should be active
     const activeViews = page.locator('.ios-view.active');
     await expect(activeViews).toHaveCount(1);
-    await expect(page.locator('#page-search')).toHaveClass(/active/);
+    await expect(page.locator('#searchView')).toHaveClass(/active/);
 
     // Navigate to AI view
     await page.click('[data-testid="nav-ai"]');
     await expect(activeViews).toHaveCount(1);
-    await expect(page.locator('#page-ai')).toHaveClass(/active/);
-    await expect(page.locator('#page-search')).not.toHaveClass(/active/);
+    await expect(page.locator('#aiView')).toHaveClass(/active/);
+    await expect(page.locator('#searchView')).not.toHaveClass(/active/);
 
     // Navigate to Trip view
     await page.click('[data-testid="nav-trip"]');
     await expect(activeViews).toHaveCount(1);
-    await expect(page.locator('#page-trip')).toHaveClass(/active/);
-    await expect(page.locator('#page-ai')).not.toHaveClass(/active/);
+    await expect(page.locator('#tripView')).toHaveClass(/active/);
+    await expect(page.locator('#aiView')).not.toHaveClass(/active/);
 
     // Navigate to Profile view
     await page.click('[data-testid="nav-profile"]');
     await expect(activeViews).toHaveCount(1);
-    await expect(page.locator('#page-profile')).toHaveClass(/active/);
-    await expect(page.locator('#page-trip')).not.toHaveClass(/active/);
+    await expect(page.locator('#profileView')).toHaveClass(/active/);
+    await expect(page.locator('#tripView')).not.toHaveClass(/active/);
 
     // Navigate back to Search view
     await page.click('[data-testid="nav-search"]');
     await expect(activeViews).toHaveCount(1);
-    await expect(page.locator('#page-search')).toHaveClass(/active/);
-    await expect(page.locator('#page-profile')).not.toHaveClass(/active/);
+    await expect(page.locator('#searchView')).toHaveClass(/active/);
+    await expect(page.locator('#profileView')).not.toHaveClass(/active/);
   });
 
   test('content not hidden under fixed navbar', async ({ page }) => {
     // Check that page containers are properly positioned below the header
     const header = page.locator('.ios-navbar');
-    const searchView = page.locator('#page-search');
+    const searchView = page.locator('#searchView');
 
     const headerBox = await header.boundingBox();
     const searchBox = await searchView.boundingBox();
@@ -52,11 +54,11 @@ test.describe('Navigation', () => {
     expect(searchBox).toBeTruthy();
     expect(searchBox!.y).toBeGreaterThanOrEqual(headerBox!.y + headerBox!.height);
 
-    // Verify for each view
-    const views = ['ai', 'trip', 'profile'];
-    for (const view of views) {
-      await page.click(`[data-testid="nav-${view}"]`);
-      const viewElement = page.locator(`#page-${view}`);
+    // Verify for each view - map data-view names to actual IDs
+    const viewMap = { ai: 'aiView', trip: 'tripView', profile: 'profileView' };
+    for (const [nav, viewId] of Object.entries(viewMap)) {
+      await page.click(`[data-testid="nav-${nav}"]`);
+      const viewElement = page.locator(`#${viewId}`);
       const viewBox = await viewElement.boundingBox();
 
       expect(viewBox).toBeTruthy();
@@ -95,10 +97,10 @@ test.describe('Navigation', () => {
 
   test('all views are accessible', async ({ page }) => {
     // Verify all page containers exist
-    await expect(page.locator('#page-search')).toBeAttached();
-    await expect(page.locator('#page-ai')).toBeAttached();
-    await expect(page.locator('#page-trip')).toBeAttached();
-    await expect(page.locator('#page-profile')).toBeAttached();
+    await expect(page.locator('#searchView')).toBeAttached();
+    await expect(page.locator('#aiView')).toBeAttached();
+    await expect(page.locator('#tripView')).toBeAttached();
+    await expect(page.locator('#profileView')).toBeAttached();
 
     // Verify all navbar buttons exist
     await expect(page.locator('[data-testid="nav-search"]')).toBeVisible();

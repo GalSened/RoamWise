@@ -1,12 +1,14 @@
 import { test, expect } from '@playwright/test';
 import { waitForPlannerOK } from './utils/waits';
+import { dismissModals } from './utils/dismissModals';
 
 test.describe('Planner - Basic Flows', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    await dismissModals(page);
     // Navigate to trip planning view
     await page.click('[data-testid="nav-trip"]');
-    await expect(page.locator('#page-trip')).toHaveClass(/active/);
+    await expect(page.locator('#tripView')).toHaveClass(/active/);
   });
 
   test('NEARBY flow - generates trip without destination', async ({ page }) => {
