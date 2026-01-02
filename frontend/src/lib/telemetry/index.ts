@@ -1,4 +1,5 @@
 import type { TelemetryEvent, PerformanceMetric } from '@/types';
+import { config as envConfig } from '@/config/env';
 
 interface TelemetryConfig {
   enabled: boolean;
@@ -19,8 +20,8 @@ class TelemetryManager {
 
   constructor(config: Partial<TelemetryConfig> = {}) {
     this.config = {
-      enabled: import.meta.env.VITE_TELEMETRY_ENABLED === 'true',
-      endpoint: import.meta.env.VITE_TELEMETRY_ENDPOINT || '/api/telemetry',
+      enabled: envConfig.telemetry.enabled,
+      endpoint: envConfig.telemetry.endpoint,
       batchSize: 10,
       flushInterval: 30000, // 30 seconds
       ...config

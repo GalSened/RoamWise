@@ -16,6 +16,7 @@ import {
   Sparkles,
   RefreshCw,
   ExternalLink,
+  ArrowLeft,
 } from 'lucide-react';
 import {
   processMessage,
@@ -74,6 +75,18 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  backButton: {
+    padding: '8px',
+    background: 'none',
+    border: 'none',
+    color: '#3B82F6',
+    cursor: 'pointer',
+    borderRadius: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: '8px',
   },
   mapContainer: {
     height: '40vh',
@@ -435,9 +448,14 @@ export function AIPlanner() {
     <div style={styles.container}>
       {/* Header */}
       <header style={styles.header}>
-        <div style={styles.headerContent}>
-          <Sparkles color="#3B82F6" size={24} />
-          <h1 style={styles.headerTitle}>AI Co-Pilot</h1>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <a href="/index.html" style={styles.backButton as React.CSSProperties} aria-label="Back to app">
+            <ArrowLeft size={24} />
+          </a>
+          <div style={styles.headerContent}>
+            <Sparkles color="#3B82F6" size={24} />
+            <h1 style={styles.headerTitle}>AI Co-Pilot</h1>
+          </div>
         </div>
         <button onClick={handleClearChat} style={styles.clearButton}>
           <RefreshCw size={20} />

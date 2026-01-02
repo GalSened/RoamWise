@@ -13,6 +13,7 @@ import { MapManager } from '../features/map/MapManager';
 import { UIManager } from '../features/ui/UIManager';
 import { telemetry } from '../lib/telemetry';
 import type { RoutingProvider, PlacesProvider, WeatherProvider, UpdateInfo, VoiceIntent, PlaceDetail, StopCategory } from '../types';
+import { config as envConfig } from '../config/env';
 
 interface AppConfig {
   googleMapsApiKey?: string;
@@ -50,9 +51,9 @@ class TravelingApp {
 
   constructor() {
     this.config = {
-      googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
-      openWeatherApiKey: import.meta.env.VITE_OPENWEATHER_API_KEY,
-      routingProvider: (import.meta.env.VITE_ROUTING_PROVIDER as 'google' | 'osrm') || 'google',
+      googleMapsApiKey: envConfig.googleMaps.apiKey,
+      openWeatherApiKey: envConfig.openWeather.apiKey,
+      routingProvider: envConfig.routing.provider,
       weatherProvider: 'openweather'
     };
   }
@@ -281,7 +282,7 @@ declare global {
 }
 
 // Export app instance for debugging
-if (import.meta.env.DEV) {
+if (envConfig.app.isDev) {
   window.__travelingApp = app;
 }
 

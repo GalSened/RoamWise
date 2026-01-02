@@ -1,10 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { dismissModals } from './utils/dismissModals';
 
 test.describe('Internationalization (i18n)', () => {
   test.beforeEach(async ({ page, browserName }) => {
     // Skip Firefox due to routing issue with Python HTTP server + /roamwise-app/ base path
     test.skip(browserName === 'firefox', 'Firefox has routing issues with Python HTTP server');
     await page.goto('/');
+    await dismissModals(page);
   });
 
   test('language toggle buttons exist and are visible', async ({ page }) => {

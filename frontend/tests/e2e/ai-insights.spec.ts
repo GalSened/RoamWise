@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { waitForPlannerOK, waitForApiResponse } from './utils/waits';
+import { dismissModals } from './utils/dismissModals';
 
 /**
  * AI Weather Insights Tests
@@ -9,6 +10,7 @@ test.describe('AI Weather Insights', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => localStorage.clear());
     await page.goto('/');
+    await dismissModals(page);
   });
 
   test.describe('Trip Planning with Insights', () => {

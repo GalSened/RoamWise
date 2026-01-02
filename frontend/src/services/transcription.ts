@@ -1,18 +1,22 @@
 /**
- * Transcription Service - Groq Whisper Integration
+ * Transcription Service - Groq Whisper Integration via Proxy
  *
- * Uses Groq's whisper-large-v3-turbo model for speech-to-text.
+ * Uses the proxy's /whisper-intent endpoint which connects to Groq's whisper-large-v3-turbo model.
+ * This keeps API keys secure on the server side.
  * Supports Hebrew and English audio transcription.
  */
 
 import { config } from '../config/env';
 
-const WHISPER_API_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
-
 export interface TranscriptionResult {
   text: string;
   language?: string;
   duration?: number;
+  intent?: {
+    intent: string;
+    params: Record<string, unknown>;
+    response?: string;
+  };
 }
 
 export interface TranscriptionError {
@@ -21,28 +25,23 @@ export interface TranscriptionError {
 }
 
 /**
- * Transcribe audio blob to text using Groq Whisper API
+ * Transcribe audio blob to text using proxy's Whisper endpoint
  *
  * @param audioBlob - Audio blob from MediaRecorder (webm format)
- * @param language - Optional language hint (default: auto-detect)
+ * @param language - Optional language hint (default: 'he' for Hebrew)
  * @returns Transcribed text
  * @throws Error if transcription fails
  */
 export async function transcribeAudio(
   audioBlob: Blob,
-  language?: string
+  language: string = 'he'
 ): Promise<string> {
-  // Check if Groq is configured
-  if (!config.groq.isConfigured) {
-    throw new Error('Groq API key not configured. Please set VITE_GROQ_API_KEY in .env');
-  }
-
   // Validate audio blob
   if (!audioBlob || audioBlob.size === 0) {
     throw new Error('No audio data to transcribe');
   }
 
-  // Build form data
+  // Build form data for proxy endpoint
   const formData = new FormData();
 
   // Determine file extension based on MIME type
@@ -51,20 +50,13 @@ export async function transcribeAudio(
     : audioBlob.type.includes('wav') ? 'wav'
     : 'webm';
 
-  formData.append('file', audioBlob, `recording.${extension}`);
-  formData.append('model', 'whisper-large-v3-turbo');
-
-  // Add language hint if provided (improves accuracy)
-  if (language) {
-    formData.append('language', language);
-  }
+  formData.append('audio', audioBlob, `recording.${extension}`);
+  formData.append('language', language);
 
   try {
-    const response = await fetch(WHISPER_API_URL, {
+    // Use proxy endpoint instead of calling Groq directly
+    const response = await fetch(`${config.api.proxyUrl}/whisper-intent`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${config.groq.apiKey}`,
-      },
       body: formData,
     });
 
@@ -74,18 +66,18 @@ export async function transcribeAudio(
 
       try {
         const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.error?.message || errorJson.message || errorText;
+        errorMessage = errorJson.error || errorJson.message || errorText;
       } catch {
         errorMessage = errorText;
       }
 
       // Handle specific error codes
-      if (response.status === 401) {
-        throw new Error('Invalid Groq API key');
-      } else if (response.status === 413) {
+      if (response.status === 413) {
         throw new Error('Audio file too large (max 25MB)');
       } else if (response.status === 429) {
         throw new Error('Rate limit exceeded. Please wait a moment.');
+      } else if (response.status === 503) {
+        throw new Error('Voice service temporarily unavailable');
       }
 
       throw new Error(`Transcription failed: ${errorMessage}`);
@@ -93,12 +85,18 @@ export async function transcribeAudio(
 
     const data = await response.json();
 
-    // Validate response
-    if (!data.text && data.text !== '') {
-      throw new Error('Invalid response from transcription API');
+    // Check for mock response (API not fully configured)
+    if (data.mock) {
+      console.warn('[Transcription] Using mock response - API not fully configured');
     }
 
-    return data.text.trim();
+    // Check for error in response
+    if (!data.ok) {
+      throw new Error(data.error || 'Transcription failed');
+    }
+
+    // Return the transcribed text
+    return data.text?.trim() || '';
   } catch (error) {
     // Re-throw our custom errors
     if (error instanceof Error) {

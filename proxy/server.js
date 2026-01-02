@@ -134,7 +134,15 @@ app.use(morgan("combined", { stream: { write: message => logger.info(message.tri
 // Environment
 const GMAPS_KEY = process.env.GMAPS_KEY;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 if (!GMAPS_KEY) { console.error("Missing GMAPS_KEY env"); process.exit(1); }
+
+// Log API availability at startup
+logger.info('API Configuration:');
+logger.info(`  - Google Maps: ${GMAPS_KEY ? 'configured' : 'MISSING'}`);
+logger.info(`  - OpenAI: ${OPENAI_API_KEY ? 'configured' : 'not configured'}`);
+logger.info(`  - Groq: ${GROQ_API_KEY ? 'configured' : 'not configured'}`);
+logger.info(`  - Whisper: ${GROQ_API_KEY ? 'Groq (whisper-large-v3-turbo)' : OPENAI_API_KEY ? 'OpenAI (whisper-1)' : 'MOCK MODE'}`);
 
 // CORS: limit to your GitHub Pages origin(s)
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
@@ -225,6 +233,268 @@ function plannerGuardrails(req, res, next) {
     });
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AI INPUT SECURITY MIDDLEWARE - Prompt Injection & Content Filtering
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Security patterns to detect prompt injection and malicious input
+ */
+const SECURITY_PATTERNS = {
+  // Prompt injection patterns (case-insensitive)
+  promptInjection: [
+    /ignore\s*(all\s*)?(previous|prior|above|preceding)\s*(instructions?|prompts?|rules?)/i,
+    /disregard\s*(all\s*)?(previous|prior|above)\s*(instructions?|prompts?)/i,
+    /forget\s*(all\s*)?(previous|prior|your)\s*(instructions?|prompts?|rules?|training)/i,
+    /override\s*(your|all|the)\s*(instructions?|prompts?|rules?|constraints?)/i,
+    /you\s*are\s*now\s*(a|an|my)\s*(new|different)/i,
+    /act\s*as\s*(if|though)\s*you\s*(are|were)\s*(not|no\s*longer)/i,
+    /pretend\s*(you\s*)?(are|were|to\s*be)\s*(not|no\s*longer|a\s*different)/i,
+    /new\s*instructions?:\s*/i,
+    /system\s*prompt:\s*/i,
+    /\[system\]/i,
+    /\[admin\]/i,
+    /\[developer\]/i,
+    /\[override\]/i,
+    /jailbreak/i,
+    /dan\s*mode/i,
+    /developer\s*mode/i,
+    /bypass\s*(all\s*)?(filters?|restrictions?|rules?|safety)/i,
+    /reveal\s*(your|the)\s*(system|original|base)\s*prompt/i,
+    /what\s*(is|are)\s*your\s*(system|original|base)\s*prompt/i,
+    /show\s*(me\s*)?(your|the)\s*(system|hidden|original)\s*(prompt|instructions?)/i,
+    /output\s*(your|the)\s*(initial|system|original)\s*(prompt|instructions?)/i,
+    /repeat\s*(your|the)\s*(system|original)\s*(prompt|instructions?)/i,
+    /print\s*(your|the)\s*(system|original)\s*(prompt|instructions?)/i,
+  ],
+
+  // Security/hacking related patterns
+  securityExploits: [
+    /sql\s*injection/i,
+    /xss\s*(attack)?/i,
+    /cross[\-\s]*site\s*scripting/i,
+    /remote\s*code\s*execution/i,
+    /shell\s*(injection|command)/i,
+    /command\s*injection/i,
+    /how\s*to\s*hack/i,
+    /exploit\s*(vulnerability|system)/i,
+    /malware/i,
+    /ransomware/i,
+    /ddos/i,
+    /brute\s*force/i,
+    /password\s*(crack|hack|steal)/i,
+    /phishing/i,
+    /keylogger/i,
+    /trojan/i,
+    /backdoor/i,
+    /rootkit/i,
+    /zero[\-\s]*day/i,
+  ],
+
+  // Harmful content patterns
+  harmfulContent: [
+    /how\s*to\s*(make|create|build)\s*(a\s*)?(bomb|explosive|weapon)/i,
+    /how\s*to\s*kill/i,
+    /how\s*to\s*poison/i,
+    /illegal\s*(drugs?|substances?)/i,
+    /suicide\s*(method|how)/i,
+    /self[\-\s]*harm/i,
+  ],
+
+  // Off-topic patterns (not travel-related)
+  offTopic: [
+    /write\s*(me\s*)?(a|an|some)\s*(code|program|script|essay|story|poem)/i,
+    /generate\s*(a|an|some)\s*(code|program|script|essay|story)/i,
+    /help\s*(me\s*)?(with\s*)?(my\s*)?(homework|assignment|exam|test)/i,
+    /solve\s*(this|my)\s*(math|equation|problem)/i,
+    /translate\s*(this|the\s*following)\s*(to|into)/i,
+    /summarize\s*(this|the\s*following)\s*(article|text|document)/i,
+    /explain\s*(quantum|blockchain|cryptocurrency|bitcoin)/i,
+    /what\s*is\s*(the\s*meaning\s*of\s*life|consciousness|existence)/i,
+    /tell\s*me\s*(a\s*)?joke/i,
+    /play\s*(a\s*)?game/i,
+    /role[\-\s]*play/i,
+  ],
+};
+
+/**
+ * Travel-related keywords that indicate legitimate queries
+ */
+const TRAVEL_KEYWORDS = [
+  // English
+  'trip', 'travel', 'tour', 'visit', 'explore', 'vacation', 'holiday',
+  'hotel', 'hostel', 'accommodation', 'stay', 'lodge', 'airbnb',
+  'flight', 'fly', 'airport', 'airline',
+  'restaurant', 'food', 'eat', 'dining', 'cafe', 'coffee', 'bar', 'pub',
+  'museum', 'gallery', 'landmark', 'monument', 'attraction', 'sight',
+  'beach', 'park', 'garden', 'nature', 'hiking', 'trail', 'mountain',
+  'city', 'town', 'village', 'neighborhood', 'district', 'area',
+  'navigate', 'direction', 'route', 'map', 'way', 'drive', 'walk',
+  'weather', 'forecast', 'climate', 'temperature',
+  'plan', 'itinerary', 'schedule', 'recommend', 'suggestion', 'tip',
+  'transport', 'bus', 'train', 'taxi', 'uber', 'metro', 'subway',
+  'adventure', 'activity', 'experience', 'fun', 'entertainment',
+  'shopping', 'market', 'mall', 'store', 'souvenir',
+  'history', 'culture', 'tradition', 'heritage',
+  'spa', 'wellness', 'relax', 'relaxation',
+  'family', 'kids', 'children', 'romantic', 'couple',
+  'budget', 'cheap', 'expensive', 'price', 'cost',
+  'open', 'closed', 'hours', 'time', 'when', 'where',
+  'near', 'nearby', 'close', 'around', 'local',
+  'best', 'top', 'popular', 'famous', 'hidden', 'secret',
+  // Hebrew
+  'טיול', 'לטייל', 'ביקור', 'לבקר', 'חופשה', 'נסיעה',
+  'מלון', 'אכסון', 'לינה', 'אירוח',
+  'מסעדה', 'אוכל', 'לאכול', 'בית קפה', 'קפה', 'בר',
+  'מוזיאון', 'אטרקציה', 'אתר', 'מקום',
+  'חוף', 'ים', 'פארק', 'גן', 'טבע', 'הר', 'שביל',
+  'עיר', 'שכונה', 'אזור',
+  'נווט', 'ניווט', 'מסלול', 'דרך', 'הוראות',
+  'מזג אוויר', 'תחזית', 'טמפרטורה',
+  'תוכנית', 'תכנון', 'המלצה', 'המלץ',
+  'אוטובוס', 'רכבת', 'מונית', 'תחבורה',
+  'הרפתקה', 'פעילות', 'חוויה', 'כיף', 'בילוי',
+  'קניות', 'שוק', 'קניון', 'חנות',
+  'היסטוריה', 'תרבות', 'מסורת',
+  'ספא', 'מנוחה', 'להירגע',
+  'משפחה', 'ילדים', 'זוגי', 'רומנטי',
+  'תקציב', 'זול', 'יקר', 'מחיר',
+  'פתוח', 'סגור', 'שעות', 'מתי', 'איפה',
+  'קרוב', 'ליד', 'באזור', 'מקומי',
+  'הכי טוב', 'פופולרי', 'מפורסם', 'נסתר',
+  'מצא', 'חפש', 'איפה', 'מה',
+];
+
+/**
+ * Check if text contains any patterns from a pattern array
+ */
+function containsPattern(text, patterns) {
+  return patterns.some(pattern => pattern.test(text));
+}
+
+/**
+ * Check if text is travel-related
+ */
+function isTravelRelated(text) {
+  const normalizedText = text.toLowerCase();
+  return TRAVEL_KEYWORDS.some(keyword => normalizedText.includes(keyword.toLowerCase()));
+}
+
+/**
+ * Sanitize input text - remove potential code/script injections
+ */
+function sanitizeInput(text) {
+  if (!text || typeof text !== 'string') return '';
+
+  return text
+    // Remove HTML tags
+    .replace(/<[^>]*>/g, '')
+    // Remove script-like patterns
+    .replace(/javascript:/gi, '')
+    .replace(/data:/gi, '')
+    .replace(/vbscript:/gi, '')
+    // Remove potential SQL injection
+    .replace(/['";\\]/g, '')
+    // Remove excessive whitespace
+    .replace(/\s+/g, ' ')
+    // Limit length
+    .substring(0, 2000)
+    .trim();
+}
+
+/**
+ * AI Security Middleware - validates and filters AI input
+ * @param {Object} options - Configuration options
+ * @param {boolean} options.requireTravelContext - Require travel-related content
+ * @param {boolean} options.allowTranscription - Allow non-travel for transcription only
+ */
+function aiSecurityMiddleware(options = {}) {
+  const { requireTravelContext = true, allowTranscription = false } = options;
+
+  return (req, res, next) => {
+    // Get text from various possible sources
+    const text = req.body?.text || req.body?.message || req.body?.query || '';
+    const sanitizedText = sanitizeInput(text);
+
+    // Skip empty text (will be handled by other validation)
+    if (!sanitizedText) {
+      return next();
+    }
+
+    // Log security check
+    logger.info(`[${req.id}] Security check: "${sanitizedText.substring(0, 100)}..."`);
+
+    // Check for prompt injection
+    if (containsPattern(sanitizedText, SECURITY_PATTERNS.promptInjection)) {
+      logger.warn(`[${req.id}] BLOCKED: Prompt injection detected`);
+      return res.status(400).json({
+        ok: false,
+        code: 'security_violation',
+        message: 'אני מתמקד רק בנושאי טיולים ונסיעות. איך אוכל לעזור לך לתכנן את הטיול הבא שלך?',
+        messageEn: 'I focus only on travel topics. How can I help you plan your next trip?'
+      });
+    }
+
+    // Check for security exploits
+    if (containsPattern(sanitizedText, SECURITY_PATTERNS.securityExploits)) {
+      logger.warn(`[${req.id}] BLOCKED: Security exploit attempt`);
+      return res.status(400).json({
+        ok: false,
+        code: 'security_violation',
+        message: 'אני יכול לעזור רק עם טיולים ונסיעות. מה המטרה הבאה שלך?',
+        messageEn: 'I can only help with travel. What\'s your next destination?'
+      });
+    }
+
+    // Check for harmful content
+    if (containsPattern(sanitizedText, SECURITY_PATTERNS.harmfulContent)) {
+      logger.warn(`[${req.id}] BLOCKED: Harmful content detected`);
+      return res.status(400).json({
+        ok: false,
+        code: 'content_policy',
+        message: 'אני כאן לעזור לך לגלות מקומות מדהימים! לאן תרצה לטייל?',
+        messageEn: 'I\'m here to help you discover amazing places! Where would you like to travel?'
+      });
+    }
+
+    // Check for off-topic content (unless transcription-only mode)
+    if (!allowTranscription && containsPattern(sanitizedText, SECURITY_PATTERNS.offTopic)) {
+      logger.warn(`[${req.id}] BLOCKED: Off-topic content detected`);
+      return res.status(400).json({
+        ok: false,
+        code: 'off_topic',
+        message: 'אני מתמחה בטיולים! ספר לי על היעד הבא שלך ואעזור לך לתכנן חוויה מושלמת.',
+        messageEn: 'I specialize in travel! Tell me about your next destination and I\'ll help plan a perfect experience.'
+      });
+    }
+
+    // Check if content is travel-related (if required)
+    if (requireTravelContext && !allowTranscription && !isTravelRelated(sanitizedText)) {
+      // Only block if text is longer than 20 chars (short queries might be ambiguous)
+      if (sanitizedText.length > 20) {
+        logger.info(`[${req.id}] Non-travel query: "${sanitizedText.substring(0, 50)}"`);
+        return res.status(400).json({
+          ok: false,
+          code: 'not_travel_related',
+          message: 'אני עוזר בתכנון טיולים. איזה מקום או פעילות מעניינים אותך?',
+          messageEn: 'I help with trip planning. What place or activity interests you?'
+        });
+      }
+    }
+
+    // Replace original text with sanitized version
+    if (req.body.text) req.body.text = sanitizedText;
+    if (req.body.message) req.body.message = sanitizedText;
+    if (req.body.query) req.body.query = sanitizedText;
+
+    next();
+  };
+}
+
+// Export for use in routes
+const aiSecurity = aiSecurityMiddleware({ requireTravelContext: true });
+const aiSecurityTranscription = aiSecurityMiddleware({ requireTravelContext: false, allowTranscription: true });
 
 // ---- /places ---- (Enhanced with caching and validation)
 app.post("/places",
@@ -352,7 +622,7 @@ app.post("/route", async (req, res) => {
 });
 
 // ---- /think (ChatGPT NLU) ----
-app.post("/think", async (req, res) => {
+app.post("/think", aiSecurity, async (req, res) => {
   try {
     const { text, context } = req.body || {};
     if (!text) return err(res, 400, "text required");
@@ -1496,7 +1766,7 @@ app.post("/voice-to-intent", async (req, res) => {
   } catch (e) { err(res, 500, String(e)); }
 });
 
-// ---- OpenAI Whisper Speech-to-Text ----
+// ---- Whisper Speech-to-Text (Groq or OpenAI) ----
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 25 * 1024 * 1024 } // 25MB max (Whisper limit)
@@ -1505,14 +1775,25 @@ const upload = multer({
 // Initialize OpenAI client
 const openai = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
 
+// Initialize Groq client (uses OpenAI-compatible API)
+const groq = GROQ_API_KEY ? new OpenAI({
+  apiKey: GROQ_API_KEY,
+  baseURL: 'https://api.groq.com/openai/v1'
+}) : null;
+
+// Whisper provider selector - prefer Groq (faster & free), fallback to OpenAI
+const whisperClient = groq || openai;
+const whisperModel = groq ? 'whisper-large-v3-turbo' : 'whisper-1';
+const hasWhisper = !!whisperClient;
+
 // Whisper transcription endpoint
 app.post("/whisper",
   aiLimit,
   upload.single('audio'),
   asyncHandler(async (req, res) => {
-    // Check for OpenAI API key
-    if (!OPENAI_API_KEY || OPENAI_API_KEY === 'dummy_key') {
-      logger.info('[Whisper] No API key - returning mock transcription');
+    // Check for Whisper API (Groq or OpenAI)
+    if (!hasWhisper) {
+      logger.info('[Whisper] No API key (Groq or OpenAI) - returning mock transcription');
       return ok(res, {
         text: "זוהי תמלול לדוגמה במצב בדיקה",
         language: "he",
@@ -1525,30 +1806,35 @@ app.post("/whisper",
       return err(res, 400, "Audio file required. Send as 'audio' field in multipart/form-data");
     }
 
-    logger.info(`[${req.id}] Whisper transcription: ${req.file.size} bytes, ${req.file.mimetype}`);
+    const provider = groq ? 'Groq' : 'OpenAI';
+    logger.info(`[${req.id}] Whisper (${provider}): ${req.file.size} bytes, ${req.file.mimetype}`);
 
     try {
       // Get language from request or default to Hebrew
       const language = req.body.language || 'he';
 
-      // Create a File object for the OpenAI SDK
+      // Create a File object for the SDK
       const audioFile = new File([req.file.buffer], req.file.originalname || 'audio.webm', {
         type: req.file.mimetype
       });
 
-      // Call OpenAI Whisper API
-      const transcription = await openai.audio.transcriptions.create({
+      // Call Whisper API (Groq or OpenAI)
+      const transcription = await whisperClient.audio.transcriptions.create({
         file: audioFile,
-        model: "whisper-1",
+        model: whisperModel,
         language: language,
         response_format: "json"
       });
 
-      logger.info(`[${req.id}] Whisper success: "${transcription.text.substring(0, 50)}..."`);
+      logger.info(`[${req.id}] Whisper success (${provider}): "${transcription.text.substring(0, 50)}..."`);
+
+      // Sanitize transcribed text before returning
+      const sanitizedText = sanitizeInput(transcription.text);
 
       ok(res, {
-        text: transcription.text,
-        language: language
+        text: sanitizedText,
+        language: language,
+        provider: provider.toLowerCase()
       });
 
     } catch (error) {
@@ -1572,8 +1858,9 @@ app.post("/whisper-intent",
   aiLimit,
   upload.single('audio'),
   asyncHandler(async (req, res) => {
-    // Check for OpenAI API key
-    if (!OPENAI_API_KEY || OPENAI_API_KEY === 'dummy_key') {
+    // Check for Whisper API (Groq or OpenAI) - need at least one for transcription
+    if (!hasWhisper) {
+      logger.info('[Whisper-Intent] No Whisper API configured - returning mock');
       return ok(res, {
         text: "מצא לי מסעדות בקרבת מקום",
         intent: { intent: 'ai_recommendations', mood: 'hungry', params: { type: 'restaurant' } },
@@ -1586,10 +1873,11 @@ app.post("/whisper-intent",
       return err(res, 400, "Audio file required");
     }
 
-    logger.info(`[${req.id}] Whisper+Intent: ${req.file.size} bytes`);
+    const whisperProvider = groq ? 'Groq' : 'OpenAI';
+    logger.info(`[${req.id}] Whisper+Intent (${whisperProvider}): ${req.file.size} bytes`);
 
     try {
-      // Step 1: Transcribe with Whisper
+      // Step 1: Transcribe with Whisper (Groq or OpenAI)
       const language = req.body.language || 'he';
       const location = req.body.location ? JSON.parse(req.body.location) : null;
       const userId = req.body.userId || 'anonymous';
@@ -1598,17 +1886,52 @@ app.post("/whisper-intent",
         type: req.file.mimetype
       });
 
-      const transcription = await openai.audio.transcriptions.create({
+      const transcription = await whisperClient.audio.transcriptions.create({
         file: audioFile,
-        model: "whisper-1",
+        model: whisperModel,
         language: language,
         response_format: "json"
       });
 
       const text = transcription.text;
-      logger.info(`[${req.id}] Transcribed: "${text}"`);
+      logger.info(`[${req.id}] Transcribed (${whisperProvider}): "${text}"`);
 
-      // Step 2: Process intent using existing voice-to-intent logic
+      // Security check on transcribed text
+      const sanitizedText = sanitizeInput(text);
+      if (containsPattern(sanitizedText, SECURITY_PATTERNS.promptInjection)) {
+        logger.warn(`[${req.id}] BLOCKED: Prompt injection in voice input`);
+        return ok(res, {
+          text: sanitizedText,
+          intent: { intent: 'blocked', mood: 'neutral', params: {} },
+          response: 'אני מתמקד רק בנושאי טיולים. איך אוכל לעזור לך?',
+          blocked: true
+        });
+      }
+      if (containsPattern(sanitizedText, SECURITY_PATTERNS.securityExploits) ||
+          containsPattern(sanitizedText, SECURITY_PATTERNS.harmfulContent)) {
+        logger.warn(`[${req.id}] BLOCKED: Harmful/security content in voice input`);
+        return ok(res, {
+          text: sanitizedText,
+          intent: { intent: 'blocked', mood: 'neutral', params: {} },
+          response: 'אני כאן לעזור לך לגלות מקומות מדהימים! לאן תרצה לטייל?',
+          blocked: true
+        });
+      }
+
+      // Step 2: Process intent - use OpenAI for chat if available, else use Groq
+      const chatClient = openai || groq;
+      const chatModel = openai ? 'gpt-4o-mini' : 'llama-3.3-70b-versatile';
+
+      if (!chatClient) {
+        // Only Whisper available, return transcription without intent
+        return ok(res, {
+          text: text,
+          intent: { intent: 'unknown', mood: 'neutral', params: {} },
+          response: text,
+          transcriptionOnly: true
+        });
+      }
+
       const voiceSystemPrompt = [
         "You are traveling AI, a smart travel assistant. Parse voice commands and respond with JSON.",
         "Available intents: 'ai_recommendations', 'route', 'places', 'weather', 'track_interaction'",
@@ -1621,10 +1944,10 @@ app.post("/whisper-intent",
         "No prose outside JSON."
       ].join("\n");
 
-      const voicePrompt = `Voice command: "${text}". Location: ${location?.lat ? `${location.lat},${location.lng}` : 'unknown'}. User: ${userId}`;
+      const voicePrompt = `Voice command: "${sanitizedText}". Location: ${location?.lat ? `${location.lat},${location.lng}` : 'unknown'}. User: ${userId}`;
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+      const completion = await chatClient.chat.completions.create({
+        model: chatModel,
         messages: [
           { role: "system", content: voiceSystemPrompt },
           { role: "user", content: voicePrompt }
@@ -1635,9 +1958,10 @@ app.post("/whisper-intent",
       const intent = JSON.parse(completion.choices[0].message.content);
 
       ok(res, {
-        text: text,
+        text: sanitizedText,
         intent: intent,
-        response: intent.response || "הבנתי! מעבד את הבקשה שלך..."
+        response: intent.response || "הבנתי! מעבד את הבקשה שלך...",
+        providers: { whisper: whisperProvider.toLowerCase(), chat: openai ? 'openai' : 'groq' }
       });
 
     } catch (error) {
@@ -1648,7 +1972,7 @@ app.post("/whisper-intent",
 );
 
 // ---- AI Trip Planning ----
-app.post("/plan-trip", async (req, res) => {
+app.post("/plan-trip", aiLimit, aiSecurity, async (req, res) => {
   try {
     const {
       startLocation,
@@ -1814,7 +2138,7 @@ app.post("/plan-trip", async (req, res) => {
 });
 
 // ---- AI Planner Orchestrator (Stub) ----
-app.post("/api/plan", aiLimit, validateRequest([
+app.post("/api/plan", aiLimit, aiSecurity, validateRequest([
   // Validate preferences object
   body("preferences").isObject().withMessage('preferences must be an object'),
   body("preferences.interests")

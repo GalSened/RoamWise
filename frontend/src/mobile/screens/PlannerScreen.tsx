@@ -1,462 +1,62 @@
 /**
- * PlannerScreen - Tab 2 (Trip Itinerary)
+ * PlannerScreen - AI Travel Co-Pilot
  *
- * Trip planning screen with:
- * - "Smart Mix" horizontal swipe mode cards
- * - Dynamic Timeline with nodes and alert bubbles
- * - Smart Backpack button
- * - Start Navigation primary CTA
+ * Split-screen trip planning with:
+ * - Interactive Map (40% top)
+ * - Chat Interface (60% bottom)
+ * - Conversational AI for building routes
+ * - Smart Backpack integration
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Linking,
   ActivityIndicator,
-  Animated,
+  Dimensions,
 } from 'react-native';
-import { haptics } from '../utils/haptics';
-import { useToast } from '../components/ui';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { Destination } from '../data/destinations';
 import { RootTabParamList } from '../navigation/BottomTabNavigator';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme/tokens';
 import { InteractiveMap } from '../components/map/InteractiveMap';
-import { SAMPLE_TRAIL } from '../hooks/useNavigationState';
+import { ChatContainer } from '../components/chat';
+import { ChatMessage, RouteWaypoint, ConversationState, AIPlannerContext } from '../../types';
+import { processMessage, createPlannerContext, createWelcomeMessage } from '../services/aiPlanner';
+import { openNavigation } from '../utils/navigation';
+import { haptics } from '../utils/haptics';
+import { useToast } from '../components/ui';
 import { PackingManager, PackingList, TripContext } from '../features/packing';
 import { BackpackModal } from '../components/planner/BackpackModal';
 
-/**
- * Trip Mode Cards Data
- */
-const tripModes = [
-  {
-    id: 'efficient',
-    title: 'Efficient',
-    subtitle: 'Fastest route',
-    icon: '⚡',
-    color: colors.warning,
-  },
-  {
-    id: 'scenic',
-    title: 'Scenic',
-    subtitle: 'Best views',
-    icon: '🏞️',
-    color: colors.success,
-  },
-  {
-    id: 'culinary',
-    title: 'Culinary',
-    subtitle: 'Food stops',
-    icon: '🍽️',
-    color: colors.secondary,
-  },
-  {
-    id: 'adventure',
-    title: 'Adventure',
-    subtitle: 'Off-road',
-    icon: '🧗',
-    color: colors.danger,
-  },
-];
+const STORAGE_KEY = '@roamwise/conversation';
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const MAP_HEIGHT_RATIO = 0.35; // 35% for map
 
 /**
- * Timeline Events Data
+ * Convert RouteWaypoints to map coordinates
  */
-const timelineEvents = [
-  {
-    id: 'start',
-    type: 'waypoint',
-    title: 'Start',
-    time: '9:00 AM',
-    description: 'Leave from Tel Aviv',
-    icon: 'flag',
-  },
-  {
-    id: 'alert1',
-    type: 'alert',
-    title: 'Rain Expected',
-    time: '2:00 - 4:00 PM',
-    description: 'Light showers forecast. Pack rain gear!',
-    severity: 'warning',
-  },
-  {
-    id: 'drive1',
-    type: 'transit',
-    title: 'Drive',
-    duration: '45 min',
-    description: 'Highway 1 → Route 90',
-    icon: 'car',
-  },
-  {
-    id: 'hike1',
-    type: 'activity',
-    title: 'Ein Gedi Trail',
-    duration: '2.5 hrs',
-    description: 'David Waterfall Loop',
-    icon: 'walk',
-  },
-  {
-    id: 'eat1',
-    type: 'activity',
-    title: 'Lunch',
-    duration: '1 hr',
-    description: 'Ein Bokek Beach Restaurant',
-    icon: 'restaurant',
-  },
-  {
-    id: 'end',
-    type: 'waypoint',
-    title: 'End',
-    time: '5:30 PM',
-    description: 'Return to Tel Aviv',
-    icon: 'checkmark-circle',
-  },
-];
-
-/**
- * Mode Card Component
- */
-function ModeCard({
-  mode,
-  selected,
-  onPress,
-}: {
-  mode: typeof tripModes[0];
-  selected: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      style={[
-        styles.modeCard,
-        selected && { borderColor: mode.color, borderWidth: 2 },
-      ]}
-      onPress={onPress}
-    >
-      <Text style={styles.modeIcon}>{mode.icon}</Text>
-      <Text style={styles.modeTitle}>{mode.title}</Text>
-      <Text style={styles.modeSubtitle}>{mode.subtitle}</Text>
-      {selected && (
-        <View style={[styles.modeCheck, { backgroundColor: mode.color }]}>
-          <Ionicons name="checkmark" size={12} color={colors.textInverse} />
-        </View>
-      )}
-    </TouchableOpacity>
-  );
+function waypointsToCoordinates(waypoints: RouteWaypoint[]) {
+  return waypoints.map(w => ({
+    latitude: w.lat,
+    longitude: w.lng,
+  }));
 }
 
 /**
- * Mode Selector Section with staggered entry animations
+ * Convert RouteWaypoints to map markers
  */
-function ModeSelector() {
-  const [selectedMode, setSelectedMode] = useState('scenic');
-
-  // Animation values for each card
-  const cardAnims = useRef(
-    tripModes.map(() => new Animated.Value(0))
-  ).current;
-
-  // Staggered entry animation on mount
-  useEffect(() => {
-    Animated.stagger(
-      100,
-      cardAnims.map((anim) =>
-        Animated.spring(anim, {
-          toValue: 1,
-          useNativeDriver: true,
-          tension: 80,
-          friction: 10,
-        })
-      )
-    ).start();
-  }, [cardAnims]);
-
-  const handleModeSelect = (modeId: string) => {
-    haptics.impact('light');
-    setSelectedMode(modeId);
-  };
-
-  return (
-    <View style={styles.modeSection}>
-      <Text style={styles.sectionTitle}>The Smart Mix</Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.modeCardsContainer}
-      >
-        {tripModes.map((mode, index) => (
-          <Animated.View
-            key={mode.id}
-            style={{
-              opacity: cardAnims[index],
-              transform: [
-                {
-                  translateX: cardAnims[index].interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [50, 0],
-                  }),
-                },
-                {
-                  scale: cardAnims[index].interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.8, 1],
-                  }),
-                },
-              ],
-            }}
-          >
-            <ModeCard
-              mode={mode}
-              selected={selectedMode === mode.id}
-              onPress={() => handleModeSelect(mode.id)}
-            />
-          </Animated.View>
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
-/**
- * Alert Bubble Component
- */
-function AlertBubble({ event }: { event: typeof timelineEvents[0] }) {
-  const getSeverityColor = () => {
-    switch (event.severity) {
-      case 'warning':
-        return colors.warning;
-      case 'danger':
-        return colors.danger;
-      default:
-        return colors.info;
-    }
-  };
-
-  return (
-    <View style={[styles.alertBubble, { borderLeftColor: getSeverityColor() }]}>
-      <View style={styles.alertHeader}>
-        <Ionicons name="warning" size={16} color={getSeverityColor()} />
-        <Text style={styles.alertTitle}>{event.title}</Text>
-        <Text style={styles.alertTime}>{event.time}</Text>
-      </View>
-      <Text style={styles.alertDescription}>{event.description}</Text>
-    </View>
-  );
-}
-
-/**
- * Timeline Node Component
- */
-function TimelineNode({ event, isLast }: { event: typeof timelineEvents[0]; isLast: boolean }) {
-  if (event.type === 'alert') {
-    return (
-      <View style={styles.timelineItem}>
-        <View style={styles.timelineLineContainer}>
-          <View style={[styles.timelineDot, styles.timelineDotAlert]} />
-          {!isLast && <View style={styles.timelineLine} />}
-        </View>
-        <AlertBubble event={event} />
-      </View>
-    );
-  }
-
-  const getIconName = (): React.ComponentProps<typeof Ionicons>['name'] => {
-    switch (event.icon) {
-      case 'flag':
-        return 'flag';
-      case 'car':
-        return 'car';
-      case 'walk':
-        return 'walk';
-      case 'restaurant':
-        return 'restaurant';
-      case 'checkmark-circle':
-        return 'checkmark-circle';
-      default:
-        return 'ellipse';
-    }
-  };
-
-  return (
-    <View style={styles.timelineItem}>
-      <View style={styles.timelineLineContainer}>
-        <View style={[styles.timelineDot, event.type === 'waypoint' && styles.timelineDotWaypoint]}>
-          <Ionicons name={getIconName()} size={14} color={colors.textInverse} />
-        </View>
-        {!isLast && <View style={styles.timelineLine} />}
-      </View>
-      <View style={styles.timelineContent}>
-        <View style={styles.timelineHeader}>
-          <Text style={styles.timelineTitle}>{event.title}</Text>
-          <Text style={styles.timelineTime}>
-            {event.time || event.duration}
-          </Text>
-        </View>
-        <Text style={styles.timelineDescription}>{event.description}</Text>
-      </View>
-    </View>
-  );
-}
-
-/**
- * Map Preview Component - Shows route in preview mode
- */
-function MapPreview() {
-  return (
-    <View style={styles.mapPreviewSection}>
-      <Text style={styles.sectionTitle}>Route Preview</Text>
-      <View style={styles.mapPreviewContainer}>
-        <InteractiveMap
-          mode="preview"
-          routePolyline={SAMPLE_TRAIL.coordinates}
-          userLocation={null}
-          markers={[
-            { id: 'start', coordinate: SAMPLE_TRAIL.coordinates[0], type: 'start', title: 'Trailhead' },
-            { id: 'end', coordinate: SAMPLE_TRAIL.destination, type: 'end', title: 'David Waterfall' },
-          ]}
-        />
-      </View>
-    </View>
-  );
-}
-
-/**
- * Dynamic Timeline Section
- */
-function Timeline() {
-  return (
-    <View style={styles.timelineSection}>
-      <Text style={styles.sectionTitle}>Dynamic Timeline</Text>
-      <View style={styles.timeline}>
-        {timelineEvents.map((event, index) => (
-          <TimelineNode
-            key={event.id}
-            event={event}
-            isLast={index === timelineEvents.length - 1}
-          />
-        ))}
-      </View>
-    </View>
-  );
-}
-
-/**
- * Smart Backpack Button - AI-powered packing recommendations
- *
- * Generates real packing list based on:
- * - Trip duration (8.5 hrs from timeline)
- * - Weather conditions (temperature, rain chance)
- * - Sunset timing
- * - Activity tags from selected mode
- */
-function SmartBackpackButton() {
-  const [modalVisible, setModalVisible] = useState(false);
-  const [packingList, setPackingList] = useState<PackingList | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const { show: showToast } = useToast();
-
-  const handlePress = async () => {
-    haptics.impact('medium');
-    setIsLoading(true);
-
-    // Build trip context from current planner data
-    // In production, these values come from weather API and user selections
-    const now = new Date();
-    const sunset = new Date(now);
-    sunset.setHours(17, 30, 0, 0); // Today's sunset
-
-    const tripEnd = new Date(now);
-    tripEnd.setHours(17, 30, 0, 0); // Trip ends at 5:30 PM
-
-    const tripContext: TripContext = {
-      durationHours: 8.5,           // From timeline total
-      temperature: 28,              // From weather forecast (simulated)
-      rainChance: 40,               // 40% rain chance (simulated)
-      sunsetTime: sunset,
-      tripEndTime: tripEnd,
-      tags: ['Water', 'Hiking'],    // From selected mode/activities
-    };
-
-    try {
-      const manager = new PackingManager();
-      const list = await manager.generatePackingList(tripContext);
-      setPackingList(list);
-      setModalVisible(true);
-    } catch (error) {
-      showToast('Could not generate packing list', 'warning');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <>
-      <TouchableOpacity
-        style={styles.backpackButton}
-        onPress={handlePress}
-        disabled={isLoading}
-      >
-        {isLoading ? (
-          <ActivityIndicator size="small" color={colors.primary} style={styles.backpackLoader} />
-        ) : (
-          <Text style={styles.backpackIcon}>🎒</Text>
-        )}
-        <Text style={styles.backpackText}>Smart Backpack</Text>
-        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-      </TouchableOpacity>
-
-      {packingList && (
-        <BackpackModal
-          visible={modalVisible}
-          packingList={packingList}
-          onClose={() => setModalVisible(false)}
-        />
-      )}
-    </>
-  );
-}
-
-/**
- * Start Navigation CTA with haptic feedback
- */
-function StartNavigationButton() {
-  const navigation = useNavigation();
-  const { show: showToast } = useToast();
-
-  const handlePress = async () => {
-    haptics.impact('medium');
-
-    // Open Waze with destination coordinates
-    const wazeUrl = 'waze://?ll=31.4645,35.3890&navigate=yes';
-    const canOpen = await Linking.canOpenURL(wazeUrl);
-
-    if (canOpen) {
-      await Linking.openURL(wazeUrl);
-    } else {
-      // Fallback to Google Maps
-      const googleMapsUrl = 'https://maps.google.com/?daddr=31.4645,35.3890';
-      await Linking.openURL(googleMapsUrl);
-    }
-
-    showToast('Navigation started!', 'success');
-
-    // Switch to Live tab
-    navigation.navigate('Live' as never);
-  };
-
-  return (
-    <TouchableOpacity style={styles.startButton} onPress={handlePress}>
-      <Ionicons name="navigate" size={24} color={colors.textInverse} />
-      <Text style={styles.startButtonText}>Start Navigation</Text>
-    </TouchableOpacity>
-  );
+function waypointsToMarkers(waypoints: RouteWaypoint[]) {
+  return waypoints.map(w => ({
+    id: w.id,
+    coordinate: { latitude: w.lat, longitude: w.lng },
+    type: w.type === 'start' ? 'start' : w.type === 'destination' ? 'end' : 'waypoint',
+    title: w.name,
+  }));
 }
 
 /**
@@ -464,35 +64,280 @@ function StartNavigationButton() {
  */
 export function PlannerScreen() {
   const route = useRoute<RouteProp<RootTabParamList, 'Planner'>>();
-  const destination = route.params?.destination;
+  const navigation = useNavigation();
+  const { show: showToast } = useToast();
 
-  // Dynamic header based on selected destination
-  const headerTitle = destination?.name || 'Ein Gedi Day Trip';
-  const headerSubtitle = destination
-    ? `${destination.region} • ${destination.duration} • ${destination.difficulty}`
-    : 'Today • 8.5 hrs total';
+  // Conversation state
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [currentRoute, setCurrentRoute] = useState<RouteWaypoint[] | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [plannerContext, setPlannerContext] = useState<AIPlannerContext>(createPlannerContext);
+
+  // Backpack modal state
+  const [backpackVisible, setBackpackVisible] = useState(false);
+  const [packingList, setPackingList] = useState<PackingList | null>(null);
+  const [isLoadingBackpack, setIsLoadingBackpack] = useState(false);
+
+  // Load conversation from storage on mount
+  useEffect(() => {
+    loadConversation();
+  }, []);
+
+  // Save conversation when it changes
+  useEffect(() => {
+    if (messages.length > 0) {
+      saveConversation();
+    }
+  }, [messages]);
+
+  const loadConversation = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const data: ConversationState = JSON.parse(stored);
+        // Convert date strings back to Date objects
+        const parsedMessages = data.messages.map(m => ({
+          ...m,
+          timestamp: new Date(m.timestamp),
+        }));
+        setMessages(parsedMessages);
+        setCurrentRoute(data.currentRoute);
+      } else {
+        // Start fresh conversation
+        setMessages([createWelcomeMessage()]);
+      }
+    } catch (error) {
+      console.error('Failed to load conversation:', error);
+      setMessages([createWelcomeMessage()]);
+    }
+  };
+
+  const saveConversation = async () => {
+    try {
+      const state: ConversationState = {
+        messages,
+        currentRoute,
+        isTyping: false,
+        lastUpdated: new Date(),
+      };
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (error) {
+      console.error('Failed to save conversation:', error);
+    }
+  };
+
+  const handleSendMessage = useCallback(async (text: string) => {
+    // Check for backpack request
+    if (text.toLowerCase().includes('pack') || text.toLowerCase().includes('backpack')) {
+      handleBackpackRequest();
+      return;
+    }
+
+    // Add user message
+    const userMessage: ChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: text,
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, userMessage]);
+    setIsTyping(true);
+
+    try {
+      // Process with AI
+      const { response, updatedContext } = await processMessage(text, plannerContext);
+      setPlannerContext(updatedContext);
+
+      // Add AI response
+      const aiMessage: ChatMessage = {
+        id: `ai-${Date.now()}`,
+        role: 'assistant',
+        content: response.message,
+        timestamp: new Date(),
+        metadata: {
+          type: response.type,
+          options: response.options,
+          route: response.route,
+          weather: response.weather,
+        },
+      };
+      setMessages(prev => [...prev, aiMessage]);
+
+      // Update map if route was provided
+      if (response.route && response.route.length > 0) {
+        setCurrentRoute(response.route);
+        haptics.notification('success');
+      }
+    } catch (error) {
+      console.error('Failed to process message:', error);
+      const errorMessage: ChatMessage = {
+        id: `error-${Date.now()}`,
+        role: 'assistant',
+        content: "Sorry, I couldn't process that. Please try again.",
+        timestamp: new Date(),
+        metadata: { type: 'info' },
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      haptics.notification('error');
+    } finally {
+      setIsTyping(false);
+    }
+  }, [plannerContext]);
+
+  const handleOptionSelect = useCallback((option: string) => {
+    handleSendMessage(option);
+  }, [handleSendMessage]);
+
+  const handleViewRoute = useCallback(() => {
+    // Scroll map to show full route
+    haptics.impact('light');
+    showToast('Route shown on map', 'success');
+  }, [showToast]);
+
+  const handleNavigate = useCallback(async () => {
+    if (!currentRoute || currentRoute.length < 2) {
+      showToast('No route to navigate', 'warning');
+      return;
+    }
+
+    haptics.impact('medium');
+    const destination = currentRoute.find(w => w.type === 'destination');
+    if (destination) {
+      await openNavigation(destination.lat, destination.lng, destination.name);
+      showToast('Opening navigation...', 'success');
+      navigation.navigate('Live' as never);
+    }
+  }, [currentRoute, navigation, showToast]);
+
+  const handleBackpackRequest = async () => {
+    setIsLoadingBackpack(true);
+
+    // Add user message
+    const userMessage: ChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: 'What should I pack?',
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, userMessage]);
+
+    try {
+      const now = new Date();
+      const sunset = new Date(now);
+      sunset.setHours(17, 30, 0, 0);
+
+      const tripContext: TripContext = {
+        durationHours: 8.5,
+        temperature: 28,
+        rainChance: 40,
+        sunsetTime: sunset,
+        tripEndTime: sunset,
+        tags: ['Water', 'Hiking'],
+      };
+
+      const manager = new PackingManager();
+      const list = await manager.generatePackingList(tripContext);
+      setPackingList(list);
+      setBackpackVisible(true);
+
+      const aiMessage: ChatMessage = {
+        id: `ai-${Date.now()}`,
+        role: 'assistant',
+        content: "I've prepared a smart packing list based on your trip! Check it out.",
+        timestamp: new Date(),
+        metadata: { type: 'suggestion' },
+      };
+      setMessages(prev => [...prev, aiMessage]);
+      haptics.notification('success');
+    } catch (error) {
+      showToast('Could not generate packing list', 'warning');
+    } finally {
+      setIsLoadingBackpack(false);
+    }
+  };
+
+  const handleClearConversation = async () => {
+    haptics.impact('medium');
+    setMessages([createWelcomeMessage()]);
+    setCurrentRoute(null);
+    setPlannerContext(createPlannerContext());
+    await AsyncStorage.removeItem(STORAGE_KEY);
+    showToast('Conversation cleared', 'success');
+  };
+
+  // Map data
+  const mapCoordinates = currentRoute ? waypointsToCoordinates(currentRoute) : [];
+  const mapMarkers = currentRoute ? waypointsToMarkers(currentRoute) : [];
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>{headerTitle}</Text>
-          <Text style={styles.headerSubtitle}>{headerSubtitle}</Text>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <Ionicons name="sparkles" size={24} color={colors.primary} />
+          <Text style={styles.headerTitle}>AI Co-Pilot</Text>
         </View>
-
-        <ModeSelector />
-        <MapPreview />
-        <Timeline />
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <SmartBackpackButton />
-        <StartNavigationButton />
+        <TouchableOpacity onPress={handleClearConversation} style={styles.clearButton}>
+          <Ionicons name="refresh" size={20} color={colors.textSecondary} />
+        </TouchableOpacity>
       </View>
+
+      {/* Map Section (35%) */}
+      <View style={styles.mapContainer}>
+        <InteractiveMap
+          mode="preview"
+          routePolyline={mapCoordinates}
+          userLocation={null}
+          markers={mapMarkers}
+        />
+
+        {/* Navigate FAB */}
+        {currentRoute && currentRoute.length >= 2 && (
+          <TouchableOpacity
+            style={styles.navigateFab}
+            onPress={handleNavigate}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="navigate" size={20} color="#FFFFFF" />
+            <Text style={styles.navigateFabText}>Navigate</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Backpack FAB */}
+        <TouchableOpacity
+          style={styles.backpackFab}
+          onPress={handleBackpackRequest}
+          disabled={isLoadingBackpack}
+          activeOpacity={0.8}
+        >
+          {isLoadingBackpack ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={styles.backpackEmoji}>🎒</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Chat Section (65%) */}
+      <View style={styles.chatContainer}>
+        <ChatContainer
+          messages={messages}
+          onSendMessage={handleSendMessage}
+          onOptionSelect={handleOptionSelect}
+          onViewRoute={handleViewRoute}
+          isTyping={isTyping}
+          disabled={isLoadingBackpack}
+        />
+      </View>
+
+      {/* Backpack Modal */}
+      {packingList && (
+        <BackpackModal
+          visible={backpackVisible}
+          packingList={packingList}
+          onClose={() => setBackpackVisible(false)}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -502,221 +347,78 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: spacing.lg,
-  },
 
   // Header
   header: {
-    padding: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     backgroundColor: colors.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.borderLight,
   },
-  headerTitle: {
-    ...typography.title1,
-    color: colors.text,
-  },
-  headerSubtitle: {
-    ...typography.subhead,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-
-  // Section
-  sectionTitle: {
-    ...typography.headline,
-    color: colors.text,
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-  },
-
-  // Mode Cards
-  modeSection: {
-    marginTop: spacing.lg,
-  },
-  modeCardsContainer: {
-    paddingHorizontal: spacing.lg,
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.sm,
   },
-  modeCard: {
-    width: 100,
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    alignItems: 'center',
-    marginRight: spacing.sm,
-    ...shadows.small,
-  },
-  modeIcon: {
-    fontSize: 28,
-    marginBottom: spacing.sm,
-  },
-  modeTitle: {
+  headerTitle: {
     ...typography.headline,
     color: colors.text,
   },
-  modeSubtitle: {
-    ...typography.caption1,
-    color: colors.textSecondary,
-  },
-  modeCheck: {
-    position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+  clearButton: {
+    padding: spacing.sm,
   },
 
-  // Map Preview
-  mapPreviewSection: {
-    marginTop: spacing.lg,
+  // Map Section
+  mapContainer: {
+    height: SCREEN_HEIGHT * MAP_HEIGHT_RATIO,
+    backgroundColor: colors.background,
   },
-  mapPreviewContainer: {
-    height: 200,
-    marginHorizontal: spacing.lg,
-    borderRadius: borderRadius.lg,
-    overflow: 'hidden',
+
+  // Navigate FAB
+  navigateFab: {
+    position: 'absolute',
+    bottom: spacing.md,
+    right: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
+    gap: spacing.xs,
     ...shadows.medium,
   },
+  navigateFabText: {
+    color: '#FFFFFF',
+    ...typography.headline,
+    fontSize: 14,
+  },
 
-  // Timeline
-  timelineSection: {
-    marginTop: spacing.lg,
-  },
-  timeline: {
-    paddingHorizontal: spacing.lg,
-  },
-  timelineItem: {
-    flexDirection: 'row',
-    minHeight: 70,
-  },
-  timelineLineContainer: {
-    width: 30,
-    alignItems: 'center',
-  },
-  timelineDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.primary,
+  // Backpack FAB
+  backpackFab: {
+    position: 'absolute',
+    bottom: spacing.md,
+    left: spacing.md,
+    width: 44,
+    height: 44,
+    backgroundColor: colors.secondary,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1,
+    ...shadows.medium,
   },
-  timelineDotWaypoint: {
-    backgroundColor: colors.success,
-  },
-  timelineDotAlert: {
-    backgroundColor: colors.warning,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-  },
-  timelineLine: {
-    flex: 1,
-    width: 2,
-    backgroundColor: colors.borderLight,
-    marginTop: -2,
-  },
-  timelineContent: {
-    flex: 1,
-    paddingLeft: spacing.md,
-    paddingBottom: spacing.lg,
-  },
-  timelineHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  timelineTitle: {
-    ...typography.headline,
-    color: colors.text,
-  },
-  timelineTime: {
-    ...typography.caption1,
-    color: colors.textSecondary,
-  },
-  timelineDescription: {
-    ...typography.subhead,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
+  backpackEmoji: {
+    fontSize: 22,
   },
 
-  // Alert Bubble
-  alertBubble: {
+  // Chat Section
+  chatContainer: {
     flex: 1,
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginLeft: spacing.md,
-    marginBottom: spacing.lg,
-    borderLeftWidth: 3,
-    ...shadows.small,
-  },
-  alertHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  alertTitle: {
-    ...typography.headline,
-    color: colors.text,
-    marginLeft: spacing.sm,
-    flex: 1,
-  },
-  alertTime: {
-    ...typography.caption1,
-    color: colors.textSecondary,
-  },
-  alertDescription: {
-    ...typography.subhead,
-    color: colors.textSecondary,
-  },
-
-  // Footer
-  footer: {
-    padding: spacing.lg,
-    backgroundColor: colors.surface,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.borderLight,
-  },
-  backpackButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  backpackIcon: {
-    fontSize: 24,
-    marginRight: spacing.sm,
-  },
-  backpackLoader: {
-    marginRight: spacing.sm,
-  },
-  backpackText: {
-    ...typography.headline,
-    color: colors.text,
-    flex: 1,
-  },
-  startButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-  },
-  startButtonText: {
-    ...typography.headline,
-    color: colors.textInverse,
-    marginLeft: spacing.sm,
   },
 });
 

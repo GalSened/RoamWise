@@ -1,9 +1,11 @@
 import { test, expect } from '@playwright/test';
 import { waitForPlannerOK } from './utils/waits';
+import { dismissModals } from './utils/dismissModals';
 
 test.describe('Hazards - Map Markers', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    await dismissModals(page);
   });
 
   test('hazard markers have stable data-testid attribute', async ({ page }) => {

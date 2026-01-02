@@ -2,6 +2,7 @@ import type { VoiceIntent } from '@/types';
 import { AppError } from '@/types';
 import { EventBus } from '@/lib/utils/events';
 import { telemetry } from '@/lib/telemetry';
+import { config } from '@/config/env';
 
 interface VoiceConfig {
   language: string;
@@ -62,6 +63,169 @@ declare global {
   }
 }
 
+/**
+ * Groq Whisper STT Provider - Uses MediaRecorder and proxy /whisper-intent endpoint
+ * Much better Hebrew support than Web Speech API
+ */
+class WhisperSTTProvider implements STTProvider {
+  private mediaRecorder: MediaRecorder | null = null;
+  private audioChunks: Blob[] = [];
+  private stream: MediaStream | null = null;
+  private isActive = false;
+  private config: VoiceConfig;
+  private eventBus: EventBus;
+
+  constructor(config: VoiceConfig, eventBus: EventBus) {
+    this.config = config;
+    this.eventBus = eventBus;
+  }
+
+  async startListening(): Promise<void> {
+    if (this.isActive) return;
+
+    try {
+      // Request microphone permission
+      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // Get supported MIME type
+      const mimeType = this.getSupportedMimeType();
+      const options: MediaRecorderOptions = mimeType ? { mimeType } : {};
+
+      this.mediaRecorder = new MediaRecorder(this.stream, options);
+      this.audioChunks = [];
+
+      this.mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          this.audioChunks.push(event.data);
+        }
+      };
+
+      this.mediaRecorder.onstop = async () => {
+        this.isActive = false;
+        this.eventBus.emit('stt-processing');
+
+        // Stop all tracks
+        if (this.stream) {
+          this.stream.getTracks().forEach(track => track.stop());
+          this.stream = null;
+        }
+
+        // Create audio blob
+        const audioBlob = new Blob(this.audioChunks, { type: mimeType || 'audio/webm' });
+
+        if (audioBlob.size === 0) {
+          this.eventBus.emit('stt-error', 'No audio recorded');
+          this.eventBus.emit('stt-ended');
+          return;
+        }
+
+        try {
+          // Send to Whisper endpoint
+          const result = await this.transcribeWithWhisper(audioBlob);
+
+          this.eventBus.emit('stt-result', {
+            transcript: result.text,
+            confidence: 0.95,
+            intent: result.intent,
+            response: result.response
+          });
+          telemetry.track('voice_whisper_success', {
+            provider: result.providers?.whisper || 'groq',
+            text_length: result.text.length
+          });
+        } catch (error) {
+          console.error('[WhisperSTT] Transcription failed:', error);
+          this.eventBus.emit('stt-error', error.message || 'Transcription failed');
+          telemetry.track('voice_whisper_error', { error: error.message });
+        } finally {
+          this.eventBus.emit('stt-ended');
+        }
+      };
+
+      this.mediaRecorder.onerror = () => {
+        this.isActive = false;
+        this.eventBus.emit('stt-error', 'Recording error');
+        this.eventBus.emit('stt-ended');
+      };
+
+      // Start recording
+      this.mediaRecorder.start();
+      this.isActive = true;
+      this.eventBus.emit('stt-started');
+      telemetry.track('voice_whisper_started');
+
+    } catch (error) {
+      throw new AppError(
+        error.name === 'NotAllowedError'
+          ? 'Microphone permission denied. Please allow microphone access.'
+          : 'Failed to start recording',
+        'STT_START_FAILED'
+      );
+    }
+  }
+
+  async stopListening(): Promise<void> {
+    if (!this.mediaRecorder || !this.isActive) return;
+    this.mediaRecorder.stop();
+  }
+
+  isListening(): boolean {
+    return this.isActive;
+  }
+
+  isSupported(): boolean {
+    return !!(navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== 'undefined');
+  }
+
+  private getSupportedMimeType(): string | undefined {
+    const mimeTypes = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/mp4',
+      'audio/ogg;codecs=opus',
+      'audio/ogg',
+    ];
+    return mimeTypes.find(type => MediaRecorder.isTypeSupported(type));
+  }
+
+  private async transcribeWithWhisper(audioBlob: Blob): Promise<{
+    text: string;
+    intent?: any;
+    response?: string;
+    providers?: { whisper: string; chat: string };
+  }> {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
+    formData.append('language', this.config.language.split('-')[0]); // 'he' from 'he-IL'
+
+    const response = await fetch(`${config.api.proxyUrl}/whisper-intent`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Whisper API error: ${error}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.ok) {
+      throw new Error(data.error || 'Transcription failed');
+    }
+
+    // Check for mock response
+    if (data.mock) {
+      console.warn('[WhisperSTT] Using mock response - API not fully configured');
+    }
+
+    return data;
+  }
+}
+
+/**
+ * Fallback Web Speech STT Provider - Browser-based speech recognition
+ */
 class WebSpeechSTTProvider implements STTProvider {
   private recognition?: SpeechRecognition;
   private isActive = false;
@@ -238,33 +402,63 @@ class VoiceManager extends EventBus {
   private sttProvider: STTProvider;
   private intentParser: IntentParser;
   private isInitialized = false;
+  private usingWhisper = false;
 
   constructor() {
     super();
 
-    const config: VoiceConfig = {
+    const voiceConfig: VoiceConfig = {
       language: 'he-IL', // Hebrew support
       continuous: false,
       interimResults: true,
       maxAlternatives: 3
     };
 
-    this.sttProvider = new WebSpeechSTTProvider(config, this);
+    // Prefer Whisper (better Hebrew support), fallback to Web Speech API
+    const whisperProvider = new WhisperSTTProvider(voiceConfig, this);
+    const webSpeechProvider = new WebSpeechSTTProvider(voiceConfig, this);
+
+    if (whisperProvider.isSupported()) {
+      this.sttProvider = whisperProvider;
+      this.usingWhisper = true;
+      console.log('[VoiceManager] Using Groq Whisper for speech-to-text');
+    } else if (webSpeechProvider.isSupported()) {
+      this.sttProvider = webSpeechProvider;
+      console.log('[VoiceManager] Using Web Speech API for speech-to-text');
+    } else {
+      // Neither supported - create a dummy provider
+      this.sttProvider = whisperProvider; // Will throw on use
+      console.warn('[VoiceManager] No speech-to-text provider available');
+    }
+
     this.intentParser = new SimpleLinguisticParser();
 
     this.setupEventHandlers();
   }
 
   private setupEventHandlers(): void {
-    this.on('stt-result', async ({ transcript }) => {
+    this.on('stt-result', async ({ transcript, intent, response }) => {
       try {
-        const intent = await this.intentParser.parse(transcript);
-        this.emit('intent-recognized', intent);
+        // If using Whisper, intent is already parsed by the backend
+        if (this.usingWhisper && intent) {
+          this.emit('intent-recognized', {
+            type: intent.intent || 'search',
+            confidence: 0.95,
+            parameters: intent.params || {},
+            original: transcript,
+            response: response || intent.response
+          });
+          return;
+        }
+
+        // Fallback: parse intent locally
+        const parsedIntent = await this.intentParser.parse(transcript);
+        this.emit('intent-recognized', parsedIntent);
 
         telemetry.track('voice_intent_recognized', {
-          intent_type: intent.type,
-          confidence: intent.confidence,
-          has_parameters: Object.keys(intent.parameters).length > 0
+          intent_type: parsedIntent.type,
+          confidence: parsedIntent.confidence,
+          has_parameters: Object.keys(parsedIntent.parameters).length > 0
         });
       } catch (error) {
         console.error('Intent parsing failed:', error);

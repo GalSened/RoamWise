@@ -1,17 +1,16 @@
 /// <reference types="vite/client" />
 import Groq from 'groq-sdk';
-
-const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+import { config } from '../../../config/env';
 
 let groq: Groq | null = null;
 
-if (apiKey) {
+if (config.groq.isConfigured) {
     groq = new Groq({
-        apiKey: apiKey,
+        apiKey: config.groq.apiKey,
         dangerouslyAllowBrowser: true // Allowed since this is a client-side app
     });
-} else {
-    console.warn('VITE_GROQ_API_KEY is missing. AI features will be limited.');
+} else if (config.app.isDev) {
+    console.warn('[GroqProvider] API key not configured. AI features will be limited.');
 }
 
 export class GroqProvider {

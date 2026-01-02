@@ -1,9 +1,11 @@
 import { test, expect } from '@playwright/test';
 import { waitForPlannerOK } from './utils/waits';
+import { dismissModals } from './utils/dismissModals';
 
 test.describe('Smart Route Optimizer - Mode Selection', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    await dismissModals(page);
     // Navigate to trip planning view
     await page.click('[data-testid="nav-trip"]');
     await expect(page.locator('#tripView')).toHaveClass(/active/);
@@ -90,6 +92,7 @@ test.describe('Smart Route Optimizer - Mode Selection', () => {
 test.describe('Smart Route Optimizer - Trip Generation with Modes', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    await dismissModals(page);
     await page.click('[data-testid="nav-trip"]');
     await expect(page.locator('#tripView')).toHaveClass(/active/);
   });
@@ -184,6 +187,7 @@ test.describe('Smart Route Optimizer - Trip Generation with Modes', () => {
 test.describe('Smart Route Optimizer - Weather Badge', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    await dismissModals(page);
     await page.click('[data-testid="nav-trip"]');
     await expect(page.locator('#tripView')).toHaveClass(/active/);
   });

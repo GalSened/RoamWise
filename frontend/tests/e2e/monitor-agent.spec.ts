@@ -1,8 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { dismissModals } from './utils/dismissModals';
 
 test.describe('Monitor Agent - Intervention System', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    await dismissModals(page);
     // Navigate to trip planning view
     await page.click('[data-testid="nav-trip"]');
     await expect(page.locator('#tripView')).toHaveClass(/active/);
@@ -39,6 +41,7 @@ test.describe('Monitor Agent - Intervention System', () => {
 test.describe('Monitor Agent - Mode Availability', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    await dismissModals(page);
     await page.click('[data-testid="nav-trip"]');
     await expect(page.locator('#tripView')).toHaveClass(/active/);
   });
@@ -73,6 +76,7 @@ test.describe('Monitor Agent - Mode Availability', () => {
 test.describe('Monitor Agent - Weather Insights Display', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    await dismissModals(page);
     await page.click('[data-testid="nav-trip"]');
     await expect(page.locator('#tripView')).toHaveClass(/active/);
   });
@@ -122,6 +126,7 @@ test.describe('Monitor Agent - Weather Insights Display', () => {
 test.describe('Monitor Agent - Intervention UI Elements', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    await dismissModals(page);
     await page.click('[data-testid="nav-trip"]');
     await expect(page.locator('#tripView')).toHaveClass(/active/);
   });

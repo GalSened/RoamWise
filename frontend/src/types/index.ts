@@ -481,3 +481,70 @@ export interface LocationClassification {
   confidence: number;
   types: string[];
 }
+
+
+// ═══════════════════════════════════════════════════════════════
+// AI TRAVEL CO-PILOT TYPES
+// ═══════════════════════════════════════════════════════════════
+
+export type ChatMessageRole = 'user' | 'assistant';
+export type ChatMessageType = 'question' | 'suggestion' | 'route' | 'weather' | 'info';
+
+export interface ChatMessage {
+  id: string;
+  role: ChatMessageRole;
+  content: string;
+  timestamp: Date;
+  metadata?: {
+    type?: ChatMessageType;
+    options?: string[];        // For multiple choice questions
+    route?: RouteWaypoint[];   // When AI returns a route
+    weather?: WeatherInfo;     // Inline weather data
+  };
+}
+
+export interface RouteWaypoint {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  type: 'start' | 'destination' | 'food' | 'attraction' | 'rest' | 'fuel';
+  duration?: number;  // minutes to spend at this stop
+  address?: string;
+  icon?: string;
+}
+
+export interface WeatherInfo {
+  temp: number;
+  icon: string;       // e.g., 'sunny', 'cloudy', 'rain', 'snow'
+  description: string;
+  humidity?: number;
+  windSpeed?: number;
+}
+
+export interface ConversationState {
+  messages: ChatMessage[];
+  currentRoute: RouteWaypoint[] | null;
+  isTyping: boolean;
+  lastUpdated: Date;
+}
+
+export interface AIPlannerResponse {
+  message: string;
+  type: ChatMessageType;
+  options?: string[];
+  route?: RouteWaypoint[];
+  weather?: WeatherInfo;
+}
+
+export interface AIPlannerContext {
+  destination?: string;
+  preferences: {
+    foodType?: string;
+    scenicRoute?: boolean;
+    restStops?: boolean;
+    fuelStops?: boolean;
+  };
+  waypoints: RouteWaypoint[];
+  conversationStage: 'greeting' | 'destination' | 'preferences' | 'refinement' | 'ready';
+}

@@ -1,6 +1,7 @@
 import type { AppVersion, UpdateInfo } from '@/types';
 import { EventBus } from '@/lib/utils/events';
 import { telemetry } from '@/lib/telemetry';
+import { config as envConfig } from '@/config/env';
 
 // PWA registration handled separately - types not available
 declare const registerSW: ((options?: { immediate?: boolean }) => (reloadPage?: boolean) => Promise<void>) | undefined;
@@ -226,7 +227,7 @@ if ('serviceWorker' in navigator) {
 
 // Global singleton
 export const updateManager = new UpdateManager({
-  currentVersion: import.meta.env.VITE_APP_VERSION || '2.0.0'
+  currentVersion: envConfig.app.version
 });
 
 // Convenience hook

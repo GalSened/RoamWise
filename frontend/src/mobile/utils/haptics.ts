@@ -1,56 +1,64 @@
 /**
  * Haptics Utility
  *
- * Cross-platform haptic feedback using React Native's Vibration API.
+ * Cross-platform haptic feedback using expo-haptics.
  * Provides consistent tactile responses for user interactions.
  *
- * Patterns: [delay, vibrate, pause, vibrate, ...]
- * - First value is initial delay (0 = immediate)
- * - Subsequent values alternate between vibration and pause duration
+ * expo-haptics provides three types of feedback:
+ * - Impact: For UI element interactions (buttons, toggles)
+ * - Notification: For status changes (success, warning, error)
+ * - Selection: For picker/selection changes
  */
 
-import { Vibration, Platform } from 'react-native';
-
-/**
- * Vibration patterns for different feedback types
- * Durations in milliseconds
- */
-const PATTERNS = {
-  // Impact feedback - single vibrations of varying intensity
-  light: [0, 30], // Quick tap
-  medium: [0, 50], // Standard tap
-  heavy: [0, 100], // Strong tap
-
-  // Notification feedback - multi-pulse patterns
-  success: [0, 50, 30, 50], // Double pulse - positive confirmation
-  warning: [0, 100, 50, 100], // Double pulse - attention needed
-  error: [0, 50, 30, 50, 30, 50], // Triple rapid - something went wrong
-} as const;
+import * as Haptics from 'expo-haptics';
+import { Platform } from 'react-native';
 
 type ImpactStyle = 'light' | 'medium' | 'heavy';
 type NotificationType = 'success' | 'warning' | 'error';
 
 /**
+ * Map our impact styles to expo-haptics ImpactFeedbackStyle
+ */
+const IMPACT_STYLES: Record<ImpactStyle, Haptics.ImpactFeedbackStyle> = {
+  light: Haptics.ImpactFeedbackStyle.Light,
+  medium: Haptics.ImpactFeedbackStyle.Medium,
+  heavy: Haptics.ImpactFeedbackStyle.Heavy,
+};
+
+/**
+ * Map our notification types to expo-haptics NotificationFeedbackType
+ */
+const NOTIFICATION_TYPES: Record<NotificationType, Haptics.NotificationFeedbackType> = {
+  success: Haptics.NotificationFeedbackType.Success,
+  warning: Haptics.NotificationFeedbackType.Warning,
+  error: Haptics.NotificationFeedbackType.Error,
+};
+
+/**
  * Haptic feedback utility
  *
  * Usage:
- * - haptics.impact('light') - Button press, checkbox toggle
- * - haptics.impact('medium') - Important action buttons
+ * - haptics.impact('light') - Button press, checkbox toggle, chip selection
+ * - haptics.impact('medium') - Important action buttons, navigation
  * - haptics.impact('heavy') - Critical actions, confirmations
- * - haptics.notification('success') - Task completed
+ * - haptics.notification('success') - Task completed, route generated
  * - haptics.notification('warning') - Attention needed
  * - haptics.notification('error') - Something went wrong
+ * - haptics.selection() - Picker changes, filter toggles
  */
 export const haptics = {
   /**
    * Trigger impact feedback for UI interactions
    * @param style - Intensity of the haptic feedback
    */
-  impact: (style: ImpactStyle): void => {
+  impact: (style: ImpactStyle = 'medium'): void => {
+    // Only run on native platforms
+    if (Platform.OS === 'web') return;
+
     try {
-      Vibration.vibrate(PATTERNS[style]);
+      Haptics.impactAsync(IMPACT_STYLES[style]);
     } catch (e) {
-      // Silently fail on web or if vibration not supported
+      // Silently fail if haptics not supported
     }
   },
 
@@ -58,22 +66,29 @@ export const haptics = {
    * Trigger notification feedback for status changes
    * @param type - Type of notification
    */
-  notification: (type: NotificationType): void => {
+  notification: (type: NotificationType = 'success'): void => {
+    // Only run on native platforms
+    if (Platform.OS === 'web') return;
+
     try {
-      Vibration.vibrate(PATTERNS[type]);
+      Haptics.notificationAsync(NOTIFICATION_TYPES[type]);
     } catch (e) {
-      // Silently fail on web or if vibration not supported
+      // Silently fail if haptics not supported
     }
   },
 
   /**
-   * Cancel any ongoing vibration
+   * Trigger selection feedback for picker/toggle interactions
+   * Lighter than impact, perfect for selection changes
    */
-  cancel: (): void => {
+  selection: (): void => {
+    // Only run on native platforms
+    if (Platform.OS === 'web') return;
+
     try {
-      Vibration.cancel();
+      Haptics.selectionAsync();
     } catch (e) {
-      // Silently fail
+      // Silently fail if haptics not supported
     }
   },
 };

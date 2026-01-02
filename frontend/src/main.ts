@@ -1,4 +1,5 @@
 import './styles/global.css';
+import { config } from './config/env';
 
 // Simple fallback if TypeScript fails
 console.log('TypeScript main.ts loading...');
@@ -10,20 +11,20 @@ async function initializeMainApp() {
   try {
     const { initializeApp } = await import('./core/app');
     const { telemetry } = await import('./lib/telemetry');
-    
-    // Initialize telemetry
-    telemetry.setProperty('app_version', import.meta.env.VITE_APP_VERSION || '2.0.0');
-    telemetry.setProperty('build_env', import.meta.env.MODE);
-    
+
+    // Initialize telemetry using centralized config
+    telemetry.setProperty('app_version', config.app.version);
+    telemetry.setProperty('build_env', config.app.environment);
+
     await initializeApp();
     telemetry.track('app_initialized');
     appInitialized = true;
-    
+
     console.log('✅ Full TypeScript app initialized successfully');
   } catch (error) {
     console.error('❌ TypeScript app initialization failed:', error);
     console.log('🔄 Falling back to simple JavaScript navigation');
-    
+
     // The simple-app.js will handle basic functionality
     if (!appInitialized) {
       document.dispatchEvent(new CustomEvent('fallback-to-simple-app'));

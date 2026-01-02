@@ -98,24 +98,36 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Duration options
-  document.querySelectorAll('.duration-option').forEach(option => {
+  // Duration options (iOS-style segments)
+  document.querySelectorAll('.ios-segment').forEach(option => {
     option.addEventListener('click', () => {
-      document.querySelectorAll('.duration-option').forEach(o => o.classList.remove('selected'));
+      document.querySelectorAll('.ios-segment').forEach(o => o.classList.remove('selected'));
       option.classList.add('selected');
     });
   });
 
-  // Interest options
-  document.querySelectorAll('.interest-option').forEach(option => {
+  // Interest options (iOS-style interests)
+  document.querySelectorAll('.ios-interest').forEach(option => {
     option.addEventListener('click', () => {
-      const selected = document.querySelectorAll('.interest-option.selected');
+      const selected = document.querySelectorAll('.ios-interest.selected');
       if (option.classList.contains('selected')) {
         option.classList.remove('selected');
       } else if (selected.length < 4) {
         option.classList.add('selected');
       } else {
         alert('Maximum 4 interests allowed');
+      }
+    });
+  });
+
+  // Category buttons trigger search
+  document.querySelectorAll('[data-category]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const category = btn.getAttribute('data-category');
+      const searchInput = document.getElementById('freeText');
+      if (searchInput && category) {
+        searchInput.value = category;
+        document.getElementById('searchBtn')?.click();
       }
     });
   });
