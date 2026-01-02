@@ -15,9 +15,6 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
 
     steps:
       - name: Checkout
@@ -28,10 +25,6 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-
-      - name: Install workspace dependencies
-        working-directory: .
-        run: npm ci
 
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
