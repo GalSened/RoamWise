@@ -19,8 +19,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          lfs: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -35,9 +33,9 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run E2E Tests (GitHub Pages)
+      - name: Run E2E Tests (Vercel)
         env:
-          BASE_URL: https://galsened.github.io/RoamWise/
+          BASE_URL: https://frontend-gamma-dun.vercel.app
         run: npx playwright test --project=chromium
 
       - name: Upload Playwright Report
