@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { VoiceIntent } from '@/types';
 import { AppError } from '@/types';
 import { EventBus } from '@/lib/utils/events';
@@ -18,8 +17,53 @@ interface STTProvider {
   isSupported(): boolean;
 }
 
+// Web Speech API types (not available in all TypeScript libs)
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionResultList {
+  readonly length: number;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  readonly length: number;
+  readonly isFinal: boolean;
+  [index: number]: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionAlternative {
+  readonly transcript: string;
+  readonly confidence: number;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  readonly error: string;
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  maxAlternatives: number;
+  start(): void;
+  stop(): void;
+  onstart: ((this: SpeechRecognition, ev: Event) => void) | null;
+  onend: ((this: SpeechRecognition, ev: Event) => void) | null;
+  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void) | null;
+  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => void) | null;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition?: new () => SpeechRecognition;
+    webkitSpeechRecognition?: new () => SpeechRecognition;
+  }
+}
+
 class WebSpeechSTTProvider implements STTProvider {
-  private recognition?: any;
+  private recognition?: SpeechRecognition;
   private isActive = false;
   private config: VoiceConfig;
   private eventBus: EventBus;
@@ -33,8 +77,10 @@ class WebSpeechSTTProvider implements STTProvider {
   private initializeRecognition(): void {
     if (!this.isSupported()) return;
 
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    this.recognition = new SpeechRecognition();
+    const SpeechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognitionClass) return;
+
+    this.recognition = new SpeechRecognitionClass();
 
     this.recognition.continuous = this.config.continuous;
     this.recognition.interimResults = this.config.interimResults;
@@ -53,8 +99,12 @@ class WebSpeechSTTProvider implements STTProvider {
       telemetry.track('voice_recognition_ended');
     };
 
-    this.recognition.onresult = (event) => {
-      const results = Array.from(event.results);
+    this.recognition.onresult = (event: SpeechRecognitionEvent) => {
+      const results: SpeechRecognitionResult[] = [];
+      for (let i = 0; i < event.results.length; i++) {
+        results.push(event.results[i]);
+      }
+
       const transcript = results
         .map(result => result[0].transcript)
         .join(' ');
@@ -69,7 +119,7 @@ class WebSpeechSTTProvider implements STTProvider {
       });
     };
 
-    this.recognition.onerror = (event) => {
+    this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       this.isActive = false;
       this.eventBus.emit('stt-error', event.error);
       telemetry.track('voice_recognition_error', { error: event.error });
@@ -97,7 +147,7 @@ class WebSpeechSTTProvider implements STTProvider {
   }
 
   isSupported(): boolean {
-    return !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+    return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
   }
 }
 
@@ -165,7 +215,7 @@ class SimpleLinguisticParser implements IntentParser {
     };
   }
 
-  private extractParameters(intentType: string, match: RegExpMatchArray): Record<string, any> {
+  private extractParameters(intentType: string, match: RegExpMatchArray): Record<string, string> {
     const captured = match[1] || '';
 
     switch (intentType) {

@@ -1,18 +1,18 @@
-// @ts-nocheck
 import { themeProvider } from './theme/ThemeProvider';
 import { updateManager } from './update/UpdateManager';
 import { createGoogleProviders } from '../providers/google/maps';
 import { createOpenWeatherProvider } from '../providers/weather/openweather';
 import { createOSRMProvider } from '../providers/routing/osrm';
-import { createWeatherAwareRouter } from '../features/routing/WeatherAwareRouter';
+import { createWeatherAwareRouter, WeatherAwareRouter } from '../features/routing/WeatherAwareRouter';
 import { createProxyProviders } from '../providers/proxy';
-import { createAIOrchestrator } from './ai/AIOrchestrator';
+import { createAIOrchestrator, AIOrchestrator } from './ai/AIOrchestrator';
 import { planningManager } from '../features/planning/PlanningManager';
 import { voiceManager } from '../features/voice/VoiceManager';
 import { navigationManager } from '../features/navigation/NavigationManager';
 import { MapManager } from '../features/map/MapManager';
 import { UIManager } from '../features/ui/UIManager';
 import { telemetry } from '../lib/telemetry';
+import type { RoutingProvider, PlacesProvider, WeatherProvider, UpdateInfo, VoiceIntent, PlaceDetail, StopCategory } from '../types';
 
 interface AppConfig {
   googleMapsApiKey?: string;
@@ -21,11 +21,31 @@ interface AppConfig {
   weatherProvider: 'openweather';
 }
 
+interface AppProviders {
+  places?: PlacesProvider;
+  routing?: RoutingProvider;
+  weather?: WeatherProvider;
+  googlePlaces?: PlacesProvider;
+  googleRouting?: RoutingProvider;
+  weatherAwareRouter?: WeatherAwareRouter;
+}
+
+interface AppManagers {
+  map?: MapManager;
+  ui?: UIManager;
+}
+
+interface UserPreferences {
+  language: string;
+  units: 'metric' | 'imperial';
+  categories: StopCategory[];
+}
+
 class TravelingApp {
   private config: AppConfig;
-  private providers: any = {};
-  private managers: any = {};
-  private aiOrchestrator: any;
+  private providers: AppProviders = {};
+  private managers: AppManagers = {};
+  private aiOrchestrator?: AIOrchestrator;
   private isInitialized = false;
 
   constructor() {
@@ -158,19 +178,19 @@ class TravelingApp {
 
   private async setupEventHandlers(): Promise<void> {
     // Theme change handler
-    themeProvider.on('theme-changed', (data) => {
+    themeProvider.on('theme-changed', (data: { theme: string }) => {
       this.managers.map?.updateTheme(data.theme);
       telemetry.track('theme_changed', { theme: data.theme });
     });
 
     // Update notifications
-    updateManager.on('update-available', (updateInfo) => {
+    updateManager.on('update-available', (updateInfo: UpdateInfo) => {
       this.managers.ui?.showUpdateNotification(updateInfo);
       telemetry.track('update_notification_shown', updateInfo);
     });
 
     // Voice intent handling
-    voiceManager.on('intent-recognized', async (intent) => {
+    voiceManager.on('intent-recognized', async (intent: VoiceIntent) => {
       if (this.aiOrchestrator) {
         try {
           const result = await this.aiOrchestrator.processVoiceIntent(intent, {
@@ -180,7 +200,9 @@ class TravelingApp {
 
           this.managers.ui?.handleAIResult(intent.type, result);
         } catch (error) {
-          console.error('Voice intent processing failed:', error);
+          telemetry.track('voice_intent_error', {
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
           this.managers.ui?.showError('Failed to process voice command');
         }
       }
@@ -196,14 +218,27 @@ class TravelingApp {
     });
 
     // Global error handling
-    window.addEventListener('error', (event) => {
+    window.addEventListener('error', (event: ErrorEvent) => {
+      telemetry.track('global_error', {
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno
+      });
       this.managers.ui?.showError('An unexpected error occurred');
+    });
+
+    // Unhandled promise rejection handler
+    window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
+      telemetry.track('unhandled_rejection', {
+        reason: event.reason instanceof Error ? event.reason.message : String(event.reason)
+      });
+      this.managers.ui?.showError('An operation failed unexpectedly');
     });
 
     telemetry.track('event_handlers_setup');
   }
 
-  private async getUserPreferences(): Promise<Record<string, any>> {
+  private async getUserPreferences(): Promise<UserPreferences> {
     // Load user preferences from storage
     return {
       language: navigator.language,
@@ -213,15 +248,15 @@ class TravelingApp {
   }
 
   // Public API
-  getProviders() {
+  getProviders(): AppProviders {
     return this.providers;
   }
 
-  getManagers() {
+  getManagers(): AppManagers {
     return this.managers;
   }
 
-  getAIOrchestrator() {
+  getAIOrchestrator(): AIOrchestrator | undefined {
     return this.aiOrchestrator;
   }
 
@@ -238,9 +273,16 @@ export async function initializeApp(): Promise<void> {
   await app.initialize();
 }
 
+// Extend Window interface for debugging
+declare global {
+  interface Window {
+    __travelingApp?: TravelingApp;
+  }
+}
+
 // Export app instance for debugging
 if (import.meta.env.DEV) {
-  (window as any).__travelingApp = app;
+  window.__travelingApp = app;
 }
 
 export { app };

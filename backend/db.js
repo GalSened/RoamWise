@@ -1,9 +1,15 @@
 // ---- Database Setup (Mock) ----
 // Multi-tenant database mock for testing without native dependencies
+// TODO: Replace with SQLite/PostgreSQL for production
 
-console.log('[DB] Using In-Memory Mock Database');
+import pino from 'pino';
 
-// In-memory stroage
+const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
+
+logger.info('[DB] Using In-Memory Mock Database');
+logger.warn('[DB] Data will be lost on server restart - not suitable for production');
+
+// In-memory storage
 const store = {
   tenants: [],
   users: [],
@@ -14,9 +20,9 @@ let idCounter = 1;
 const nextId = () => idCounter++;
 
 export function migrate() {
-  console.log('[DB] Running mock migrations...');
+  logger.info('[DB] Running mock migrations...');
   seedDefaultData();
-  console.log('[DB] Mock migrations complete');
+  logger.info('[DB] Mock migrations complete');
 }
 
 function seedDefaultData() {
@@ -59,7 +65,7 @@ function seedDefaultData() {
     });
   });
 
-  console.log('[DB] Seeded mock data');
+  logger.info('[DB] Seeded mock data');
 }
 
 export function getAllTenants() {

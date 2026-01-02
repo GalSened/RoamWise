@@ -10,15 +10,32 @@ module.exports = {
   parser: '@typescript-eslint/parser',
   plugins: ['react-refresh'],
   rules: {
+    // React refresh - disabled for now but monitor for HMR issues
     'react-refresh/only-export-components': 'off',
-    '@typescript-eslint/no-unused-vars': 'off',
-    '@typescript-eslint/no-explicit-any': 'off',
-    '@typescript-eslint/ban-ts-comment': 'off',
-    '@typescript-eslint/ban-types': 'off',
+
+    // TypeScript rules - re-enabled with warnings for gradual migration
+    '@typescript-eslint/no-unused-vars': ['warn', {
+      argsIgnorePattern: '^_',
+      varsIgnorePattern: '^_',
+      caughtErrorsIgnorePattern: '^_'
+    }],
+    '@typescript-eslint/no-explicit-any': 'warn',
+    '@typescript-eslint/ban-ts-comment': ['warn', {
+      'ts-expect-error': 'allow-with-description',
+      'ts-ignore': false,
+      'ts-nocheck': false
+    }],
+    '@typescript-eslint/ban-types': 'warn',
+
+    // React hooks - keep rules-of-hooks as error, warn on exhaustive-deps
     'react-hooks/rules-of-hooks': 'error',
-    'react-hooks/exhaustive-deps': 'off',
-    'react-hooks/refs': 'off',
-    'react-hooks/set-state-in-effect': 'off',
-    'no-var': 'off',
+    'react-hooks/exhaustive-deps': 'warn',
+
+    // General JavaScript - enforce no-var
+    'no-var': 'error',
+    'prefer-const': 'warn',
+
+    // Console statements - warn in development
+    'no-console': ['warn', { allow: ['warn', 'error'] }],
   },
 }
