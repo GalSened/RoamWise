@@ -2,6 +2,7 @@
   "name": "roamwise-personal-ai",
   "version": "1.0.0",
   "description": "Personal Travel Intelligence System - Your AI Travel Companion",
+  "type": "module",
   "main": "server.js",
   "scripts": {
     "start": "node fetch-secrets.js",

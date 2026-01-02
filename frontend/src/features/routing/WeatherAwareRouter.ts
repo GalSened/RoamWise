@@ -1,25 +1,27 @@
-// @ts-nocheck
 import type {
   Route,
   LatLng,
   RoutingProvider,
   WeatherProvider,
   RouteOptions,
-  WeatherData
+  WeatherData,
+  WeatherHour
 } from '@/types';
 import { EventBus } from '@/lib/utils/events';
 import { telemetry } from '@/lib/telemetry';
 
+interface WeatherFactors {
+  precipitation: number; // 0-1 (1 = no rain, 0 = heavy rain)
+  temperature: number;   // 0-1 (1 = comfortable, 0 = extreme)
+  visibility: number;    // 0-1 (1 = clear, 0 = poor visibility)
+  wind: number;         // 0-1 (1 = calm, 0 = dangerous winds)
+  overall: number;      // combined weather fitness score
+}
+
 interface WeatherRouteScore {
   originalRoute: Route;
   weatherScore: number;
-  weatherFactors: {
-    precipitation: number; // 0-1 (1 = no rain, 0 = heavy rain)
-    temperature: number;   // 0-1 (1 = comfortable, 0 = extreme)
-    visibility: number;    // 0-1 (1 = clear, 0 = poor visibility)
-    wind: number;         // 0-1 (1 = calm, 0 = dangerous winds)
-    overall: number;      // combined weather fitness score
-  };
+  weatherFactors: WeatherFactors;
   recommendation: 'proceed' | 'delay' | 'indoor_route' | 'cancel';
   weatherAlerts: string[];
   alternativeRoutes?: WeatherRouteScore[];
@@ -32,12 +34,33 @@ interface WeatherRouteOptions extends RouteOptions {
   maxAlternatives?: number;
 }
 
+interface AggregatedWeather {
+  temperature: number;
+  precipitation: number;
+  windSpeed: number;
+  visibility: number;
+}
+
+interface CachedRoute {
+  route: Route;
+  timestamp: number;
+}
+
+interface CachedWeather {
+  data: WeatherData;
+  timestamp: number;
+}
+
+// Configuration constants
+const CACHE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_CACHE_ENTRIES = 500;
+
 export class WeatherAwareRouter extends EventBus {
   private routingProvider: RoutingProvider;
   private weatherProvider: WeatherProvider;
-  private routeCache = new Map<string, { route: Route; timestamp: number }>();
-  private weatherCache = new Map<string, { data: WeatherData; timestamp: number }>();
-  private cacheTimeout = 5 * 60 * 1000; // 5 minutes
+  private routeCache = new Map<string, CachedRoute>();
+  private weatherCache = new Map<string, CachedWeather>();
+  private readonly cacheTimeout = CACHE_TIMEOUT_MS;
 
   constructor(routingProvider: RoutingProvider, weatherProvider: WeatherProvider) {
     super();
@@ -206,7 +229,7 @@ export class WeatherAwareRouter extends EventBus {
     };
   }
 
-  private aggregateWeatherData(weatherData: WeatherData[]): any {
+  private aggregateWeatherData(weatherData: WeatherData[]): AggregatedWeather {
     const count = weatherData.length;
 
     return {
@@ -396,7 +419,7 @@ export class WeatherAwareRouter extends EventBus {
     origin: LatLng,
     destination: LatLng,
     departureTime: Date
-  ): Promise<{ hourlyWeather: any[]; recommendation: string }> {
+  ): Promise<{ hourlyWeather: WeatherHour[]; recommendation: string }> {
     try {
       const forecastData = await this.weatherProvider.getForecast(origin.lat, origin.lng);
 
@@ -404,7 +427,16 @@ export class WeatherAwareRouter extends EventBus {
       const departureHour = departureTime.getHours();
       const relevantForecast = forecastData.hourly?.slice(departureHour, departureHour + 6) || [];
 
-      const weatherScore = this.calculateWeatherScore(relevantForecast);
+      // Convert WeatherHour to WeatherData for scoring
+      const weatherDataForScoring: WeatherData[] = relevantForecast.map(hour => ({
+        temperature: hour.temperature,
+        conditions: hour.condition,
+        icon: hour.icon,
+        precipitation: hour.precipitation,
+        windSpeed: hour.windSpeed
+      }));
+
+      const weatherScore = this.calculateWeatherScore(weatherDataForScoring);
       let recommendation = 'Good weather for travel';
 
       if (weatherScore.overall < 0.4) {
@@ -418,7 +450,9 @@ export class WeatherAwareRouter extends EventBus {
         recommendation
       };
     } catch (error) {
-      console.warn('Failed to get route forecast:', error);
+      telemetry.track('route_forecast_error', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
       return {
         hourlyWeather: [],
         recommendation: 'Weather data unavailable'

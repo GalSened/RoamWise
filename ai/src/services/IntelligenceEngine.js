@@ -1,26 +1,36 @@
-const axios = require('axios');
-const { Client } = require('@google/maps');
+// ---- Intelligence Engine ----
+// AI-powered search and recommendation service
+// Converted to ES Modules
+
+import axios from 'axios';
+import { Client } from '@google/maps';
+
+// Configuration constants
+const CACHE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+const WEATHER_CACHE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+const SEARCH_RADIUS_METERS = 50000; // 50km
 
 class IntelligenceEngine {
   constructor() {
     this.googleMaps = new Client({
       key: process.env.GOOGLE_MAPS_API_KEY
     });
-    
+
     this.weatherAPI = axios.create({
       baseURL: 'https://api.openweathermap.org/data/2.5',
       params: {
         appid: process.env.OPENWEATHER_API_KEY
-      }
+      },
+      timeout: 10000
     });
-    
+
     this.cache = new Map();
-    this.cacheTimeout = 30 * 60 * 1000; // 30 minutes
+    this.cacheTimeout = CACHE_TIMEOUT_MS;
   }
 
-  async intelligentSearch(query, location, personalPreferences) {
+  async intelligentSearch(query, location, personalPreferences = {}) {
     try {
-      const cacheKey = `search:${query}:${location}`;
+      const cacheKey = `search:${query}:${JSON.stringify(location)}`;
       const cached = this.getFromCache(cacheKey);
       if (cached) return cached;
 
@@ -32,14 +42,14 @@ class IntelligenceEngine {
       ]);
 
       // Personalize and rank results
-      const personalizedResults = await this.personalizeResults(
-        placesResults, 
-        personalPreferences, 
+      const personalizedResults = this.personalizeResults(
+        placesResults,
+        personalPreferences,
         weatherContext
       );
 
       // Add intelligence layers
-      const intelligentResults = await this.addIntelligenceLayers(
+      const intelligentResults = this.addIntelligenceLayers(
         personalizedResults,
         weatherContext,
         eventContext
@@ -50,7 +60,7 @@ class IntelligenceEngine {
         context: {
           weather: weatherContext,
           events: eventContext,
-          personalizedFor: personalPreferences.userId || 'personal'
+          personalizedFor: personalPreferences.userId || 'anonymous'
         },
         metadata: {
           searchQuery: query,
@@ -64,7 +74,7 @@ class IntelligenceEngine {
       return result;
 
     } catch (error) {
-      console.error('Error in intelligent search:', error);
+      console.error('Error in intelligent search:', error.message);
       throw error;
     }
   }
@@ -75,7 +85,7 @@ class IntelligenceEngine {
         params: {
           location: location,
           keyword: query,
-          radius: 50000, // 50km radius
+          radius: SEARCH_RADIUS_METERS,
           type: 'point_of_interest'
         }
       });
@@ -89,7 +99,7 @@ class IntelligenceEngine {
         },
         rating: place.rating,
         priceLevel: place.price_level,
-        types: place.types,
+        types: place.types || [],
         openNow: place.opening_hours?.open_now,
         photos: place.photos?.slice(0, 3),
         vicinity: place.vicinity,
@@ -97,21 +107,27 @@ class IntelligenceEngine {
       }));
 
     } catch (error) {
-      console.error('Error searching places:', error);
+      console.error('Error searching places:', error.message);
       return [];
     }
   }
 
   async getWeatherContext(location) {
     try {
-      const cacheKey = `weather:${location}`;
+      const locationStr = typeof location === 'string'
+        ? location
+        : `${location.lat},${location.lng}`;
+
+      const cacheKey = `weather:${locationStr}`;
       const cached = this.getFromCache(cacheKey);
       if (cached) return cached;
 
       // Current weather
       const currentWeather = await this.weatherAPI.get('/weather', {
         params: {
-          q: location,
+          q: typeof location === 'string' ? location : undefined,
+          lat: typeof location === 'object' ? location.lat : undefined,
+          lon: typeof location === 'object' ? location.lng : undefined,
           units: 'metric'
         }
       });
@@ -119,7 +135,9 @@ class IntelligenceEngine {
       // 5-day forecast
       const forecast = await this.weatherAPI.get('/forecast', {
         params: {
-          q: location,
+          q: typeof location === 'string' ? location : undefined,
+          lat: typeof location === 'object' ? location.lat : undefined,
+          lon: typeof location === 'object' ? location.lng : undefined,
           units: 'metric'
         }
       });
@@ -144,20 +162,20 @@ class IntelligenceEngine {
         recommendations: this.generateWeatherRecommendations(currentWeather.data, forecast.data)
       };
 
-      this.setCache(cacheKey, weatherContext, 10 * 60 * 1000); // 10min cache
+      this.setCache(cacheKey, weatherContext, WEATHER_CACHE_TIMEOUT_MS);
       return weatherContext;
 
     } catch (error) {
-      console.error('Error getting weather context:', error);
+      console.error('Error getting weather context:', error.message);
       return {
-        current: { conditions: 'unknown' },
+        current: { conditions: 'unknown', temperature: 20 },
         forecast: [],
         recommendations: []
       };
     }
   }
 
-  generateWeatherRecommendations(current, forecast) {
+  generateWeatherRecommendations(current, _forecast) {
     const recommendations = [];
     const temp = current.main.temp;
     const conditions = current.weather[0].main.toLowerCase();
@@ -171,7 +189,7 @@ class IntelligenceEngine {
       });
     } else if (temp < 10) {
       recommendations.push({
-        type: 'activity', 
+        type: 'activity',
         message: 'Perfect weather for indoor attractions',
         suggestions: ['museums', 'shopping', 'cafes', 'theaters']
       });
@@ -181,7 +199,7 @@ class IntelligenceEngine {
     if (conditions.includes('rain')) {
       recommendations.push({
         type: 'preparation',
-        message: 'Don\'t forget an umbrella!',
+        message: "Don't forget an umbrella!",
         suggestions: ['covered activities', 'indoor venues', 'transportation apps']
       });
     }
@@ -197,40 +215,21 @@ class IntelligenceEngine {
     return recommendations;
   }
 
-  async getEventContext(location) {
-    try {
-      // Placeholder for events API integration
-      // In production, integrate with Eventbrite, local event APIs, etc.
-      
-      const eventContext = {
-        currentEvents: [
-          // Mock data - replace with real API calls
-          {
-            name: 'Local Food Festival',
-            date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-            type: 'food',
-            relevance: 'high'
-          }
-        ],
-        upcomingEvents: [],
-        seasonalEvents: [],
-        recommendations: [
-          'Check local event calendars for current happenings'
-        ]
-      };
-
-      return eventContext;
-
-    } catch (error) {
-      console.error('Error getting event context:', error);
-      return { currentEvents: [], upcomingEvents: [], recommendations: [] };
-    }
+  async getEventContext(_location) {
+    // Placeholder for events API integration
+    // In production, integrate with Eventbrite, local event APIs, etc.
+    return {
+      currentEvents: [],
+      upcomingEvents: [],
+      seasonalEvents: [],
+      recommendations: ['Check local event calendars for current happenings']
+    };
   }
 
-  async personalizeResults(results, preferences, weatherContext) {
+  personalizeResults(results, preferences, weatherContext) {
     return results.map(result => {
       const personalizedScore = this.calculatePersonalizedScore(result, preferences, weatherContext);
-      
+
       return {
         ...result,
         personalizedScore,
@@ -245,15 +244,15 @@ class IntelligenceEngine {
     let score = place.rating || 3; // Base score from place rating
 
     // Personal preference adjustments
-    if (preferences.destinationTypes) {
-      const matchingTypes = place.types.filter(type => 
+    if (preferences.destinationTypes && place.types) {
+      const matchingTypes = place.types.filter(type =>
         preferences.destinationTypes.includes(type)
       );
       score += matchingTypes.length * 0.5;
     }
 
     // Budget preference
-    if (preferences.budgetCategory && place.priceLevel) {
+    if (preferences.budgetCategory && place.priceLevel !== undefined) {
       const budgetMatch = this.matchBudgetPreference(preferences.budgetCategory, place.priceLevel);
       score += budgetMatch;
     }
@@ -283,14 +282,13 @@ class IntelligenceEngine {
   }
 
   calculateWeatherScore(place, weatherContext) {
-    const isOutdoor = place.types.some(type => 
-      ['park', 'zoo', 'amusement_park', 'tourist_attraction'].includes(type)
-    );
+    const outdoorTypes = ['park', 'zoo', 'amusement_park', 'tourist_attraction'];
+    const isOutdoor = place.types?.some(type => outdoorTypes.includes(type));
 
     if (!isOutdoor) return 0; // Indoor places not affected by weather
 
-    const conditions = weatherContext.current.conditions.toLowerCase();
-    const temp = weatherContext.current.temperature;
+    const conditions = weatherContext.current?.conditions?.toLowerCase() || '';
+    const temp = weatherContext.current?.temperature || 20;
 
     if (conditions.includes('rain') || conditions.includes('storm')) {
       return -1; // Outdoor activities less appealing in bad weather
@@ -306,11 +304,11 @@ class IntelligenceEngine {
   generatePersonalizedReasons(place, preferences) {
     const reasons = [];
 
-    if (preferences.activityPreferences) {
+    if (preferences.activityPreferences && place.types) {
       const matchingActivities = place.types.filter(type =>
         preferences.activityPreferences.includes(type)
       );
-      
+
       if (matchingActivities.length > 0) {
         reasons.push(`Matches your interest in ${matchingActivities.join(', ')}`);
       }
@@ -328,16 +326,15 @@ class IntelligenceEngine {
   }
 
   assessWeatherSuitability(place, weatherContext) {
-    const isOutdoor = place.types.some(type => 
-      ['park', 'zoo', 'amusement_park'].includes(type)
-    );
+    const outdoorTypes = ['park', 'zoo', 'amusement_park'];
+    const isOutdoor = place.types?.some(type => outdoorTypes.includes(type));
 
     if (!isOutdoor) {
       return { suitable: true, reason: 'Indoor venue - weather independent' };
     }
 
-    const conditions = weatherContext.current.conditions.toLowerCase();
-    const temp = weatherContext.current.temperature;
+    const conditions = weatherContext.current?.conditions?.toLowerCase() || '';
+    const temp = weatherContext.current?.temperature || 20;
 
     if (conditions.includes('rain')) {
       return { suitable: false, reason: 'Rainy weather - consider indoor alternatives' };
@@ -358,28 +355,30 @@ class IntelligenceEngine {
     const tags = [];
 
     // Budget-based tags
-    if (place.priceLevel <= 1) tags.push('budget-friendly');
-    if (place.priceLevel >= 3) tags.push('upscale');
+    if (place.priceLevel !== undefined) {
+      if (place.priceLevel <= 1) tags.push('budget-friendly');
+      if (place.priceLevel >= 3) tags.push('upscale');
+    }
 
     // Rating-based tags
     if (place.rating >= 4.5) tags.push('highly-rated');
-    if (place.rating >= 4.0) tags.push('popular');
+    else if (place.rating >= 4.0) tags.push('popular');
 
     // Preference-based tags
-    if (preferences.travelStyle === 'adventure' && 
-        place.types.includes('tourist_attraction')) {
+    if (preferences.travelStyle === 'adventure' &&
+        place.types?.includes('tourist_attraction')) {
       tags.push('adventure-worthy');
     }
 
-    if (preferences.travelStyle === 'cultural' && 
-        place.types.some(t => ['museum', 'art_gallery', 'church'].includes(t))) {
+    if (preferences.travelStyle === 'cultural' &&
+        place.types?.some(t => ['museum', 'art_gallery', 'church'].includes(t))) {
       tags.push('cultural-gem');
     }
 
     return tags;
   }
 
-  async addIntelligenceLayers(results, weatherContext, eventContext) {
+  addIntelligenceLayers(results, weatherContext, eventContext) {
     return results.map(result => ({
       ...result,
       intelligence: {
@@ -393,15 +392,14 @@ class IntelligenceEngine {
   }
 
   calculateBestTimeToVisit(place, weatherContext) {
-    const isOutdoor = place.types.some(type => 
-      ['park', 'zoo', 'amusement_park'].includes(type)
-    );
+    const outdoorTypes = ['park', 'zoo', 'amusement_park'];
+    const isOutdoor = place.types?.some(type => outdoorTypes.includes(type));
 
     if (!isOutdoor) {
       return 'Any time - indoor venue';
     }
 
-    const forecast = weatherContext.forecast;
+    const forecast = weatherContext.forecast || [];
     if (forecast.length === 0) {
       return 'Weather data unavailable';
     }
@@ -427,20 +425,20 @@ class IntelligenceEngine {
 
   predictCrowding(place) {
     const currentHour = new Date().getHours();
-    
+
     // Simple crowding prediction based on place type and time
-    if (place.types.includes('restaurant')) {
+    if (place.types?.includes('restaurant')) {
       if (currentHour >= 12 && currentHour <= 14) return 'High - lunch rush';
       if (currentHour >= 19 && currentHour <= 21) return 'High - dinner rush';
       return 'Moderate';
     }
 
-    if (place.types.includes('museum')) {
+    if (place.types?.includes('museum')) {
       if (currentHour >= 10 && currentHour <= 16) return 'Moderate - regular hours';
       return 'Low - off-peak hours';
     }
 
-    if (place.types.includes('park')) {
+    if (place.types?.includes('park')) {
       const isWeekend = [0, 6].includes(new Date().getDay());
       if (isWeekend && currentHour >= 10 && currentHour <= 16) {
         return 'High - weekend peak';
@@ -453,11 +451,11 @@ class IntelligenceEngine {
 
   calculateValueScore(place) {
     const rating = place.rating || 3;
-    const priceLevel = place.priceLevel || 2;
-    
+    const priceLevel = place.priceLevel ?? 2;
+
     // Higher rating and lower price = better value
     const valueScore = (rating / 5) * (1 - (priceLevel / 4));
-    
+
     if (valueScore > 0.7) return 'Excellent value';
     if (valueScore > 0.5) return 'Good value';
     if (valueScore > 0.3) return 'Fair value';
@@ -468,18 +466,18 @@ class IntelligenceEngine {
     const insights = [];
 
     // Event-based insights
-    if (eventContext.currentEvents.length > 0) {
+    if (eventContext.currentEvents?.length > 0 && place.vicinity) {
       const relevantEvents = eventContext.currentEvents.filter(event =>
-        place.types.includes(event.type) || place.vicinity.includes(event.name)
+        place.types?.includes(event.type) || place.vicinity.includes(event.name)
       );
-      
+
       if (relevantEvents.length > 0) {
         insights.push(`Special event nearby: ${relevantEvents[0].name}`);
       }
     }
 
     // Location-based insights
-    if (place.types.includes('tourist_attraction') && place.rating > 4.3) {
+    if (place.types?.includes('tourist_attraction') && place.rating > 4.3) {
       insights.push('Hidden gem with exceptional reviews');
     }
 
@@ -494,14 +492,15 @@ class IntelligenceEngine {
     const advice = [];
 
     // Weather-based advice
-    if (weatherContext.current.conditions.toLowerCase().includes('rain')) {
-      if (place.types.some(t => ['park', 'zoo'].includes(t))) {
+    const conditions = weatherContext.current?.conditions?.toLowerCase() || '';
+    if (conditions.includes('rain')) {
+      if (place.types?.some(t => ['park', 'zoo'].includes(t))) {
         advice.push('Bring umbrella or consider rescheduling');
       }
     }
 
     // Time-based advice
-    if (place.types.includes('restaurant') && new Date().getHours() > 19) {
+    if (place.types?.includes('restaurant') && new Date().getHours() > 19) {
       advice.push('Consider making a reservation');
     }
 
@@ -517,10 +516,10 @@ class IntelligenceEngine {
     return advice;
   }
 
-  // Cache management
+  // Cache management with LRU-like behavior
   getFromCache(key) {
     const cached = this.cache.get(key);
-    if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
+    if (cached && Date.now() - cached.timestamp < (cached.timeout || this.cacheTimeout)) {
       return cached.data;
     }
     this.cache.delete(key);
@@ -528,12 +527,23 @@ class IntelligenceEngine {
   }
 
   setCache(key, data, customTimeout = null) {
+    // Simple LRU: remove oldest entries if cache is too large
+    const MAX_CACHE_SIZE = 500;
+    if (this.cache.size >= MAX_CACHE_SIZE) {
+      const oldestKey = this.cache.keys().next().value;
+      this.cache.delete(oldestKey);
+    }
+
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
       timeout: customTimeout || this.cacheTimeout
     });
   }
+
+  clearCache() {
+    this.cache.clear();
+  }
 }
 
-module.exports = IntelligenceEngine;
+export default IntelligenceEngine;

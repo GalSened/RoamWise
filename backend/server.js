@@ -7,6 +7,7 @@ import cors from 'cors';
 import pino from 'pino';
 import pinoHttp from 'pino-http';
 import { nanoid } from 'nanoid';
+import jwt from 'jsonwebtoken';
 import { migrate } from './db.js';
 import { migrate as familyMigrate } from './src/ops/db-migrate.js';
 import authRoutes from './routes/auth.js';
@@ -21,6 +22,12 @@ import plannerRoutes from './routes/planner.js';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
+const JWT_SECRET = process.env.JWT_SECRET || 'roamwise-dev-secret-change-in-production';
+
+// Warn if using default secret in production
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  console.error('WARNING: JWT_SECRET not set in production environment!');
+}
 
 // Logger
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
@@ -98,21 +105,39 @@ app.use(placesRoutes);
 // Planner routes (trip planning)
 app.use(plannerRoutes);
 
-// /api/me endpoint (uses family session cookie)
+// /api/me endpoint (uses family session cookie with JWT verification)
 app.get('/api/me', (req, res) => {
-  const cookie = req.cookies?.family_session;
-  if (!cookie) {
+  const token = req.cookies?.family_session;
+  if (!token) {
     return res.status(401).json({ ok: false, code: 'not_signed_in' });
   }
 
   try {
-    const json = Buffer.from(cookie, 'base64url').toString('utf-8');
-    const session = JSON.parse(json);
+    // Verify JWT signature and expiration
+    const session = jwt.verify(token, JWT_SECRET);
+
+    // Check if session has required fields
+    if (!session || typeof session !== 'object') {
+      return res.status(401).json({ ok: false, code: 'invalid_session' });
+    }
+
     res.json({ ok: true, session });
   } catch (error) {
+    // Handle specific JWT errors
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ ok: false, code: 'session_expired' });
+    }
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ ok: false, code: 'invalid_token' });
+    }
     res.status(401).json({ ok: false, code: 'invalid_session' });
   }
 });
+
+// Helper function to create session token (for use in auth routes)
+export function createSessionToken(sessionData, expiresIn = '7d') {
+  return jwt.sign(sessionData, JWT_SECRET, { expiresIn });
+}
 
 // 404 handler
 app.use((req, res) => {
