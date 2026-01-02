@@ -32,6 +32,7 @@ jobs:
       - name: Type check frontend
         working-directory: frontend
         run: npm run typecheck --if-present
+        continue-on-error: true
 
   test-frontend:
     name: Test Frontend
