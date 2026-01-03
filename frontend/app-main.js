@@ -117,6 +117,7 @@ class SimpleNavigation {
     await this.setupLanguageToggle();
     this.setupFormInteractions();
     this.setupHomeBaseSettings();
+    this.setupChat();
     this.updateProfileStats();
     this.showView('search');
 
@@ -2599,6 +2600,195 @@ class SimpleNavigation {
         modal.style.opacity = '1';
       }, 300);
     }
+  }
+
+  // ===== CHAT FUNCTIONALITY =====
+
+  chatHistory = [];
+
+  setupChat() {
+    // Event listeners
+    document.getElementById('chatSendBtn')?.addEventListener('click', () => this.sendChatMessage());
+    document.getElementById('chatInput')?.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') this.sendChatMessage();
+    });
+
+    // Suggestion chips
+    document.querySelectorAll('.chat-chip').forEach(chip => {
+      chip.addEventListener('click', (e) => {
+        const suggestion = e.target.dataset.suggestion;
+        this.handleSuggestion(suggestion);
+      });
+    });
+
+    // Voice button (placeholder for future voice integration)
+    document.getElementById('chatVoiceBtn')?.addEventListener('click', () => {
+      this.showToast(this.t('voice.coming_soon') || 'Voice coming soon!');
+    });
+
+    // Render welcome message
+    this.renderWelcomeMessage();
+
+    // Show trip banner if active
+    this.updateChatTripBanner();
+  }
+
+  renderWelcomeMessage() {
+    const name = TenantStorage.getTenantName() || '';
+    const greeting = name
+      ? this.t('chat.welcome_name', { name }) || `Hi ${name}! I'm your AI travel co-pilot. How can I help you today?`
+      : this.t('chat.welcome') || "Hi! I'm your AI travel co-pilot. How can I help you today?";
+
+    this.addChatMessage('assistant', greeting);
+  }
+
+  async sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    if (!message) return;
+
+    input.value = '';
+    input.disabled = true;
+    document.getElementById('chatSendBtn').disabled = true;
+
+    // Add user message
+    this.addChatMessage('user', message);
+
+    // Show typing indicator
+    this.showTypingIndicator();
+
+    try {
+      // Get context
+      const context = this.getChatContext();
+
+      // Call AI
+      const response = await this.callChatAI(message, context);
+
+      // Hide typing, show response
+      this.hideTypingIndicator();
+      this.addChatMessage('assistant', response.content);
+
+    } catch (error) {
+      console.error('Chat error:', error);
+      this.hideTypingIndicator();
+      this.addChatMessage('assistant', this.t('chat.error') || "Sorry, I couldn't process that. Please try again.");
+    }
+
+    input.disabled = false;
+    document.getElementById('chatSendBtn').disabled = false;
+    input.focus();
+  }
+
+  addChatMessage(role, content) {
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
+
+    const msg = { id: Date.now(), role, content, timestamp: new Date() };
+    this.chatHistory.push(msg);
+
+    const bubble = document.createElement('div');
+    bubble.className = `chat-message ${role}`;
+    bubble.innerHTML = this.escapeHtml(content);
+    container.appendChild(bubble);
+
+    // Scroll to bottom
+    container.scrollTop = container.scrollHeight;
+  }
+
+  showTypingIndicator() {
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
+
+    const typing = document.createElement('div');
+    typing.id = 'typingIndicator';
+    typing.className = 'chat-message assistant typing';
+    typing.innerHTML = `<div class="typing-dots"><span></span><span></span><span></span></div>`;
+    container.appendChild(typing);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  hideTypingIndicator() {
+    document.getElementById('typingIndicator')?.remove();
+  }
+
+  getChatContext() {
+    const activeTrip = TenantStorage.get('activeTrip');
+    return {
+      activeTrip: activeTrip ? JSON.parse(activeTrip) : null,
+      location: this.userLocation || null,
+      lang: window.currentLang || 'en',
+      history: this.chatHistory.slice(-10) // Last 10 messages for context
+    };
+  }
+
+  async callChatAI(message, context) {
+    // Use existing proxy endpoint
+    const API_BASE = 'https://roamwise-proxy-971999716773.us-central1.run.app';
+
+    const systemPrompt = `You are an expert travel co-pilot for Israel and worldwide destinations.
+Your role: Help users discover places, plan trips, and navigate their journeys.
+Language: Respond in ${context.lang === 'he' ? 'Hebrew' : 'English'}.
+${context.activeTrip ? `Active trip: ${JSON.stringify(context.activeTrip)}` : ''}
+${context.location ? `User location: ${context.location.lat}, ${context.location.lng}` : ''}
+
+Guidelines:
+- Keep responses concise (2-3 sentences)
+- Be helpful and friendly
+- For non-travel topics, politely redirect to travel
+- Suggest relevant actions when appropriate`;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message,
+          context: systemPrompt,
+          history: context.history.map(m => ({ role: m.role, content: m.content }))
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return { content: data.response || data.message || data.content };
+      }
+    } catch (e) {
+      console.warn('Chat API error, using fallback:', e);
+    }
+
+    // Fallback: simple response
+    return {
+      content: this.t('chat.fallback_response') || "I'm here to help with your travel plans! Try asking about restaurants, attractions, or trip planning."
+    };
+  }
+
+  handleSuggestion(type) {
+    const suggestions = {
+      food: this.t('chat.prompt_food') || 'Find good restaurants near me',
+      weather: this.t('chat.prompt_weather') || "What's the weather like today?",
+      plan: this.t('chat.prompt_plan') || 'Help me plan a day trip',
+      nearby: this.t('chat.prompt_nearby') || "What's interesting nearby?"
+    };
+
+    const input = document.getElementById('chatInput');
+    if (input) {
+      input.value = suggestions[type] || '';
+      input.focus();
+    }
+  }
+
+  updateChatTripBanner() {
+    const banner = document.getElementById('chatTripBanner');
+    const activeTrip = TenantStorage.get('activeTrip');
+    if (banner) {
+      banner.style.display = activeTrip ? 'block' : 'none';
+    }
+  }
+
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 }
 

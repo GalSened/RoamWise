@@ -164,5 +164,20 @@
   "profile.level_up": "Level Up!",
   "profile.achievement_unlocked": "Achievement Unlocked",
   "update.available": "Update available!",
-  "update.refresh": "Refresh"
+  "update.refresh": "Refresh",
+  "chat.title": "AI Co-Pilot",
+  "chat.placeholder": "Ask your travel co-pilot...",
+  "chat.welcome": "Hi! I'm your AI travel co-pilot. How can I help you today?",
+  "chat.welcome_name": "Hi {name}! I'm your AI travel co-pilot. How can I help you today?",
+  "chat.active_trip": "Trip in progress",
+  "chat.suggest_food": "🍽️ Find Food",
+  "chat.suggest_weather": "🌤️ Weather",
+  "chat.suggest_plan": "🗺️ Plan Trip",
+  "chat.suggest_nearby": "📍 Nearby",
+  "chat.prompt_food": "Find good restaurants near me",
+  "chat.prompt_weather": "What's the weather like today?",
+  "chat.prompt_plan": "Help me plan a day trip",
+  "chat.prompt_nearby": "What's interesting nearby?",
+  "chat.error": "Sorry, I couldn't process that. Please try again.",
+  "chat.fallback_response": "I'm here to help with your travel plans! Try asking about restaurants, attractions, or trip planning."
 }
