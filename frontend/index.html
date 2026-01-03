@@ -2073,6 +2073,320 @@
       border-bottom-left-radius: var(--radius-lg);
       border-bottom-right-radius: var(--radius-sm);
     }
+
+    /* ========================================
+       ACTIVE TRIP STYLES
+       ======================================== */
+
+    /* Active Trip Section */
+    .active-trip-section {
+      padding: var(--space-4);
+      padding-bottom: 100px;
+    }
+
+    .active-trip-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-4);
+    }
+
+    .active-trip-title {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+    }
+
+    .active-trip-title h2 {
+      font-size: var(--font-size-title-2);
+      font-weight: 700;
+      color: var(--label-primary);
+      margin: 0;
+    }
+
+    .trip-status-badge {
+      display: inline-block;
+      padding: var(--space-1) var(--space-2);
+      background: var(--ios-green);
+      color: white;
+      border-radius: var(--radius-sm);
+      font-size: var(--font-size-caption-2);
+      font-weight: 600;
+      text-transform: uppercase;
+      width: fit-content;
+    }
+
+    .active-trip-meta {
+      text-align: right;
+      color: var(--label-secondary);
+      font-size: var(--font-size-footnote);
+    }
+
+    /* Current Activity Card */
+    .current-activity-card {
+      background: linear-gradient(135deg, var(--ios-blue), var(--ios-teal));
+      border-radius: var(--radius-lg);
+      padding: var(--space-4);
+      color: white;
+      margin-bottom: var(--space-4);
+      box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+    }
+
+    .activity-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-2);
+    }
+
+    .activity-badge {
+      background: rgba(255, 255, 255, 0.25);
+      padding: var(--space-1) var(--space-2);
+      border-radius: var(--radius-sm);
+      font-size: var(--font-size-caption-2);
+      font-weight: 700;
+    }
+
+    .activity-time {
+      font-size: var(--font-size-footnote);
+      opacity: 0.9;
+    }
+
+    .activity-name {
+      font-size: var(--font-size-title-3);
+      font-weight: 700;
+      margin: 0 0 var(--space-1) 0;
+    }
+
+    .activity-address {
+      font-size: var(--font-size-footnote);
+      opacity: 0.85;
+      margin: 0 0 var(--space-4) 0;
+    }
+
+    .activity-actions {
+      display: flex;
+      gap: var(--space-2);
+    }
+
+    .activity-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-1);
+      padding: var(--space-3);
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-footnote);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--duration-fast);
+    }
+
+    .activity-btn.primary {
+      background: white;
+      color: var(--ios-blue);
+    }
+
+    .activity-btn.success {
+      background: var(--ios-green);
+      color: white;
+    }
+
+    .activity-btn.secondary {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+    }
+
+    .activity-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* Next Up Preview */
+    .next-up-preview {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-3);
+      background: var(--fill-secondary);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-4);
+    }
+
+    .next-up-label {
+      color: var(--label-secondary);
+      font-size: var(--font-size-footnote);
+    }
+
+    .next-up-name {
+      color: var(--label-primary);
+      font-weight: 600;
+      font-size: var(--font-size-body);
+    }
+
+    /* Timeline */
+    .active-trip-timeline {
+      margin-bottom: var(--space-4);
+    }
+
+    .timeline-item {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-3);
+      padding: var(--space-3) 0;
+      border-bottom: 1px solid var(--separator);
+    }
+
+    .timeline-item:last-child {
+      border-bottom: none;
+    }
+
+    .timeline-marker {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .timeline-marker.completed {
+      background: var(--ios-green);
+      color: white;
+    }
+
+    .timeline-marker.current {
+      background: var(--ios-blue);
+      color: white;
+      animation: pulse 2s infinite;
+    }
+
+    .timeline-marker.upcoming {
+      background: var(--fill-tertiary);
+      color: var(--label-tertiary);
+    }
+
+    .timeline-marker.skipped {
+      background: var(--fill-tertiary);
+      color: var(--label-tertiary);
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(0, 122, 255, 0.4); }
+      50% { box-shadow: 0 0 0 8px rgba(0, 122, 255, 0); }
+    }
+
+    .timeline-content {
+      flex: 1;
+    }
+
+    .timeline-name {
+      font-weight: 600;
+      color: var(--label-primary);
+      font-size: var(--font-size-body);
+    }
+
+    .timeline-name.completed {
+      color: var(--label-secondary);
+    }
+
+    .timeline-name.skipped {
+      color: var(--label-tertiary);
+      text-decoration: line-through;
+    }
+
+    .timeline-time {
+      font-size: var(--font-size-caption-1);
+      color: var(--label-tertiary);
+    }
+
+    /* End Trip Button */
+    .end-trip-btn {
+      width: 100%;
+      padding: var(--space-4);
+      background: var(--fill-secondary);
+      border: none;
+      border-radius: var(--radius-md);
+      color: var(--ios-red);
+      font-size: var(--font-size-body);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--duration-fast);
+    }
+
+    .end-trip-btn:active {
+      background: var(--fill-tertiary);
+    }
+
+    /* Trip Completion Modal */
+    .trip-complete-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      animation: fadeInModal 0.3s ease;
+    }
+
+    .trip-complete-content {
+      background: var(--bg-primary);
+      border-radius: var(--radius-lg);
+      padding: var(--space-6);
+      text-align: center;
+      max-width: 320px;
+      margin: var(--space-4);
+      animation: scaleInModal 0.3s ease;
+    }
+
+    @keyframes fadeInModal {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes scaleInModal {
+      from { transform: scale(0.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .trip-complete-icon {
+      font-size: 64px;
+      margin-bottom: var(--space-3);
+    }
+
+    .trip-complete-title {
+      font-size: var(--font-size-title-2);
+      font-weight: 700;
+      color: var(--label-primary);
+      margin-bottom: var(--space-2);
+    }
+
+    .trip-complete-xp {
+      font-size: var(--font-size-title-3);
+      color: var(--ios-green);
+      font-weight: 600;
+      margin-bottom: var(--space-4);
+    }
+
+    .trip-complete-btn {
+      width: 100%;
+      padding: var(--space-3);
+      background: var(--ios-blue);
+      color: white;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-body);
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .trip-complete-btn:active {
+      transform: scale(0.98);
+    }
   </style>
 </head>
 <body>
@@ -2217,7 +2531,64 @@
 
       <!-- Trip Planning View -->
       <section id="tripView" class="ios-view" data-view="trip">
-        <h1 class="ios-large-title"><span data-i18n="trip.title">Plan Your Trip</span></h1>
+        <!-- Active Trip Execution View (shown when trip is active) -->
+        <div id="activeTripSection" class="active-trip-section" style="display: none;">
+          <!-- Header with trip info -->
+          <div class="active-trip-header">
+            <div class="active-trip-title">
+              <span class="trip-status-badge" data-i18n="active.in_progress">In Progress</span>
+              <h2 data-i18n="active.your_trip">Your Trip</h2>
+            </div>
+            <div class="active-trip-meta">
+              <span id="activeTripStops">0/0</span>
+              <span data-i18n="active.stops">stops</span>
+            </div>
+          </div>
+
+          <!-- Current Activity Card -->
+          <div id="currentActivityCard" class="current-activity-card">
+            <div class="activity-header">
+              <span class="activity-badge" data-i18n="active.now">NOW</span>
+              <span id="currentActivityTime" class="activity-time"></span>
+            </div>
+            <h3 id="currentActivityName" class="activity-name"></h3>
+            <p id="currentActivityAddress" class="activity-address"></p>
+            <div class="activity-actions">
+              <button id="navigateBtn" class="activity-btn primary">
+                <span>📍</span>
+                <span data-i18n="active.navigate">Navigate</span>
+              </button>
+              <button id="completeBtn" class="activity-btn success">
+                <span>✓</span>
+                <span data-i18n="active.complete">Done</span>
+              </button>
+              <button id="skipBtn" class="activity-btn secondary">
+                <span>⏭</span>
+                <span data-i18n="active.skip">Skip</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Next Up Preview -->
+          <div id="nextUpPreview" class="next-up-preview">
+            <span class="next-up-label" data-i18n="active.next_up">Next up:</span>
+            <span id="nextUpName" class="next-up-name"></span>
+          </div>
+
+          <!-- Timeline -->
+          <div id="activeTripTimeline" class="active-trip-timeline">
+            <!-- Timeline items rendered dynamically -->
+          </div>
+
+          <!-- End Trip Button -->
+          <button id="endTripBtn" class="end-trip-btn">
+            <span data-i18n="active.end_trip">End Trip</span>
+          </button>
+        </div>
+
+        <!-- Trip Planner Section (shown when no active trip) -->
+        <div id="tripPlannerSection">
+          <h1 class="ios-large-title"><span data-i18n="trip.title">Plan Your Trip</span></h1>
         <p class="ios-subtitle" data-i18n="trip.subtitle">AI-powered trip planning with personalized recommendations</p>
 
         <!-- Queued Places Section -->
@@ -2324,6 +2695,7 @@
         <div id="enhancedTripDisplay" class="ios-results" style="margin-top: var(--space-6);">
           <!-- Trip results will be inserted here -->
         </div>
+        </div><!-- End tripPlannerSection -->
       </section>
 
       <!-- Profile View -->

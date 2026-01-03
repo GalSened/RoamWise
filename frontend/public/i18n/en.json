@@ -179,5 +179,20 @@
   "chat.prompt_plan": "Help me plan a day trip",
   "chat.prompt_nearby": "What's interesting nearby?",
   "chat.error": "Sorry, I couldn't process that. Please try again.",
-  "chat.fallback_response": "I'm here to help with your travel plans! Try asking about restaurants, attractions, or trip planning."
+  "chat.fallback_response": "I'm here to help with your travel plans! Try asking about restaurants, attractions, or trip planning.",
+  "active.in_progress": "In Progress",
+  "active.your_trip": "Your Trip",
+  "active.stops": "stops",
+  "active.now": "NOW",
+  "active.navigate": "Navigate",
+  "active.complete": "Done",
+  "active.skip": "Skip",
+  "active.next_up": "Next up:",
+  "active.end_trip": "End Trip",
+  "active.end_confirm": "End this trip? Progress will be saved.",
+  "active.activity_completed": "Activity completed!",
+  "active.activity_skipped": "Activity skipped",
+  "active.trip_complete": "Trip Complete!",
+  "active.visited_places": "You visited {completed} of {total} places",
+  "active.great": "Great!"
 }

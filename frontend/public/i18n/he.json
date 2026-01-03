@@ -179,5 +179,20 @@
   "chat.prompt_plan": "עזור לי לתכנן טיול יום",
   "chat.prompt_nearby": "מה מעניין בקרבת מקום?",
   "chat.error": "סליחה, לא הצלחתי לעבד את הבקשה. נסה שוב.",
-  "chat.fallback_response": "אני כאן לעזור עם תכנון הטיולים שלך! נסה לשאול על מסעדות, אטרקציות, או תכנון טיול."
+  "chat.fallback_response": "אני כאן לעזור עם תכנון הטיולים שלך! נסה לשאול על מסעדות, אטרקציות, או תכנון טיול.",
+  "active.in_progress": "בתהליך",
+  "active.your_trip": "הטיול שלך",
+  "active.stops": "עצירות",
+  "active.now": "עכשיו",
+  "active.navigate": "נווט",
+  "active.complete": "סיימתי",
+  "active.skip": "דלג",
+  "active.next_up": "הבא:",
+  "active.end_trip": "סיים טיול",
+  "active.end_confirm": "לסיים את הטיול? ההתקדמות תישמר.",
+  "active.activity_completed": "הפעילות הושלמה!",
+  "active.activity_skipped": "הפעילות דולגה",
+  "active.trip_complete": "הטיול הושלם!",
+  "active.visited_places": "ביקרת ב-{completed} מתוך {total} מקומות",
+  "active.great": "מעולה!"
 }

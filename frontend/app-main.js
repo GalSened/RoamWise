@@ -118,6 +118,7 @@ class SimpleNavigation {
     this.setupFormInteractions();
     this.setupHomeBaseSettings();
     this.setupChat();
+    this.setupActiveTrip();
     this.updateProfileStats();
     this.showView('search');
 
@@ -247,6 +248,7 @@ class SimpleNavigation {
 
     // View-specific actions
     if (viewName === 'trip') {
+      this.checkAndRenderActiveTrip();
       this.renderQueuedPlaces();
       this.loadPreselectedInterests();
     } else if (viewName === 'profile') {
@@ -1095,93 +1097,261 @@ class SimpleNavigation {
     TenantStorage.remove('active-trip');
   }
 
-  // ===== ACTIVE TRIP RENDERING =====
-  renderActiveTrip() {
+  // ===== ACTIVE TRIP FUNCTIONALITY =====
+
+  setupActiveTrip() {
+    // Event listeners for active trip buttons
+    document.getElementById('navigateBtn')?.addEventListener('click', () => this.navigateToCurrentActivity());
+    document.getElementById('completeBtn')?.addEventListener('click', () => this.markActivityComplete());
+    document.getElementById('skipBtn')?.addEventListener('click', () => this.skipActivity());
+    document.getElementById('endTripBtn')?.addEventListener('click', () => this.endActiveTrip());
+  }
+
+  checkAndRenderActiveTrip() {
     const activeTrip = this.getActiveTrip();
-    const section = document.getElementById('activeTripSection');
+    const activeTripSection = document.getElementById('activeTripSection');
+    const tripPlannerSection = document.getElementById('tripPlannerSection');
 
-    if (!section) return;
-
-    if (activeTrip && activeTrip.timeline) {
-      section.style.display = 'block';
-      const timeline = document.getElementById('activeTripTimeline');
-
-      if (timeline) {
-        timeline.innerHTML = activeTrip.timeline.map((leg, idx) => {
-          const isCompleted = idx < activeTrip.currentStopIndex;
-          const isCurrent = idx === activeTrip.currentStopIndex;
-
-          return `
-            <div class="timeline-stop ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}" style="display: flex; align-items: flex-start; gap: 12px; padding: 12px; ${isCurrent ? 'background: var(--ios-blue-bg, rgba(0,122,255,0.1)); border-radius: 12px;' : ''} border-left: 2px solid ${isCompleted ? 'var(--ios-green, #34C759)' : isCurrent ? 'var(--ios-blue, #007AFF)' : 'var(--fill-tertiary, #E5E5EA)'}; margin-left: 12px;">
-              <div class="stop-marker" style="width: 28px; height: 28px; background: ${isCompleted ? 'var(--ios-green, #34C759)' : isCurrent ? 'var(--ios-blue, #007AFF)' : 'var(--fill-secondary, #E5E5EA)'}; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px;">
-                ${isCompleted ? '✓' : idx + 1}
-              </div>
-              <div class="stop-info" style="flex: 1; ${isCompleted ? 'opacity: 0.5;' : ''}">
-                <strong style="display: block;">${leg.to?.name || 'Stop ' + (idx + 1)}</strong>
-                ${leg.leg_seconds ? `<span style="font-size: 12px; color: var(--label-secondary);">🚗 ${Math.round(leg.leg_seconds / 60)} min</span>` : ''}
-                ${leg.to?.rating ? `<span style="font-size: 12px; color: var(--label-secondary); margin-left: 8px;">⭐ ${leg.to.rating.toFixed(1)}</span>` : ''}
-              </div>
-              ${isCurrent ? `
-                <div class="stop-actions" style="display: flex; gap: 8px;">
-                  <button class="navigate-btn" data-lat="${leg.to?.lat || ''}" data-lon="${leg.to?.lon || ''}" data-name="${leg.to?.name || ''}" style="padding: 6px 12px; background: var(--ios-blue, #007AFF); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 12px;">
-                    🧭 ${this.t('ai.navigate') || 'Navigate'}
-                  </button>
-                  <button class="mark-visited-btn" data-index="${idx}" style="padding: 6px 12px; background: var(--ios-green, #34C759); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 12px;">
-                    ✓ ${this.t('ai.visited') || 'Visited'}
-                  </button>
-                </div>
-              ` : ''}
-            </div>
-          `;
-        }).join('');
-
-        // Attach handlers
-        document.querySelectorAll('.navigate-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const lat = btn.dataset.lat;
-            const lon = btn.dataset.lon;
-            const name = btn.dataset.name;
-            if (lat && lon) {
-              window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`, '_blank');
-            } else if (name) {
-              window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`, '_blank');
-            }
-          });
-        });
-
-        document.querySelectorAll('.mark-visited-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const trip = this.getActiveTrip();
-            trip.currentStopIndex++;
-
-            if (trip.currentStopIndex >= trip.timeline.length) {
-              this.showToast(this.t('toast.trip_complete') || 'Congratulations! Trip completed! 🎉');
-              this.clearActiveTrip();
-              // Increment trips completed
-              this.tripsGenerated++;
-              TenantStorage.set('stats-trips-completed', this.tripsGenerated);
-            } else {
-              TenantStorage.set('active-trip', trip);
-            }
-
-            this.renderActiveTrip();
-            this.updateProfileStats();
-          });
-        });
-
-        // End trip button
-        const endBtn = document.getElementById('endTripBtn');
-        if (endBtn) {
-          endBtn.onclick = () => {
-            this.clearActiveTrip();
-            this.renderActiveTrip();
-            this.showToast(this.t('toast.trip_ended') || 'Trip ended');
-          };
-        }
-      }
+    if (activeTrip && activeTrip.timeline && activeTrip.timeline.length > 0) {
+      if (activeTripSection) activeTripSection.style.display = 'block';
+      if (tripPlannerSection) tripPlannerSection.style.display = 'none';
+      this.renderActiveTripView(activeTrip);
     } else {
-      section.style.display = 'none';
+      if (activeTripSection) activeTripSection.style.display = 'none';
+      if (tripPlannerSection) tripPlannerSection.style.display = 'block';
     }
+  }
+
+  renderActiveTripView(trip) {
+    const stops = trip.timeline || trip.stops || trip.places || [];
+    const currentIndex = trip.currentStopIndex || 0;
+    const current = stops[currentIndex];
+    const next = stops[currentIndex + 1];
+
+    // Update stops counter
+    const completedCount = stops.filter((s, i) => i < currentIndex || s.status === 'completed').length;
+    const stopsCounter = document.getElementById('activeTripStops');
+    if (stopsCounter) {
+      stopsCounter.textContent = `${completedCount}/${stops.length}`;
+    }
+
+    // Render current activity
+    if (current) {
+      const name = current.to?.name || current.name || current.title || `Stop ${currentIndex + 1}`;
+      const address = current.to?.vicinity || current.address || current.vicinity || '';
+      const time = current.time || (current.leg_seconds ? `${Math.round(current.leg_seconds / 60)} min` : '');
+
+      const nameEl = document.getElementById('currentActivityName');
+      const addressEl = document.getElementById('currentActivityAddress');
+      const timeEl = document.getElementById('currentActivityTime');
+
+      if (nameEl) nameEl.textContent = name;
+      if (addressEl) addressEl.textContent = address;
+      if (timeEl) timeEl.textContent = time;
+    }
+
+    // Render next up
+    const nextUpPreview = document.getElementById('nextUpPreview');
+    const nextUpName = document.getElementById('nextUpName');
+    if (next && nextUpPreview && nextUpName) {
+      nextUpPreview.style.display = 'flex';
+      nextUpName.textContent = next.to?.name || next.name || next.title || `Stop ${currentIndex + 2}`;
+    } else if (nextUpPreview) {
+      nextUpPreview.style.display = 'none';
+    }
+
+    // Render timeline
+    this.renderTimeline(stops, currentIndex);
+  }
+
+  renderTimeline(stops, currentIndex) {
+    const timeline = document.getElementById('activeTripTimeline');
+    if (!timeline) return;
+
+    timeline.innerHTML = stops.map((stop, i) => {
+      let markerClass = 'upcoming';
+      let markerContent = '○';
+      let nameClass = '';
+
+      if (stop.status === 'completed' || i < currentIndex) {
+        markerClass = 'completed';
+        markerContent = '✓';
+        nameClass = 'completed';
+      } else if (stop.status === 'skipped') {
+        markerClass = 'skipped';
+        markerContent = '—';
+        nameClass = 'skipped';
+      } else if (i === currentIndex) {
+        markerClass = 'current';
+        markerContent = '●';
+      }
+
+      const name = stop.to?.name || stop.name || stop.title || `Stop ${i + 1}`;
+      const time = stop.time || (stop.leg_seconds ? `${Math.round(stop.leg_seconds / 60)} min` : '');
+
+      return `
+        <div class="timeline-item">
+          <div class="timeline-marker ${markerClass}">${markerContent}</div>
+          <div class="timeline-content">
+            <div class="timeline-name ${nameClass}">${this.escapeHtml(name)}</div>
+            ${time ? `<div class="timeline-time">${time}</div>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  navigateToCurrentActivity() {
+    const trip = this.getActiveTrip();
+    if (!trip) return;
+
+    const stops = trip.timeline || trip.stops || trip.places || [];
+    const current = stops[trip.currentStopIndex || 0];
+
+    if (current) {
+      const lat = current.to?.lat || current.location?.lat || current.lat;
+      const lon = current.to?.lon || current.to?.lng || current.location?.lng || current.lon || current.lng;
+      const name = current.to?.name || current.name || current.title;
+      const address = current.to?.vicinity || current.address;
+
+      if (lat && lon) {
+        window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`, '_blank');
+      } else if (name) {
+        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`, '_blank');
+      } else if (address) {
+        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank');
+      }
+    }
+  }
+
+  markActivityComplete() {
+    const trip = this.getActiveTrip();
+    if (!trip) return;
+
+    const stops = trip.timeline || trip.stops || trip.places || [];
+    const currentIndex = trip.currentStopIndex || 0;
+
+    // Mark current as completed
+    if (stops[currentIndex]) {
+      stops[currentIndex].status = 'completed';
+    }
+
+    // Move to next
+    const nextIndex = currentIndex + 1;
+
+    if (nextIndex >= stops.length) {
+      // Trip complete
+      this.completeTripWithReward(trip);
+    } else {
+      trip.currentStopIndex = nextIndex;
+      TenantStorage.set('active-trip', trip);
+      this.renderActiveTripView(trip);
+      this.showToast(this.t('active.activity_completed') || 'Activity completed!');
+    }
+  }
+
+  skipActivity() {
+    const trip = this.getActiveTrip();
+    if (!trip) return;
+
+    const stops = trip.timeline || trip.stops || trip.places || [];
+    const currentIndex = trip.currentStopIndex || 0;
+
+    // Mark current as skipped
+    if (stops[currentIndex]) {
+      stops[currentIndex].status = 'skipped';
+    }
+
+    // Move to next
+    const nextIndex = currentIndex + 1;
+
+    if (nextIndex >= stops.length) {
+      this.completeTripWithReward(trip);
+    } else {
+      trip.currentStopIndex = nextIndex;
+      TenantStorage.set('active-trip', trip);
+      this.renderActiveTripView(trip);
+      this.showToast(this.t('active.activity_skipped') || 'Activity skipped');
+    }
+  }
+
+  endActiveTrip() {
+    const confirmMsg = this.t('active.end_confirm') || 'End this trip? Progress will be saved.';
+    if (confirm(confirmMsg)) {
+      const trip = this.getActiveTrip();
+      if (trip) {
+        this.completeTripWithReward(trip);
+      }
+    }
+  }
+
+  completeTripWithReward(trip) {
+    // Calculate XP based on completed stops
+    const stops = trip.timeline || trip.stops || trip.places || [];
+    const completed = stops.filter(s => s.status === 'completed').length;
+    const xp = completed * 50; // 50 XP per stop
+
+    // Add XP to profile
+    const currentXP = TenantStorage.get('userXP', 0);
+    TenantStorage.set('userXP', currentXP + xp);
+
+    // Increment trips completed
+    const tripsCompleted = TenantStorage.get('stats-trips-completed', 0);
+    TenantStorage.set('stats-trips-completed', tripsCompleted + 1);
+    this.tripsGenerated = tripsCompleted + 1;
+
+    // Clear active trip
+    this.clearActiveTrip();
+
+    // Show completion modal
+    this.showTripCompleteModal(completed, stops.length, xp);
+
+    // Refresh view
+    this.checkAndRenderActiveTrip();
+    this.updateProfileStats();
+  }
+
+  showTripCompleteModal(completed, total, xp) {
+    const modal = document.createElement('div');
+    modal.className = 'trip-complete-modal';
+
+    const visitedText = (this.t('active.visited_places') || 'You visited {completed} of {total} places')
+      .replace('{completed}', completed)
+      .replace('{total}', total);
+
+    modal.innerHTML = `
+      <div class="trip-complete-content">
+        <div class="trip-complete-icon">🎉</div>
+        <h2 class="trip-complete-title">${this.t('active.trip_complete') || 'Trip Complete!'}</h2>
+        <p>${visitedText}</p>
+        <div class="trip-complete-xp">+${xp} XP</div>
+        <button class="trip-complete-btn">${this.t('active.great') || 'Great!'}</button>
+      </div>
+    `;
+
+    modal.querySelector('.trip-complete-btn').addEventListener('click', () => {
+      modal.remove();
+    });
+
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+
+    document.body.appendChild(modal);
+  }
+
+  // Legacy renderActiveTrip for backwards compatibility (AI view)
+  renderActiveTrip() {
+    // For trip view, use the new checkAndRenderActiveTrip
+    if (this.currentView === 'trip') {
+      this.checkAndRenderActiveTrip();
+      return;
+    }
+    // Legacy behavior for AI view - just update chat trip banner
+    this.updateChatTripBanner();
   }
 
   setupTripGeneration() {
