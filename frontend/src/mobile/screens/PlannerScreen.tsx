@@ -1,342 +1,437 @@
 /**
- * PlannerScreen - AI Travel Co-Pilot
+ * PlannerScreen - 5-Step Trip Planning Wizard
  *
- * Split-screen trip planning with:
- * - Interactive Map (40% top)
- * - Chat Interface (60% bottom)
- * - Conversational AI for building routes
- * - Smart Backpack integration
+ * Step 1: Destination - Search / AI Recs / Surprise Me
+ * Step 2: Dates - Calendar with AI insights
+ * Step 3: Preferences - Pace, interests, budget, must-haves
+ * Step 4: AI Generation - Full itinerary creation
+ * Step 5: Edit - Review and customize itinerary
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
+  Animated,
   Dimensions,
+  Alert,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { RootTabParamList } from '../navigation/BottomTabNavigator';
 import { colors, spacing, typography, borderRadius, shadows } from '../theme/tokens';
-import { InteractiveMap } from '../components/map/InteractiveMap';
-import { ChatContainer } from '../components/chat';
-import { ChatMessage, RouteWaypoint, ConversationState, AIPlannerContext } from '../../types';
-import { processMessage, createPlannerContext, createWelcomeMessage } from '../services/aiPlanner';
-import { openNavigation } from '../utils/navigation';
 import { haptics } from '../utils/haptics';
 import { useToast } from '../components/ui';
-import { PackingManager, PackingList, TripContext } from '../features/packing';
-import { BackpackModal } from '../components/planner/BackpackModal';
+import {
+  WizardProgress,
+  DestinationSearch,
+  DateRangePicker,
+  PreferencesForm,
+  AIGenerationStep,
+  ItineraryEditor,
+  WizardStep,
+  Destination,
+  DateRange,
+  TripPreferences,
+  Itinerary,
+  PlanningWizardContext,
+} from '../components/planner';
 
-const STORAGE_KEY = '@roamwise/conversation';
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const MAP_HEIGHT_RATIO = 0.35; // 35% for map
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 /**
- * Convert RouteWaypoints to map coordinates
+ * Initial wizard context
  */
-function waypointsToCoordinates(waypoints: RouteWaypoint[]) {
-  return waypoints.map(w => ({
-    latitude: w.lat,
-    longitude: w.lng,
-  }));
-}
-
-/**
- * Convert RouteWaypoints to map markers
- */
-function waypointsToMarkers(waypoints: RouteWaypoint[]) {
-  return waypoints.map(w => ({
-    id: w.id,
-    coordinate: { latitude: w.lat, longitude: w.lng },
-    type: w.type === 'start' ? 'start' : w.type === 'destination' ? 'end' : 'waypoint',
-    title: w.name,
-  }));
+function createInitialContext(): PlanningWizardContext {
+  return {
+    destination: null,
+    destinationMode: 'search',
+    dateRange: null,
+    isFlexibleDates: false,
+    dateInsights: [],
+    preferences: {
+      pace: 'moderate',
+      interests: [],
+      budgetLevel: 'mid-range',
+      mustSee: [],
+      accessibility: {
+        wheelchairAccessible: false,
+        childFriendly: false,
+        petFriendly: false,
+      },
+    },
+    generationProgress: null,
+    itinerary: null,
+    wizardState: {
+      currentStep: 1,
+      completedSteps: [],
+      canProceed: false,
+    },
+  };
 }
 
 /**
  * PlannerScreen Main Component
  */
 export function PlannerScreen() {
-  const route = useRoute<RouteProp<RootTabParamList, 'Planner'>>();
   const navigation = useNavigation();
   const { show: showToast } = useToast();
 
-  // Conversation state
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [currentRoute, setCurrentRoute] = useState<RouteWaypoint[] | null>(null);
-  const [isTyping, setIsTyping] = useState(false);
-  const [plannerContext, setPlannerContext] = useState<AIPlannerContext>(createPlannerContext);
+  // Wizard state
+  const [currentStep, setCurrentStep] = useState<WizardStep>(1);
+  const [context, setContext] = useState<PlanningWizardContext>(createInitialContext());
 
-  // Backpack modal state
-  const [backpackVisible, setBackpackVisible] = useState(false);
-  const [packingList, setPackingList] = useState<PackingList | null>(null);
-  const [isLoadingBackpack, setIsLoadingBackpack] = useState(false);
+  // Animation for step transitions
+  const slideAnim = useRef(new Animated.Value(0)).current;
 
-  // Load conversation from storage on mount
-  useEffect(() => {
-    loadConversation();
+  /**
+   * Check if current step is valid to proceed
+   */
+  const canProceed = useCallback((): boolean => {
+    switch (currentStep) {
+      case 1:
+        return context.destination !== null;
+      case 2:
+        return context.dateRange !== null;
+      case 3:
+        return context.preferences.interests.length > 0;
+      case 4:
+        return context.itinerary !== null;
+      case 5:
+        return true;
+      default:
+        return false;
+    }
+  }, [currentStep, context]);
+
+  /**
+   * Navigate to next step
+   */
+  const handleNext = useCallback(() => {
+    if (!canProceed()) {
+      haptics.notification('warning');
+      showToast('Please complete this step first', 'warning');
+      return;
+    }
+
+    if (currentStep < 5) {
+      haptics.impact('light');
+
+      // Animate slide out
+      Animated.timing(slideAnim, {
+        toValue: -SCREEN_WIDTH,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        setCurrentStep((prev) => (prev + 1) as WizardStep);
+        slideAnim.setValue(SCREEN_WIDTH);
+
+        // Animate slide in
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        }).start();
+      });
+    }
+  }, [currentStep, canProceed, slideAnim, showToast]);
+
+  /**
+   * Navigate to previous step
+   */
+  const handleBack = useCallback(() => {
+    if (currentStep > 1) {
+      haptics.impact('light');
+
+      // Animate slide out
+      Animated.timing(slideAnim, {
+        toValue: SCREEN_WIDTH,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        setCurrentStep((prev) => (prev - 1) as WizardStep);
+        slideAnim.setValue(-SCREEN_WIDTH);
+
+        // Animate slide in
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        }).start();
+      });
+    }
+  }, [currentStep, slideAnim]);
+
+  /**
+   * Jump to specific step (only completed ones)
+   */
+  const handleStepPress = useCallback(
+    (step: WizardStep) => {
+      // Can only go back to completed steps or current step
+      if (step <= currentStep) {
+        haptics.impact('light');
+        setCurrentStep(step);
+      }
+    },
+    [currentStep]
+  );
+
+  /**
+   * Handle destination selection
+   */
+  const handleDestinationSelect = useCallback((destination: Destination) => {
+    setContext((prev) => ({
+      ...prev,
+      destination,
+    }));
+    haptics.notification('success');
   }, []);
 
-  // Save conversation when it changes
-  useEffect(() => {
-    if (messages.length > 0) {
-      saveConversation();
-    }
-  }, [messages]);
+  /**
+   * Handle date range selection
+   */
+  const handleDateChange = useCallback((dateRange: DateRange | null) => {
+    setContext((prev) => ({
+      ...prev,
+      dateRange,
+    }));
+  }, []);
 
-  const loadConversation = async () => {
-    try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const data: ConversationState = JSON.parse(stored);
-        // Convert date strings back to Date objects
-        const parsedMessages = data.messages.map(m => ({
-          ...m,
-          timestamp: new Date(m.timestamp),
-        }));
-        setMessages(parsedMessages);
-        setCurrentRoute(data.currentRoute);
-      } else {
-        // Start fresh conversation
-        setMessages([createWelcomeMessage()]);
-      }
-    } catch (error) {
-      console.error('Failed to load conversation:', error);
-      setMessages([createWelcomeMessage()]);
-    }
-  };
+  /**
+   * Handle preferences update
+   */
+  const handlePreferencesChange = useCallback((preferences: TripPreferences) => {
+    setContext((prev) => ({
+      ...prev,
+      preferences,
+    }));
+  }, []);
 
-  const saveConversation = async () => {
-    try {
-      const state: ConversationState = {
-        messages,
-        currentRoute,
-        isTyping: false,
-        lastUpdated: new Date(),
-      };
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (error) {
-      console.error('Failed to save conversation:', error);
-    }
-  };
+  /**
+   * Handle itinerary generation complete
+   */
+  const handleGenerationComplete = useCallback((itinerary: Itinerary) => {
+    setContext((prev) => ({
+      ...prev,
+      itinerary,
+    }));
+    // Auto-advance to editor
+    setTimeout(() => {
+      setCurrentStep(5);
+    }, 500);
+  }, []);
 
-  const handleSendMessage = useCallback(async (text: string) => {
-    // Check for backpack request
-    if (text.toLowerCase().includes('pack') || text.toLowerCase().includes('backpack')) {
-      handleBackpackRequest();
-      return;
-    }
+  /**
+   * Handle itinerary update from editor
+   */
+  const handleItineraryUpdate = useCallback((itinerary: Itinerary) => {
+    setContext((prev) => ({
+      ...prev,
+      itinerary,
+    }));
+  }, []);
 
-    // Add user message
-    const userMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: text,
-      timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, userMessage]);
-    setIsTyping(true);
+  /**
+   * Handle save trip
+   */
+  const handleSaveTrip = useCallback(() => {
+    haptics.notification('success');
+    showToast('Trip saved successfully!', 'success');
+    // TODO: Save to storage/backend
+    Alert.alert(
+      'Trip Saved! 🎉',
+      `Your trip to ${context.destination?.name} has been saved. You can find it in your profile.`,
+      [
+        { text: 'View Trips', onPress: () => navigation.navigate('Profile' as never) },
+        { text: 'OK', style: 'cancel' },
+      ]
+    );
+  }, [context.destination, navigation, showToast]);
 
-    try {
-      // Process with AI
-      const { response, updatedContext } = await processMessage(text, plannerContext);
-      setPlannerContext(updatedContext);
+  /**
+   * Handle start trip
+   */
+  const handleStartTrip = useCallback(() => {
+    haptics.notification('success');
+    showToast('Starting your trip!', 'success');
+    // Navigate to Live screen with trip context
+    navigation.navigate('Live' as never);
+  }, [navigation, showToast]);
 
-      // Add AI response
-      const aiMessage: ChatMessage = {
-        id: `ai-${Date.now()}`,
-        role: 'assistant',
-        content: response.message,
-        timestamp: new Date(),
-        metadata: {
-          type: response.type,
-          options: response.options,
-          route: response.route,
-          weather: response.weather,
+  /**
+   * Handle cancel wizard
+   */
+  const handleCancel = useCallback(() => {
+    Alert.alert(
+      'Cancel Planning?',
+      'Your progress will be lost. Are you sure?',
+      [
+        { text: 'Keep Planning', style: 'cancel' },
+        {
+          text: 'Cancel',
+          style: 'destructive',
+          onPress: () => {
+            setContext(createInitialContext());
+            setCurrentStep(1);
+            navigation.goBack();
+          },
         },
-      };
-      setMessages(prev => [...prev, aiMessage]);
+      ]
+    );
+  }, [navigation]);
 
-      // Update map if route was provided
-      if (response.route && response.route.length > 0) {
-        setCurrentRoute(response.route);
-        haptics.notification('success');
-      }
-    } catch (error) {
-      console.error('Failed to process message:', error);
-      const errorMessage: ChatMessage = {
-        id: `error-${Date.now()}`,
-        role: 'assistant',
-        content: "Sorry, I couldn't process that. Please try again.",
-        timestamp: new Date(),
-        metadata: { type: 'info' },
-      };
-      setMessages(prev => [...prev, errorMessage]);
-      haptics.notification('error');
-    } finally {
-      setIsTyping(false);
-    }
-  }, [plannerContext]);
+  /**
+   * Render current step content
+   */
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <DestinationSearch
+            selectedDestination={context.destination}
+            onSelectDestination={handleDestinationSelect}
+          />
+        );
 
-  const handleOptionSelect = useCallback((option: string) => {
-    handleSendMessage(option);
-  }, [handleSendMessage]);
+      case 2:
+        return (
+          <DateRangePicker
+            selectedRange={context.dateRange}
+            onRangeChange={handleDateChange}
+            isFlexible={context.isFlexibleDates}
+            onFlexibilityChange={(flexible) =>
+              setContext((prev) => ({ ...prev, isFlexibleDates: flexible }))
+            }
+            insights={context.dateInsights}
+          />
+        );
 
-  const handleViewRoute = useCallback(() => {
-    // Scroll map to show full route
-    haptics.impact('light');
-    showToast('Route shown on map', 'success');
-  }, [showToast]);
+      case 3:
+        return (
+          <PreferencesForm
+            preferences={context.preferences}
+            onPreferencesChange={handlePreferencesChange}
+          />
+        );
 
-  const handleNavigate = useCallback(async () => {
-    if (!currentRoute || currentRoute.length < 2) {
-      showToast('No route to navigate', 'warning');
-      return;
-    }
+      case 4:
+        return (
+          <AIGenerationStep
+            destination={context.destination!}
+            dateRange={context.dateRange!}
+            preferences={context.preferences}
+            onGenerationComplete={handleGenerationComplete}
+          />
+        );
 
-    haptics.impact('medium');
-    const destination = currentRoute.find(w => w.type === 'destination');
-    if (destination) {
-      await openNavigation(destination.lat, destination.lng, destination.name);
-      showToast('Opening navigation...', 'success');
-      navigation.navigate('Live' as never);
-    }
-  }, [currentRoute, navigation, showToast]);
+      case 5:
+        return context.itinerary ? (
+          <ItineraryEditor
+            itinerary={context.itinerary}
+            onItineraryUpdate={handleItineraryUpdate}
+            onSave={handleSaveTrip}
+            onStartTrip={handleStartTrip}
+          />
+        ) : null;
 
-  const handleBackpackRequest = async () => {
-    setIsLoadingBackpack(true);
-
-    // Add user message
-    const userMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: 'What should I pack?',
-      timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, userMessage]);
-
-    try {
-      const now = new Date();
-      const sunset = new Date(now);
-      sunset.setHours(17, 30, 0, 0);
-
-      const tripContext: TripContext = {
-        durationHours: 8.5,
-        temperature: 28,
-        rainChance: 40,
-        sunsetTime: sunset,
-        tripEndTime: sunset,
-        tags: ['Water', 'Hiking'],
-      };
-
-      const manager = new PackingManager();
-      const list = await manager.generatePackingList(tripContext);
-      setPackingList(list);
-      setBackpackVisible(true);
-
-      const aiMessage: ChatMessage = {
-        id: `ai-${Date.now()}`,
-        role: 'assistant',
-        content: "I've prepared a smart packing list based on your trip! Check it out.",
-        timestamp: new Date(),
-        metadata: { type: 'suggestion' },
-      };
-      setMessages(prev => [...prev, aiMessage]);
-      haptics.notification('success');
-    } catch (error) {
-      showToast('Could not generate packing list', 'warning');
-    } finally {
-      setIsLoadingBackpack(false);
+      default:
+        return null;
     }
   };
 
-  const handleClearConversation = async () => {
-    haptics.impact('medium');
-    setMessages([createWelcomeMessage()]);
-    setCurrentRoute(null);
-    setPlannerContext(createPlannerContext());
-    await AsyncStorage.removeItem(STORAGE_KEY);
-    showToast('Conversation cleared', 'success');
+  /**
+   * Get step title
+   */
+  const getStepTitle = (): string => {
+    switch (currentStep) {
+      case 1:
+        return 'Choose Destination';
+      case 2:
+        return 'Pick Dates';
+      case 3:
+        return 'Set Preferences';
+      case 4:
+        return 'Creating Your Trip';
+      case 5:
+        return 'Review & Edit';
+      default:
+        return '';
+    }
   };
 
-  // Map data
-  const mapCoordinates = currentRoute ? waypointsToCoordinates(currentRoute) : [];
-  const mapMarkers = currentRoute ? waypointsToMarkers(currentRoute) : [];
+  const completedSteps: WizardStep[] = [];
+  for (let i = 1; i < currentStep; i++) {
+    completedSteps.push(i as WizardStep);
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <Ionicons name="sparkles" size={24} color={colors.primary} />
-          <Text style={styles.headerTitle}>AI Co-Pilot</Text>
-        </View>
-        <TouchableOpacity onPress={handleClearConversation} style={styles.clearButton}>
-          <Ionicons name="refresh" size={20} color={colors.textSecondary} />
+        <TouchableOpacity onPress={handleCancel} style={styles.cancelButton}>
+          <Ionicons name="close" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
-      </View>
 
-      {/* Map Section (35%) */}
-      <View style={styles.mapContainer}>
-        <InteractiveMap
-          mode="preview"
-          routePolyline={mapCoordinates}
-          userLocation={null}
-          markers={mapMarkers}
-        />
+        <Text style={styles.headerTitle}>{getStepTitle()}</Text>
 
-        {/* Navigate FAB */}
-        {currentRoute && currentRoute.length >= 2 && (
-          <TouchableOpacity
-            style={styles.navigateFab}
-            onPress={handleNavigate}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="navigate" size={20} color="#FFFFFF" />
-            <Text style={styles.navigateFabText}>Navigate</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Backpack FAB */}
-        <TouchableOpacity
-          style={styles.backpackFab}
-          onPress={handleBackpackRequest}
-          disabled={isLoadingBackpack}
-          activeOpacity={0.8}
-        >
-          {isLoadingBackpack ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Text style={styles.backpackEmoji}>🎒</Text>
+        <View style={styles.headerRight}>
+          {currentStep > 1 && currentStep < 4 && (
+            <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color={colors.primary} />
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Chat Section (65%) */}
-      <View style={styles.chatContainer}>
-        <ChatContainer
-          messages={messages}
-          onSendMessage={handleSendMessage}
-          onOptionSelect={handleOptionSelect}
-          onViewRoute={handleViewRoute}
-          isTyping={isTyping}
-          disabled={isLoadingBackpack}
-        />
-      </View>
+      {/* Progress Indicator */}
+      <WizardProgress
+        currentStep={currentStep}
+        completedSteps={completedSteps}
+        onStepPress={handleStepPress}
+      />
 
-      {/* Backpack Modal */}
-      {packingList && (
-        <BackpackModal
-          visible={backpackVisible}
-          packingList={packingList}
-          onClose={() => setBackpackVisible(false)}
-        />
+      {/* Step Content */}
+      <Animated.View
+        style={[
+          styles.stepContent,
+          { transform: [{ translateX: slideAnim }] },
+        ]}
+      >
+        {renderStepContent()}
+      </Animated.View>
+
+      {/* Bottom Navigation (not shown on step 4 & 5) */}
+      {currentStep < 4 && (
+        <View style={styles.bottomNav}>
+          {currentStep > 1 && (
+            <TouchableOpacity onPress={handleBack} style={styles.backNavButton}>
+              <Ionicons name="arrow-back" size={20} color={colors.primary} />
+              <Text style={styles.backNavText}>Back</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            onPress={handleNext}
+            style={[
+              styles.nextButton,
+              !canProceed() && styles.nextButtonDisabled,
+            ]}
+            disabled={!canProceed()}
+          >
+            <Text style={styles.nextButtonText}>
+              {currentStep === 3 ? 'Generate Trip' : 'Next'}
+            </Text>
+            <Ionicons
+              name={currentStep === 3 ? 'sparkles' : 'arrow-forward'}
+              size={20}
+              color="#FFFFFF"
+            />
+          </TouchableOpacity>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -353,72 +448,77 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     backgroundColor: colors.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.borderLight,
   },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
+  cancelButton: {
+    padding: spacing.xs,
+    width: 40,
   },
   headerTitle: {
     ...typography.headline,
     color: colors.text,
+    flex: 1,
+    textAlign: 'center',
   },
-  clearButton: {
-    padding: spacing.sm,
+  headerRight: {
+    width: 40,
+    alignItems: 'flex-end',
+  },
+  backButton: {
+    padding: spacing.xs,
   },
 
-  // Map Section
-  mapContainer: {
-    height: SCREEN_HEIGHT * MAP_HEIGHT_RATIO,
-    backgroundColor: colors.background,
+  // Step Content
+  stepContent: {
+    flex: 1,
   },
 
-  // Navigate FAB
-  navigateFab: {
-    position: 'absolute',
-    bottom: spacing.md,
-    right: spacing.md,
+  // Bottom Navigation
+  bottomNav: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
-    gap: spacing.xs,
-    ...shadows.medium,
-  },
-  navigateFabText: {
-    color: '#FFFFFF',
-    ...typography.headline,
-    fontSize: 14,
-  },
-
-  // Backpack FAB
-  backpackFab: {
-    position: 'absolute',
-    bottom: spacing.md,
-    left: spacing.md,
-    width: 44,
-    height: 44,
-    backgroundColor: colors.secondary,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...shadows.medium,
-  },
-  backpackEmoji: {
-    fontSize: 22,
-  },
-
-  // Chat Section
-  chatContainer: {
-    flex: 1,
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     backgroundColor: colors.surface,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.borderLight,
+    ...shadows.small,
+  },
+  backNavButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  backNavText: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  nextButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.full,
+    marginLeft: 'auto',
+    ...shadows.small,
+  },
+  nextButtonDisabled: {
+    backgroundColor: colors.textTertiary,
+  },
+  nextButtonText: {
+    ...typography.body,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });
 
