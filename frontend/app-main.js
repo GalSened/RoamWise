@@ -4,6 +4,29 @@ console.log('Traveling iOS App starting...');
 // API Configuration - use environment variable or fallback to Cloud Run proxy
 const API_BASE_URL = 'https://roamwise-proxy-971999716773.us-central1.run.app';
 
+// Traveler Level System - Gamification
+const TRAVELER_LEVELS = [
+  { name: 'Newbie', nameHe: 'מתחיל', minScore: 0, icon: '🌱' },
+  { name: 'Wanderer', nameHe: 'נודד', minScore: 50, icon: '🚶' },
+  { name: 'Explorer', nameHe: 'מגלה', minScore: 150, icon: '🧭' },
+  { name: 'Pioneer', nameHe: 'חלוץ', minScore: 300, icon: '🏔️' },
+  { name: 'Legend', nameHe: 'אגדה', minScore: 500, icon: '⭐' }
+];
+
+// Achievements System
+const ACHIEVEMENTS = [
+  { id: 'first_steps', name: 'First Steps', nameHe: 'צעדים ראשונים', icon: '👶',
+    desc: 'Save your first trip', descHe: 'שמור את הטיול הראשון שלך', condition: { type: 'trips', threshold: 1 } },
+  { id: 'wanderer', name: 'Wanderer', nameHe: 'נודד', icon: '🚶',
+    desc: 'Save 5 trips', descHe: 'שמור 5 טיולים', condition: { type: 'trips', threshold: 5 } },
+  { id: 'explorer', name: 'Explorer', nameHe: 'מגלה', icon: '🧭',
+    desc: 'Save 10 places', descHe: 'שמור 10 מקומות', condition: { type: 'places', threshold: 10 } },
+  { id: 'planner', name: 'AI Planner', nameHe: 'מתכנן AI', icon: '🤖',
+    desc: 'Generate 3 AI trips', descHe: 'צור 3 טיולים עם AI', condition: { type: 'ai_trips', threshold: 3 } },
+  { id: 'collector', name: 'Collector', nameHe: 'אספן', icon: '📍',
+    desc: 'Save 25 places', descHe: 'שמור 25 מקומות', condition: { type: 'places', threshold: 25 } }
+];
+
 // Helper: Convert PRICE_LEVEL API values to $ symbols
 function formatPriceLevel(priceLevel) {
   if (priceLevel === undefined || priceLevel === null) return null;
@@ -757,6 +780,8 @@ class SimpleNavigation {
         savedAt: new Date().toISOString()
       });
       this.showToast(this.t('toast.place_added') || 'Saved to My Places!');
+      // Award XP for saving a place
+      this.addTravelerXP(5);
     }
 
     TenantStorage.set('saved-places', saved);
@@ -1241,6 +1266,13 @@ class SimpleNavigation {
             // FIX: Increment trip counter
             this.tripsPlanned++;
             TenantStorage.set('stats-trips', this.tripsPlanned);
+
+            // Track AI trips for achievements
+            const aiTrips = parseInt(TenantStorage.get('stats-ai-trips') || '0') + 1;
+            TenantStorage.set('stats-ai-trips', aiTrips);
+
+            // Award XP for trip (+20) and AI bonus (+10)
+            this.addTravelerXP(30);
             this.updateProfileStats();
 
             tripDisplay.innerHTML = `
@@ -1354,9 +1386,190 @@ class SimpleNavigation {
   updateProfileStats() {
     const tripsEl = document.getElementById('tripsPlannedCount');
     const placesEl = document.getElementById('placesVisitedCount');
+    const countriesEl = document.getElementById('countriesCount');
+    const scoreDisplayEl = document.getElementById('travelerScoreDisplay');
 
     if (tripsEl) tripsEl.textContent = this.tripsPlanned;
     if (placesEl) placesEl.textContent = this.placesVisited;
+    if (countriesEl) countriesEl.textContent = TenantStorage.get('stats-countries', 1);
+
+    // Update traveler level and XP
+    this.updateTravelerLevel();
+
+    // Update achievements
+    this.checkAchievements();
+  }
+
+  // Calculate current traveler level based on XP score
+  calculateTravelerLevel(score) {
+    for (let i = TRAVELER_LEVELS.length - 1; i >= 0; i--) {
+      if (score >= TRAVELER_LEVELS[i].minScore) {
+        return { level: TRAVELER_LEVELS[i], index: i };
+      }
+    }
+    return { level: TRAVELER_LEVELS[0], index: 0 };
+  }
+
+  // Update the traveler level display
+  updateTravelerLevel() {
+    const score = parseInt(TenantStorage.get('traveler-score', 0));
+    const { level, index } = this.calculateTravelerLevel(score);
+    const nextLevel = TRAVELER_LEVELS[index + 1];
+
+    // Update score display
+    const scoreDisplayEl = document.getElementById('travelerScoreDisplay');
+    if (scoreDisplayEl) scoreDisplayEl.textContent = score;
+
+    // Update level badge
+    const levelIconEl = document.getElementById('levelIcon');
+    const levelNameEl = document.getElementById('levelName');
+    if (levelIconEl) levelIconEl.textContent = level.icon;
+    if (levelNameEl) levelNameEl.textContent = window.currentLang === 'he' ? level.nameHe : level.name;
+
+    // Update progress bar
+    const progressFillEl = document.getElementById('levelProgressFill');
+    const progressTextEl = document.getElementById('levelProgressText');
+
+    if (nextLevel) {
+      const progress = ((score - level.minScore) / (nextLevel.minScore - level.minScore)) * 100;
+      if (progressFillEl) progressFillEl.style.width = `${Math.min(progress, 100)}%`;
+      if (progressTextEl) progressTextEl.textContent = `${score}/${nextLevel.minScore} XP`;
+    } else {
+      // Max level reached
+      if (progressFillEl) progressFillEl.style.width = '100%';
+      if (progressTextEl) progressTextEl.textContent = `${score} XP ⭐`;
+    }
+  }
+
+  // Add XP points and update display
+  addTravelerXP(points) {
+    const current = parseInt(TenantStorage.get('traveler-score', 0));
+    const oldLevel = this.calculateTravelerLevel(current);
+    const newScore = current + points;
+    TenantStorage.set('traveler-score', newScore);
+
+    const newLevel = this.calculateTravelerLevel(newScore);
+
+    // Check for level up
+    if (newLevel.index > oldLevel.index) {
+      const levelName = window.currentLang === 'he' ? newLevel.level.nameHe : newLevel.level.name;
+      this.showToast(`🎉 ${window.currentLang === 'he' ? 'עלית לרמה' : 'Level Up!'} ${newLevel.level.icon} ${levelName}!`);
+    }
+
+    this.updateTravelerLevel();
+  }
+
+  // Check and update achievements
+  checkAchievements() {
+    const unlocked = TenantStorage.get('achievements', []);
+    const aiTrips = parseInt(TenantStorage.get('stats-ai-trips', 0));
+
+    const stats = {
+      trips: this.tripsPlanned,
+      places: this.placesVisited,
+      ai_trips: aiTrips
+    };
+
+    let newUnlocks = [];
+    ACHIEVEMENTS.forEach(achievement => {
+      if (!unlocked.includes(achievement.id)) {
+        const { type, threshold } = achievement.condition;
+        if (stats[type] >= threshold) {
+          unlocked.push(achievement.id);
+          newUnlocks.push(achievement);
+        }
+      }
+    });
+
+    // Save unlocked achievements
+    if (newUnlocks.length > 0) {
+      TenantStorage.set('achievements', unlocked);
+      // Show notification for each new achievement
+      newUnlocks.forEach(achievement => {
+        const msg = window.currentLang === 'he'
+          ? `🏆 הישג חדש: ${achievement.nameHe}!`
+          : `🏆 Achievement Unlocked: ${achievement.name}!`;
+        this.showToast(msg);
+        // Bonus XP for unlocking achievement
+        this.addTravelerXP(15);
+      });
+    }
+
+    // Render achievements grid
+    this.renderAchievements(unlocked);
+  }
+
+  // Render achievements grid
+  renderAchievements(unlockedIds) {
+    const grid = document.getElementById('achievementGrid');
+    if (!grid) return;
+
+    grid.innerHTML = ACHIEVEMENTS.map(a => `
+      <div class="achievement-badge ${unlockedIds.includes(a.id) ? 'unlocked' : 'locked'}" title="${window.currentLang === 'he' ? a.descHe : a.desc}">
+        <span class="achievement-icon">${a.icon}</span>
+        <span class="achievement-name">${window.currentLang === 'he' ? a.nameHe : a.name}</span>
+      </div>
+    `).join('');
+  }
+
+  // Show toast notification
+  showToast(message) {
+    // Check if toast container exists
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.id = 'toastContainer';
+      toastContainer.style.cssText = `
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10000;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        pointer-events: none;
+      `;
+      document.body.appendChild(toastContainer);
+    }
+
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+      background: var(--bg-tertiary, #2C2C2E);
+      color: var(--label-primary, white);
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      animation: toastSlideIn 0.3s ease;
+      pointer-events: auto;
+    `;
+    toast.textContent = message;
+    toastContainer.appendChild(toast);
+
+    // Add animation keyframes if not exists
+    if (!document.getElementById('toastStyles')) {
+      const style = document.createElement('style');
+      style.id = 'toastStyles';
+      style.textContent = `
+        @keyframes toastSlideIn {
+          from { opacity: 0; transform: translateY(-20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes toastSlideOut {
+          from { opacity: 1; transform: translateY(0); }
+          to { opacity: 0; transform: translateY(-20px); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    // Remove toast after 3 seconds
+    setTimeout(() => {
+      toast.style.animation = 'toastSlideOut 0.3s ease forwards';
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
   }
 
   updateRouteInfo(routeData) {
@@ -1422,6 +1635,12 @@ class SimpleNavigation {
         this.isRecording = true;
         voiceBtn.classList.add('recording');
         voiceBtn.innerHTML = '<span class="voice-icon recording-pulse">🔴</span>';
+
+        // Update voice status text
+        const statusEl = document.getElementById('voiceStatus');
+        if (statusEl) {
+          statusEl.textContent = this.t('voice.listening') || 'Listening...';
+        }
 
         if (responseEl) {
           responseEl.innerHTML = `
@@ -1503,6 +1722,12 @@ class SimpleNavigation {
       if (voiceBtn) {
         voiceBtn.classList.remove('recording');
         voiceBtn.innerHTML = '<span class="voice-icon">🎤</span>';
+      }
+
+      // Clear voice status
+      const statusEl = document.getElementById('voiceStatus');
+      if (statusEl) {
+        statusEl.textContent = '';
       }
     }
   }
@@ -2167,6 +2392,13 @@ class SimpleNavigation {
           // FIX: Increment trip counter
           this.tripsPlanned++;
           TenantStorage.set('stats-trips', this.tripsPlanned);
+
+          // Track AI trips for achievements
+          const aiTrips2 = parseInt(TenantStorage.get('stats-ai-trips') || '0') + 1;
+          TenantStorage.set('stats-ai-trips', aiTrips2);
+
+          // Award XP for trip (+20) and AI bonus (+10)
+          this.addTravelerXP(30);
           this.updateProfileStats();
 
           let html = '<div class="ios-card"><div class="ios-card-content">';
@@ -2378,5 +2610,13 @@ if (document.readyState === 'loading') {
 } else {
   window.simpleApp = new SimpleNavigation();
 }
+
+// Listen for service worker update events
+window.addEventListener('update-available', (e) => {
+  const notification = document.getElementById('updateNotification');
+  if (notification) {
+    notification.classList.remove('hidden');
+  }
+});
 
 console.log('Traveling iOS App loaded');

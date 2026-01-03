@@ -157,5 +157,12 @@
   "greeting.loading": "...מזהה את המיקום שלך",
   "profile.home_base": "בסיס בית",
   "profile.home_country": "מדינת מגורים",
-  "profile.home_city": "עיר מגורים (אופציונלי)"
+  "profile.home_city": "עיר מגורים (אופציונלי)",
+  "profile.countries": "מדינות",
+  "profile.xp": "XP",
+  "profile.achievements": "הישגים",
+  "profile.level_up": "!עליית רמה",
+  "profile.achievement_unlocked": "הישג חדש",
+  "update.available": "!עדכון זמין",
+  "update.refresh": "רענן"
 }

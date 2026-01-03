@@ -157,5 +157,12 @@
   "greeting.loading": "Detecting your location...",
   "profile.home_base": "Home Base",
   "profile.home_country": "Home Country",
-  "profile.home_city": "Home City (optional)"
+  "profile.home_city": "Home City (optional)",
+  "profile.countries": "Countries",
+  "profile.xp": "XP",
+  "profile.achievements": "Achievements",
+  "profile.level_up": "Level Up!",
+  "profile.achievement_unlocked": "Achievement Unlocked",
+  "update.available": "Update available!",
+  "update.refresh": "Refresh"
 }

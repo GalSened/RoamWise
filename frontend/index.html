@@ -296,6 +296,36 @@
       background: var(--fill-tertiary);
     }
 
+    /* Update Notification */
+    .ios-notification {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-3) var(--space-4);
+      background: var(--ios-blue);
+      color: white;
+      font-size: var(--font-size-subhead);
+    }
+
+    .ios-notification.hidden {
+      display: none;
+    }
+
+    .ios-btn-sm {
+      padding: var(--space-2) var(--space-3);
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: var(--font-size-caption-1);
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .ios-btn-sm:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
     /* Language Toggle */
     .ios-lang-toggle {
       display: flex;
@@ -1585,6 +1615,113 @@
       margin: 0;
     }
 
+    /* Traveler Level Badge */
+    .traveler-level-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      background: var(--fill-secondary);
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-full);
+      margin-top: var(--space-2);
+    }
+
+    .level-icon { font-size: 16px; }
+    .level-name {
+      font-size: var(--font-size-caption-1);
+      font-weight: 600;
+      color: var(--ios-blue);
+    }
+
+    .level-progress-container {
+      margin-top: var(--space-3);
+      padding: 0 var(--space-4);
+      width: 100%;
+      max-width: 200px;
+    }
+
+    .level-progress-bar {
+      height: 6px;
+      background: var(--fill-tertiary);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    }
+
+    .level-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--ios-blue), var(--ios-teal));
+      border-radius: var(--radius-full);
+      transition: width var(--duration-normal) var(--spring-smooth);
+    }
+
+    .level-progress-text {
+      font-size: var(--font-size-caption-2);
+      color: var(--label-secondary);
+      display: block;
+      text-align: center;
+      margin-top: var(--space-1);
+    }
+
+    /* 4-Column Stats Grid */
+    .stats-4-col {
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-2);
+    }
+
+    .stats-4-col .ios-stat-card {
+      padding: var(--space-3);
+    }
+
+    .stats-4-col .ios-stat-value {
+      font-size: var(--font-size-title-2);
+    }
+
+    .stats-4-col .ios-stat-label {
+      font-size: var(--font-size-caption-2);
+    }
+
+    /* Achievement Grid */
+    .achievement-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: var(--space-2);
+      padding: var(--space-3);
+    }
+
+    .achievement-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: var(--space-2);
+      border-radius: var(--radius-md);
+      text-align: center;
+      transition: transform var(--duration-fast) var(--spring-bounce);
+    }
+
+    .achievement-badge:active {
+      transform: scale(0.95);
+    }
+
+    .achievement-badge.locked {
+      opacity: 0.4;
+      filter: grayscale(100%);
+    }
+
+    .achievement-badge.unlocked {
+      background: var(--fill-secondary);
+    }
+
+    .achievement-icon {
+      font-size: 24px;
+      margin-bottom: var(--space-1);
+    }
+
+    .achievement-name {
+      font-size: var(--font-size-caption-2);
+      font-weight: 500;
+      color: var(--label-primary);
+    }
+
     /* Greeting Modal - Travel Context Aware */
     .greeting-modal {
       position: fixed;
@@ -1797,6 +1934,12 @@
         </div>
       </div>
     </header>
+
+    <!-- Update Notification Banner -->
+    <div id="updateNotification" class="ios-notification hidden">
+      <span data-i18n="update.available">Update available!</span>
+      <button id="updateBtn" class="ios-btn-sm" data-i18n="update.refresh">Refresh</button>
+    </div>
 
     <!-- Main Content -->
     <main class="ios-content">
@@ -2029,16 +2172,36 @@
         <div class="profile-header">
           <div class="profile-avatar" id="profileAvatar">👤</div>
           <h2 id="profileName">User</h2>
+          <!-- Traveler Level Badge -->
+          <div class="traveler-level-badge" id="travelerLevelBadge">
+            <span class="level-icon" id="levelIcon">🌱</span>
+            <span class="level-name" id="levelName">Newbie</span>
+          </div>
+          <!-- Level Progress Bar -->
+          <div class="level-progress-container">
+            <div class="level-progress-bar">
+              <div class="level-progress-fill" id="levelProgressFill" style="width: 0%"></div>
+            </div>
+            <span class="level-progress-text" id="levelProgressText">0/50 XP</span>
+          </div>
         </div>
 
-        <div class="ios-stats-grid">
+        <div class="ios-stats-grid stats-4-col">
           <div class="ios-stat-card">
             <div class="ios-stat-value" id="tripsPlannedCount">0</div>
-            <div class="ios-stat-label" data-i18n="profile.trips_saved">Trips Saved</div>
+            <div class="ios-stat-label" data-i18n="profile.trips_saved">Trips</div>
           </div>
           <div class="ios-stat-card">
             <div class="ios-stat-value" id="placesVisitedCount">0</div>
-            <div class="ios-stat-label" data-i18n="profile.places_saved">Places Saved</div>
+            <div class="ios-stat-label" data-i18n="profile.places_saved">Places</div>
+          </div>
+          <div class="ios-stat-card">
+            <div class="ios-stat-value" id="countriesCount">1</div>
+            <div class="ios-stat-label" data-i18n="profile.countries">Countries</div>
+          </div>
+          <div class="ios-stat-card">
+            <div class="ios-stat-value" id="travelerScoreDisplay">0</div>
+            <div class="ios-stat-label" data-i18n="profile.xp">XP</div>
           </div>
         </div>
 
@@ -2098,6 +2261,16 @@
                    placeholder="City (optional)"
                    data-i18n-placeholder="profile.home_city"
                    maxlength="50">
+          </div>
+        </div>
+
+        <!-- Achievements Section -->
+        <div class="ios-card-section" style="margin-top: var(--space-6);">
+          <div class="ios-section-header">
+            <span class="ios-section-label" data-i18n="profile.achievements">Achievements</span>
+          </div>
+          <div id="achievementGrid" class="achievement-grid">
+            <!-- Rendered dynamically by JavaScript -->
           </div>
         </div>
 
