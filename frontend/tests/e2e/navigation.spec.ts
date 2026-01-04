@@ -14,25 +14,25 @@ test.describe('Navigation', () => {
     await expect(page.locator('#searchView')).toHaveClass(/active/);
 
     // Navigate to AI view
-    await page.click('[data-testid="nav-ai"]');
+    await page.click('.ios-tab[data-view="ai"]');
     await expect(activeViews).toHaveCount(1);
-    await expect(page.locator('#aiView')).toHaveClass(/active/);
+    await expect(page.locator('#chatView')).toHaveClass(/active/);
     await expect(page.locator('#searchView')).not.toHaveClass(/active/);
 
     // Navigate to Trip view
-    await page.click('[data-testid="nav-trip"]');
+    await page.click('.ios-tab[data-view="trip"]');
     await expect(activeViews).toHaveCount(1);
     await expect(page.locator('#tripView')).toHaveClass(/active/);
-    await expect(page.locator('#aiView')).not.toHaveClass(/active/);
+    await expect(page.locator('#chatView')).not.toHaveClass(/active/);
 
     // Navigate to Profile view
-    await page.click('[data-testid="nav-profile"]');
+    await page.click('.ios-tab[data-view="profile"]');
     await expect(activeViews).toHaveCount(1);
     await expect(page.locator('#profileView')).toHaveClass(/active/);
     await expect(page.locator('#tripView')).not.toHaveClass(/active/);
 
     // Navigate back to Search view
-    await page.click('[data-testid="nav-search"]');
+    await page.click('.ios-tab[data-view="search"]');
     await expect(activeViews).toHaveCount(1);
     await expect(page.locator('#searchView')).toHaveClass(/active/);
     await expect(page.locator('#profileView')).not.toHaveClass(/active/);
@@ -55,9 +55,9 @@ test.describe('Navigation', () => {
     expect(searchBox!.y).toBeGreaterThanOrEqual(headerBox!.y + headerBox!.height);
 
     // Verify for each view - map data-view names to actual IDs
-    const viewMap = { ai: 'aiView', trip: 'tripView', profile: 'profileView' };
+    const viewMap = { ai: 'chatView', trip: 'tripView', profile: 'profileView' };
     for (const [nav, viewId] of Object.entries(viewMap)) {
-      await page.click(`[data-testid="nav-${nav}"]`);
+      await page.click(`.ios-tab[data-view="${nav}"]`);
       const viewElement = page.locator(`#${viewId}`);
       const viewBox = await viewElement.boundingBox();
 
@@ -68,44 +68,44 @@ test.describe('Navigation', () => {
 
   test('navbar buttons highlight correctly', async ({ page }) => {
     // Search button should be active initially
-    await expect(page.locator('[data-testid="nav-search"]')).toHaveClass(/active/);
-    await expect(page.locator('[data-testid="nav-ai"]')).not.toHaveClass(/active/);
-    await expect(page.locator('[data-testid="nav-trip"]')).not.toHaveClass(/active/);
-    await expect(page.locator('[data-testid="nav-profile"]')).not.toHaveClass(/active/);
+    await expect(page.locator('.ios-tab[data-view="search"]')).toHaveClass(/active/);
+    await expect(page.locator('.ios-tab[data-view="ai"]')).not.toHaveClass(/active/);
+    await expect(page.locator('.ios-tab[data-view="trip"]')).not.toHaveClass(/active/);
+    await expect(page.locator('.ios-tab[data-view="profile"]')).not.toHaveClass(/active/);
 
     // Click AI button
-    await page.click('[data-testid="nav-ai"]');
-    await expect(page.locator('[data-testid="nav-ai"]')).toHaveClass(/active/);
-    await expect(page.locator('[data-testid="nav-search"]')).not.toHaveClass(/active/);
-    await expect(page.locator('[data-testid="nav-trip"]')).not.toHaveClass(/active/);
-    await expect(page.locator('[data-testid="nav-profile"]')).not.toHaveClass(/active/);
+    await page.click('.ios-tab[data-view="ai"]');
+    await expect(page.locator('.ios-tab[data-view="ai"]')).toHaveClass(/active/);
+    await expect(page.locator('.ios-tab[data-view="search"]')).not.toHaveClass(/active/);
+    await expect(page.locator('.ios-tab[data-view="trip"]')).not.toHaveClass(/active/);
+    await expect(page.locator('.ios-tab[data-view="profile"]')).not.toHaveClass(/active/);
 
     // Click Trip button
-    await page.click('[data-testid="nav-trip"]');
-    await expect(page.locator('[data-testid="nav-trip"]')).toHaveClass(/active/);
-    await expect(page.locator('[data-testid="nav-search"]')).not.toHaveClass(/active/);
-    await expect(page.locator('[data-testid="nav-ai"]')).not.toHaveClass(/active/);
-    await expect(page.locator('[data-testid="nav-profile"]')).not.toHaveClass(/active/);
+    await page.click('.ios-tab[data-view="trip"]');
+    await expect(page.locator('.ios-tab[data-view="trip"]')).toHaveClass(/active/);
+    await expect(page.locator('.ios-tab[data-view="search"]')).not.toHaveClass(/active/);
+    await expect(page.locator('.ios-tab[data-view="ai"]')).not.toHaveClass(/active/);
+    await expect(page.locator('.ios-tab[data-view="profile"]')).not.toHaveClass(/active/);
 
     // Click Profile button
-    await page.click('[data-testid="nav-profile"]');
-    await expect(page.locator('[data-testid="nav-profile"]')).toHaveClass(/active/);
-    await expect(page.locator('[data-testid="nav-search"]')).not.toHaveClass(/active/);
-    await expect(page.locator('[data-testid="nav-ai"]')).not.toHaveClass(/active/);
-    await expect(page.locator('[data-testid="nav-trip"]')).not.toHaveClass(/active/);
+    await page.click('.ios-tab[data-view="profile"]');
+    await expect(page.locator('.ios-tab[data-view="profile"]')).toHaveClass(/active/);
+    await expect(page.locator('.ios-tab[data-view="search"]')).not.toHaveClass(/active/);
+    await expect(page.locator('.ios-tab[data-view="ai"]')).not.toHaveClass(/active/);
+    await expect(page.locator('.ios-tab[data-view="trip"]')).not.toHaveClass(/active/);
   });
 
   test('all views are accessible', async ({ page }) => {
     // Verify all page containers exist
     await expect(page.locator('#searchView')).toBeAttached();
-    await expect(page.locator('#aiView')).toBeAttached();
+    await expect(page.locator('#chatView')).toBeAttached();
     await expect(page.locator('#tripView')).toBeAttached();
     await expect(page.locator('#profileView')).toBeAttached();
 
     // Verify all navbar buttons exist
-    await expect(page.locator('[data-testid="nav-search"]')).toBeVisible();
-    await expect(page.locator('[data-testid="nav-ai"]')).toBeVisible();
-    await expect(page.locator('[data-testid="nav-trip"]')).toBeVisible();
-    await expect(page.locator('[data-testid="nav-profile"]')).toBeVisible();
+    await expect(page.locator('.ios-tab[data-view="search"]')).toBeVisible();
+    await expect(page.locator('.ios-tab[data-view="ai"]')).toBeVisible();
+    await expect(page.locator('.ios-tab[data-view="trip"]')).toBeVisible();
+    await expect(page.locator('.ios-tab[data-view="profile"]')).toBeVisible();
   });
 });

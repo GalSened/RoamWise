@@ -4,6 +4,29 @@ console.log('Traveling iOS App starting...');
 // API Configuration - use environment variable or fallback to Cloud Run proxy
 const API_BASE_URL = 'https://roamwise-proxy-971999716773.us-central1.run.app';
 
+// Traveler Level System - Gamification
+const TRAVELER_LEVELS = [
+  { name: 'Newbie', nameHe: 'מתחיל', minScore: 0, icon: '🌱' },
+  { name: 'Wanderer', nameHe: 'נודד', minScore: 50, icon: '🚶' },
+  { name: 'Explorer', nameHe: 'מגלה', minScore: 150, icon: '🧭' },
+  { name: 'Pioneer', nameHe: 'חלוץ', minScore: 300, icon: '🏔️' },
+  { name: 'Legend', nameHe: 'אגדה', minScore: 500, icon: '⭐' }
+];
+
+// Achievements System
+const ACHIEVEMENTS = [
+  { id: 'first_steps', name: 'First Steps', nameHe: 'צעדים ראשונים', icon: '👶',
+    desc: 'Save your first trip', descHe: 'שמור את הטיול הראשון שלך', condition: { type: 'trips', threshold: 1 } },
+  { id: 'wanderer', name: 'Wanderer', nameHe: 'נודד', icon: '🚶',
+    desc: 'Save 5 trips', descHe: 'שמור 5 טיולים', condition: { type: 'trips', threshold: 5 } },
+  { id: 'explorer', name: 'Explorer', nameHe: 'מגלה', icon: '🧭',
+    desc: 'Save 10 places', descHe: 'שמור 10 מקומות', condition: { type: 'places', threshold: 10 } },
+  { id: 'planner', name: 'AI Planner', nameHe: 'מתכנן AI', icon: '🤖',
+    desc: 'Generate 3 AI trips', descHe: 'צור 3 טיולים עם AI', condition: { type: 'ai_trips', threshold: 3 } },
+  { id: 'collector', name: 'Collector', nameHe: 'אספן', icon: '📍',
+    desc: 'Save 25 places', descHe: 'שמור 25 מקומות', condition: { type: 'places', threshold: 25 } }
+];
+
 // Helper: Convert PRICE_LEVEL API values to $ symbols
 function formatPriceLevel(priceLevel) {
   if (priceLevel === undefined || priceLevel === null) return null;
@@ -94,6 +117,8 @@ class SimpleNavigation {
     await this.setupLanguageToggle();
     this.setupFormInteractions();
     this.setupHomeBaseSettings();
+    this.setupChat();
+    this.setupActiveTrip();
     this.updateProfileStats();
     this.showView('search');
 
@@ -223,6 +248,7 @@ class SimpleNavigation {
 
     // View-specific actions
     if (viewName === 'trip') {
+      this.checkAndRenderActiveTrip();
       this.renderQueuedPlaces();
       this.loadPreselectedInterests();
     } else if (viewName === 'profile') {
@@ -271,8 +297,11 @@ class SimpleNavigation {
     const loadTranslations = async (lang) => {
       if (this.translations[lang]) return this.translations[lang];
       try {
-        // Use relative path for Vite base path compatibility
-        const basePath = import.meta.env?.BASE_URL || '/';
+        // Derive base path from current URL (handles /roamwise-app/ or /)
+        const pathParts = window.location.pathname.split('/').filter(Boolean);
+        const basePath = pathParts.length > 0 && pathParts[0] !== 'index.html'
+          ? `/${pathParts[0]}/`
+          : '/';
         const response = await fetch(`${basePath}i18n/${lang}.json`);
         if (response.ok) {
           this.translations[lang] = await response.json();
@@ -757,6 +786,8 @@ class SimpleNavigation {
         savedAt: new Date().toISOString()
       });
       this.showToast(this.t('toast.place_added') || 'Saved to My Places!');
+      // Award XP for saving a place
+      this.addTravelerXP(5);
     }
 
     TenantStorage.set('saved-places', saved);
@@ -1069,92 +1100,816 @@ class SimpleNavigation {
     TenantStorage.remove('active-trip');
   }
 
-  // ===== ACTIVE TRIP RENDERING =====
-  renderActiveTrip() {
+  // ===== ACTIVE TRIP FUNCTIONALITY =====
+
+  setupActiveTrip() {
+    // Event listeners for active trip buttons
+    document.getElementById('navigateBtn')?.addEventListener('click', () => this.navigateToCurrentActivity());
+    document.getElementById('completeBtn')?.addEventListener('click', () => this.markActivityComplete());
+    document.getElementById('skipBtn')?.addEventListener('click', () => this.skipActivity());
+    document.getElementById('endTripBtn')?.addEventListener('click', () => this.endActiveTrip());
+  }
+
+  checkAndRenderActiveTrip() {
     const activeTrip = this.getActiveTrip();
-    const section = document.getElementById('activeTripSection');
+    const activeTripSection = document.getElementById('activeTripSection');
+    const tripWizard = document.getElementById('tripWizard');
 
-    if (!section) return;
-
-    if (activeTrip && activeTrip.timeline) {
-      section.style.display = 'block';
-      const timeline = document.getElementById('activeTripTimeline');
-
-      if (timeline) {
-        timeline.innerHTML = activeTrip.timeline.map((leg, idx) => {
-          const isCompleted = idx < activeTrip.currentStopIndex;
-          const isCurrent = idx === activeTrip.currentStopIndex;
-
-          return `
-            <div class="timeline-stop ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}" style="display: flex; align-items: flex-start; gap: 12px; padding: 12px; ${isCurrent ? 'background: var(--ios-blue-bg, rgba(0,122,255,0.1)); border-radius: 12px;' : ''} border-left: 2px solid ${isCompleted ? 'var(--ios-green, #34C759)' : isCurrent ? 'var(--ios-blue, #007AFF)' : 'var(--fill-tertiary, #E5E5EA)'}; margin-left: 12px;">
-              <div class="stop-marker" style="width: 28px; height: 28px; background: ${isCompleted ? 'var(--ios-green, #34C759)' : isCurrent ? 'var(--ios-blue, #007AFF)' : 'var(--fill-secondary, #E5E5EA)'}; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px;">
-                ${isCompleted ? '✓' : idx + 1}
-              </div>
-              <div class="stop-info" style="flex: 1; ${isCompleted ? 'opacity: 0.5;' : ''}">
-                <strong style="display: block;">${leg.to?.name || 'Stop ' + (idx + 1)}</strong>
-                ${leg.leg_seconds ? `<span style="font-size: 12px; color: var(--label-secondary);">🚗 ${Math.round(leg.leg_seconds / 60)} min</span>` : ''}
-                ${leg.to?.rating ? `<span style="font-size: 12px; color: var(--label-secondary); margin-left: 8px;">⭐ ${leg.to.rating.toFixed(1)}</span>` : ''}
-              </div>
-              ${isCurrent ? `
-                <div class="stop-actions" style="display: flex; gap: 8px;">
-                  <button class="navigate-btn" data-lat="${leg.to?.lat || ''}" data-lon="${leg.to?.lon || ''}" data-name="${leg.to?.name || ''}" style="padding: 6px 12px; background: var(--ios-blue, #007AFF); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 12px;">
-                    🧭 ${this.t('ai.navigate') || 'Navigate'}
-                  </button>
-                  <button class="mark-visited-btn" data-index="${idx}" style="padding: 6px 12px; background: var(--ios-green, #34C759); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 12px;">
-                    ✓ ${this.t('ai.visited') || 'Visited'}
-                  </button>
-                </div>
-              ` : ''}
-            </div>
-          `;
-        }).join('');
-
-        // Attach handlers
-        document.querySelectorAll('.navigate-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const lat = btn.dataset.lat;
-            const lon = btn.dataset.lon;
-            const name = btn.dataset.name;
-            if (lat && lon) {
-              window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`, '_blank');
-            } else if (name) {
-              window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`, '_blank');
-            }
-          });
-        });
-
-        document.querySelectorAll('.mark-visited-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const trip = this.getActiveTrip();
-            trip.currentStopIndex++;
-
-            if (trip.currentStopIndex >= trip.timeline.length) {
-              this.showToast(this.t('toast.trip_complete') || 'Congratulations! Trip completed! 🎉');
-              this.clearActiveTrip();
-              // Increment trips completed
-              this.tripsGenerated++;
-              TenantStorage.set('stats-trips-completed', this.tripsGenerated);
-            } else {
-              TenantStorage.set('active-trip', trip);
-            }
-
-            this.renderActiveTrip();
-            this.updateProfileStats();
-          });
-        });
-
-        // End trip button
-        const endBtn = document.getElementById('endTripBtn');
-        if (endBtn) {
-          endBtn.onclick = () => {
-            this.clearActiveTrip();
-            this.renderActiveTrip();
-            this.showToast(this.t('toast.trip_ended') || 'Trip ended');
-          };
-        }
-      }
+    if (activeTrip && activeTrip.timeline && activeTrip.timeline.length > 0) {
+      if (activeTripSection) activeTripSection.style.display = 'block';
+      if (tripWizard) tripWizard.style.display = 'none';
+      this.renderActiveTripView(activeTrip);
     } else {
-      section.style.display = 'none';
+      if (activeTripSection) activeTripSection.style.display = 'none';
+      if (tripWizard) tripWizard.style.display = 'block';
+      this.initWizard();
+    }
+  }
+
+  renderActiveTripView(trip) {
+    const stops = trip.timeline || trip.stops || trip.places || [];
+    const currentIndex = trip.currentStopIndex || 0;
+    const current = stops[currentIndex];
+    const next = stops[currentIndex + 1];
+
+    // Update stops counter
+    const completedCount = stops.filter((s, i) => i < currentIndex || s.status === 'completed').length;
+    const stopsCounter = document.getElementById('activeTripStops');
+    if (stopsCounter) {
+      stopsCounter.textContent = `${completedCount}/${stops.length}`;
+    }
+
+    // Render current activity
+    if (current) {
+      const name = current.to?.name || current.name || current.title || `Stop ${currentIndex + 1}`;
+      const address = current.to?.vicinity || current.address || current.vicinity || '';
+      const time = current.time || (current.leg_seconds ? `${Math.round(current.leg_seconds / 60)} min` : '');
+
+      const nameEl = document.getElementById('currentActivityName');
+      const addressEl = document.getElementById('currentActivityAddress');
+      const timeEl = document.getElementById('currentActivityTime');
+
+      if (nameEl) nameEl.textContent = name;
+      if (addressEl) addressEl.textContent = address;
+      if (timeEl) timeEl.textContent = time;
+    }
+
+    // Render next up
+    const nextUpPreview = document.getElementById('nextUpPreview');
+    const nextUpName = document.getElementById('nextUpName');
+    if (next && nextUpPreview && nextUpName) {
+      nextUpPreview.style.display = 'flex';
+      nextUpName.textContent = next.to?.name || next.name || next.title || `Stop ${currentIndex + 2}`;
+    } else if (nextUpPreview) {
+      nextUpPreview.style.display = 'none';
+    }
+
+    // Render timeline
+    this.renderTimeline(stops, currentIndex);
+  }
+
+  renderTimeline(stops, currentIndex) {
+    const timeline = document.getElementById('activeTripTimeline');
+    if (!timeline) return;
+
+    timeline.innerHTML = stops.map((stop, i) => {
+      let markerClass = 'upcoming';
+      let markerContent = '○';
+      let nameClass = '';
+
+      if (stop.status === 'completed' || i < currentIndex) {
+        markerClass = 'completed';
+        markerContent = '✓';
+        nameClass = 'completed';
+      } else if (stop.status === 'skipped') {
+        markerClass = 'skipped';
+        markerContent = '—';
+        nameClass = 'skipped';
+      } else if (i === currentIndex) {
+        markerClass = 'current';
+        markerContent = '●';
+      }
+
+      const name = stop.to?.name || stop.name || stop.title || `Stop ${i + 1}`;
+      const time = stop.time || (stop.leg_seconds ? `${Math.round(stop.leg_seconds / 60)} min` : '');
+
+      return `
+        <div class="timeline-item">
+          <div class="timeline-marker ${markerClass}">${markerContent}</div>
+          <div class="timeline-content">
+            <div class="timeline-name ${nameClass}">${this.escapeHtml(name)}</div>
+            ${time ? `<div class="timeline-time">${time}</div>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  navigateToCurrentActivity() {
+    const trip = this.getActiveTrip();
+    if (!trip) return;
+
+    const stops = trip.timeline || trip.stops || trip.places || [];
+    const current = stops[trip.currentStopIndex || 0];
+
+    if (current) {
+      const lat = current.to?.lat || current.location?.lat || current.lat;
+      const lon = current.to?.lon || current.to?.lng || current.location?.lng || current.lon || current.lng;
+      const name = current.to?.name || current.name || current.title;
+      const address = current.to?.vicinity || current.address;
+
+      if (lat && lon) {
+        window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`, '_blank');
+      } else if (name) {
+        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`, '_blank');
+      } else if (address) {
+        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank');
+      }
+    }
+  }
+
+  markActivityComplete() {
+    const trip = this.getActiveTrip();
+    if (!trip) return;
+
+    const stops = trip.timeline || trip.stops || trip.places || [];
+    const currentIndex = trip.currentStopIndex || 0;
+
+    // Mark current as completed
+    if (stops[currentIndex]) {
+      stops[currentIndex].status = 'completed';
+    }
+
+    // Move to next
+    const nextIndex = currentIndex + 1;
+
+    if (nextIndex >= stops.length) {
+      // Trip complete
+      this.completeTripWithReward(trip);
+    } else {
+      trip.currentStopIndex = nextIndex;
+      TenantStorage.set('active-trip', trip);
+      this.renderActiveTripView(trip);
+      this.showToast(this.t('active.activity_completed') || 'Activity completed!');
+    }
+  }
+
+  skipActivity() {
+    const trip = this.getActiveTrip();
+    if (!trip) return;
+
+    const stops = trip.timeline || trip.stops || trip.places || [];
+    const currentIndex = trip.currentStopIndex || 0;
+
+    // Mark current as skipped
+    if (stops[currentIndex]) {
+      stops[currentIndex].status = 'skipped';
+    }
+
+    // Move to next
+    const nextIndex = currentIndex + 1;
+
+    if (nextIndex >= stops.length) {
+      this.completeTripWithReward(trip);
+    } else {
+      trip.currentStopIndex = nextIndex;
+      TenantStorage.set('active-trip', trip);
+      this.renderActiveTripView(trip);
+      this.showToast(this.t('active.activity_skipped') || 'Activity skipped');
+    }
+  }
+
+  endActiveTrip() {
+    const confirmMsg = this.t('active.end_confirm') || 'End this trip? Progress will be saved.';
+    if (confirm(confirmMsg)) {
+      const trip = this.getActiveTrip();
+      if (trip) {
+        this.completeTripWithReward(trip);
+      }
+    }
+  }
+
+  completeTripWithReward(trip) {
+    // Calculate XP based on completed stops
+    const stops = trip.timeline || trip.stops || trip.places || [];
+    const completed = stops.filter(s => s.status === 'completed').length;
+    const xp = completed * 50; // 50 XP per stop
+
+    // Add XP to profile
+    const currentXP = TenantStorage.get('userXP', 0);
+    TenantStorage.set('userXP', currentXP + xp);
+
+    // Increment trips completed
+    const tripsCompleted = TenantStorage.get('stats-trips-completed', 0);
+    TenantStorage.set('stats-trips-completed', tripsCompleted + 1);
+    this.tripsGenerated = tripsCompleted + 1;
+
+    // Clear active trip
+    this.clearActiveTrip();
+
+    // Show completion modal
+    this.showTripCompleteModal(completed, stops.length, xp);
+
+    // Refresh view
+    this.checkAndRenderActiveTrip();
+    this.updateProfileStats();
+  }
+
+  showTripCompleteModal(completed, total, xp) {
+    const modal = document.createElement('div');
+    modal.className = 'trip-complete-modal';
+
+    const visitedText = (this.t('active.visited_places') || 'You visited {completed} of {total} places')
+      .replace('{completed}', completed)
+      .replace('{total}', total);
+
+    modal.innerHTML = `
+      <div class="trip-complete-content">
+        <div class="trip-complete-icon">🎉</div>
+        <h2 class="trip-complete-title">${this.t('active.trip_complete') || 'Trip Complete!'}</h2>
+        <p>${visitedText}</p>
+        <div class="trip-complete-xp">+${xp} XP</div>
+        <button class="trip-complete-btn">${this.t('active.great') || 'Great!'}</button>
+      </div>
+    `;
+
+    modal.querySelector('.trip-complete-btn').addEventListener('click', () => {
+      modal.remove();
+    });
+
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+
+    document.body.appendChild(modal);
+  }
+
+  // Legacy renderActiveTrip for backwards compatibility (AI view)
+  renderActiveTrip() {
+    // For trip view, use the new checkAndRenderActiveTrip
+    if (this.currentView === 'trip') {
+      this.checkAndRenderActiveTrip();
+      return;
+    }
+    // Legacy behavior for AI view - just update chat trip banner
+    this.updateChatTripBanner();
+  }
+
+  // ===== TRIP PLANNING WIZARD =====
+
+  initWizard() {
+    this.wizardStep = 1;
+    this.wizardData = {
+      destination: null,
+      dates: { start: null, end: null, flexible: false },
+      preferences: { pace: 3, interests: [], budget: 'moderate', style: 'couple' },
+      generatedPlan: null
+    };
+
+    // Render popular destinations
+    this.renderPopularDestinations();
+
+    // Setup all step handlers
+    this.setupWizardStep1();
+    this.setupWizardStep2();
+    this.setupWizardStep3();
+    this.setupWizardNavigation();
+    this.setupWizardFinalActions();
+
+    // Reset to step 1
+    this.goToWizardStep(1);
+  }
+
+  setupWizardStep1() {
+    // Destination search
+    const searchInput = document.getElementById('wizardDestSearch');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        // Filter destinations by search query (basic filter)
+        const query = e.target.value.toLowerCase();
+        document.querySelectorAll('.destination-card').forEach(card => {
+          const name = card.querySelector('.destination-name')?.textContent.toLowerCase() || '';
+          card.style.display = name.includes(query) ? 'flex' : 'none';
+        });
+      });
+    }
+
+    // Destination card selection
+    document.getElementById('destinationsGrid')?.addEventListener('click', (e) => {
+      const card = e.target.closest('.destination-card');
+      if (card) {
+        this.selectDestination(card);
+      }
+    });
+  }
+
+  renderPopularDestinations() {
+    const grid = document.getElementById('destinationsGrid');
+    if (!grid) return;
+
+    const destinations = [
+      { id: 'paris', name: 'Paris', country: 'France', lat: 48.8566, lon: 2.3522, emoji: '🇫🇷' },
+      { id: 'tokyo', name: 'Tokyo', country: 'Japan', lat: 35.6762, lon: 139.6503, emoji: '🇯🇵' },
+      { id: 'rome', name: 'Rome', country: 'Italy', lat: 41.9028, lon: 12.4964, emoji: '🇮🇹' },
+      { id: 'barcelona', name: 'Barcelona', country: 'Spain', lat: 41.3874, lon: 2.1686, emoji: '🇪🇸' },
+      { id: 'london', name: 'London', country: 'UK', lat: 51.5074, lon: -0.1278, emoji: '🇬🇧' },
+      { id: 'tel-aviv', name: 'Tel Aviv', country: 'Israel', lat: 32.0853, lon: 34.7818, emoji: '🇮🇱' }
+    ];
+
+    grid.innerHTML = destinations.map(dest => `
+      <div class="destination-card" data-dest-id="${dest.id}" data-lat="${dest.lat}" data-lon="${dest.lon}">
+        <img class="destination-image"
+             src="https://source.unsplash.com/400x300/?${dest.name},city"
+             alt="${dest.name}"
+             onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 400 300%22><rect fill=%22%23e0e0e0%22 width=%22400%22 height=%22300%22/><text x=%22200%22 y=%22150%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2240%22>${dest.emoji}</text></svg>'">
+        <div class="destination-overlay">
+          <span class="destination-name">${dest.name}</span>
+          <span class="destination-country">${dest.country}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  selectDestination(card) {
+    // Remove previous selection
+    document.querySelectorAll('.destination-card.selected').forEach(c => c.classList.remove('selected'));
+
+    // Select this card
+    card.classList.add('selected');
+
+    // Store destination data
+    const destId = card.dataset.destId;
+    const lat = parseFloat(card.dataset.lat);
+    const lon = parseFloat(card.dataset.lon);
+    const name = card.querySelector('.destination-name')?.textContent || destId;
+    const country = card.querySelector('.destination-country')?.textContent || '';
+
+    this.wizardData.destination = { id: destId, name, country, lat, lon };
+  }
+
+  setupWizardStep2() {
+    // Date inputs
+    const startDate = document.getElementById('wizardStartDate');
+    const endDate = document.getElementById('wizardEndDate');
+
+    // Set default dates (today + 7 days)
+    const today = new Date();
+    const weekLater = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    if (startDate) {
+      startDate.valueAsDate = today;
+      startDate.addEventListener('change', () => {
+        this.wizardData.dates.start = startDate.value;
+      });
+    }
+    if (endDate) {
+      endDate.valueAsDate = weekLater;
+      endDate.addEventListener('change', () => {
+        this.wizardData.dates.end = endDate.value;
+      });
+    }
+
+    // Quick duration chips
+    document.querySelectorAll('.wizard-chip[data-duration]').forEach(chip => {
+      chip.addEventListener('click', () => {
+        this.setQuickDuration(chip.dataset.duration);
+        // Update active state
+        document.querySelectorAll('.wizard-chip[data-duration]').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+      });
+    });
+
+    // Flexible dates toggle
+    const flexToggle = document.getElementById('flexibleDatesToggle');
+    if (flexToggle) {
+      flexToggle.addEventListener('click', () => {
+        flexToggle.classList.toggle('active');
+        this.wizardData.dates.flexible = flexToggle.classList.contains('active');
+      });
+    }
+  }
+
+  setQuickDuration(duration) {
+    const startDate = document.getElementById('wizardStartDate');
+    const endDate = document.getElementById('wizardEndDate');
+
+    const today = new Date();
+    let end = new Date(today);
+
+    switch (duration) {
+      case 'weekend':
+        // Find next Friday
+        const daysUntilFriday = (5 - today.getDay() + 7) % 7 || 7;
+        end = new Date(today.getTime() + (daysUntilFriday + 2) * 24 * 60 * 60 * 1000);
+        break;
+      case 'week':
+        end = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '2weeks':
+        end = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000);
+        break;
+    }
+
+    if (startDate) startDate.valueAsDate = today;
+    if (endDate) endDate.valueAsDate = end;
+
+    this.wizardData.dates.start = today.toISOString().split('T')[0];
+    this.wizardData.dates.end = end.toISOString().split('T')[0];
+  }
+
+  setupWizardStep3() {
+    // Pace slider
+    const paceSlider = document.getElementById('wizardPaceSlider');
+    const paceValue = document.getElementById('wizardPaceValue');
+    if (paceSlider) {
+      paceSlider.addEventListener('input', () => {
+        this.wizardData.preferences.pace = parseInt(paceSlider.value);
+        if (paceValue) paceValue.textContent = paceSlider.value;
+      });
+    }
+
+    // Interests selection
+    document.querySelectorAll('.wizard-interest').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.toggleWizardInterest(btn);
+      });
+    });
+
+    // Budget buttons
+    document.querySelectorAll('.wizard-button[data-budget]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.wizard-button[data-budget]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.wizardData.preferences.budget = btn.dataset.budget;
+      });
+    });
+
+    // Style buttons
+    document.querySelectorAll('.wizard-button[data-style]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.wizard-button[data-style]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.wizardData.preferences.style = btn.dataset.style;
+      });
+    });
+  }
+
+  toggleWizardInterest(btn) {
+    const interest = btn.dataset.interest;
+    const interests = this.wizardData.preferences.interests;
+
+    if (btn.classList.contains('active')) {
+      // Deselect
+      btn.classList.remove('active');
+      const index = interests.indexOf(interest);
+      if (index > -1) interests.splice(index, 1);
+    } else {
+      // Select (max 4)
+      if (interests.length < 4) {
+        btn.classList.add('active');
+        interests.push(interest);
+      } else {
+        this.showToast(this.t('trip.max_interests') || 'Maximum 4 interests allowed');
+      }
+    }
+  }
+
+  setupWizardNavigation() {
+    const backBtn = document.getElementById('wizardBack');
+    const nextBtn = document.getElementById('wizardNext');
+
+    if (backBtn) {
+      backBtn.addEventListener('click', () => this.prevWizardStep());
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => this.nextWizardStep());
+    }
+  }
+
+  goToWizardStep(step) {
+    this.wizardStep = step;
+
+    // Update progress bar
+    document.querySelectorAll('.wizard-step').forEach((el, i) => {
+      el.classList.remove('active', 'completed');
+      if (i + 1 < step) {
+        el.classList.add('completed');
+      } else if (i + 1 === step) {
+        el.classList.add('active');
+      }
+    });
+
+    // Show/hide panels
+    document.querySelectorAll('.wizard-panel').forEach(panel => {
+      panel.classList.remove('active');
+      if (parseInt(panel.dataset.panel) === step) {
+        panel.classList.add('active');
+      }
+    });
+
+    // Update navigation buttons
+    const backBtn = document.getElementById('wizardBack');
+    const nextBtn = document.getElementById('wizardNext');
+    const navContainer = document.getElementById('wizardNav');
+    const finalActions = document.getElementById('wizardFinalActions');
+
+    if (backBtn) backBtn.style.display = step === 1 ? 'none' : 'flex';
+
+    if (nextBtn) {
+      if (step === 3) {
+        nextBtn.textContent = this.t('wizard.nav.generate') || 'Generate';
+      } else if (step < 5) {
+        nextBtn.textContent = this.t('wizard.nav.next') || 'Next';
+      }
+    }
+
+    // Hide nav on step 4 (generating) and 5 (review)
+    if (navContainer) navContainer.style.display = step >= 4 ? 'none' : 'flex';
+    if (finalActions) finalActions.style.display = step === 5 ? 'flex' : 'none';
+  }
+
+  validateCurrentStep() {
+    switch (this.wizardStep) {
+      case 1:
+        if (!this.wizardData.destination) {
+          this.showToast(this.t('wizard.select_destination') || 'Please select a destination');
+          return false;
+        }
+        break;
+      case 2:
+        if (!this.wizardData.dates.start || !this.wizardData.dates.end) {
+          this.showToast(this.t('wizard.select_dates') || 'Please select travel dates');
+          return false;
+        }
+        break;
+      case 3:
+        if (this.wizardData.preferences.interests.length === 0) {
+          this.showToast(this.t('trip.select_at_least_one') || 'Please select at least 1 interest');
+          return false;
+        }
+        break;
+    }
+    return true;
+  }
+
+  nextWizardStep() {
+    if (!this.validateCurrentStep()) return;
+
+    if (this.wizardStep === 3) {
+      // Go to generation step
+      this.goToWizardStep(4);
+      this.startGeneration();
+    } else if (this.wizardStep < 5) {
+      this.goToWizardStep(this.wizardStep + 1);
+    }
+  }
+
+  prevWizardStep() {
+    if (this.wizardStep > 1 && this.wizardStep !== 4) {
+      this.goToWizardStep(this.wizardStep - 1);
+    }
+  }
+
+  async startGeneration() {
+    const progressBar = document.getElementById('wizardGeneratingProgress');
+    const steps = document.querySelectorAll('.wizard-gen-step');
+
+    // Animate progress
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+      progress += 2;
+      if (progressBar) progressBar.style.width = `${Math.min(progress, 95)}%`;
+
+      // Update step indicators
+      if (progress >= 20 && steps[0]) steps[0].classList.add('done');
+      if (progress >= 45 && steps[1]) steps[1].classList.add('done');
+      if (progress >= 70 && steps[2]) steps[2].classList.add('done');
+      if (progress >= 90 && steps[3]) steps[3].classList.add('done');
+    }, 100);
+
+    try {
+      await this.generateTripPlan();
+      clearInterval(progressInterval);
+      if (progressBar) progressBar.style.width = '100%';
+
+      // Small delay to show completion
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Go to review step
+      this.goToWizardStep(5);
+      this.renderTripReview();
+    } catch (error) {
+      clearInterval(progressInterval);
+      console.error('Trip generation error:', error);
+      this.showToast(this.t('trip.error') || 'Error generating trip');
+      this.goToWizardStep(3);
+    }
+  }
+
+  async generateTripPlan() {
+    const { destination, dates, preferences } = this.wizardData;
+
+    // Calculate trip days
+    const startDate = new Date(dates.start);
+    const endDate = new Date(dates.end);
+    const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+
+    // Map interests to API types
+    const interestToType = {
+      'food': 'restaurant',
+      'nature': 'park',
+      'culture': 'museum',
+      'shopping': 'shopping_mall',
+      'entertainment': 'tourist_attraction',
+      'relaxation': 'spa',
+      'art': 'art_gallery',
+      'history': 'museum',
+      'nightlife': 'night_club',
+      'adventure': 'tourist_attraction',
+      'wellness': 'spa'
+    };
+    const types = preferences.interests.map(i => interestToType[i] || 'tourist_attraction');
+
+    // Adjust limit based on pace (1-5) and days
+    const activitiesPerDay = 2 + preferences.pace;
+    const limit = Math.min(activitiesPerDay * days, 20);
+
+    // Map budget to min rating
+    const budgetToRating = {
+      'budget': 3.5,
+      'moderate': 4.0,
+      'premium': 4.3,
+      'luxury': 4.5
+    };
+    const minRating = budgetToRating[preferences.budget] || 4.0;
+
+    const response = await fetch(`${API_BASE_URL}/planner/plan-day`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Lang': localStorage.getItem('app-language') || 'en'
+      },
+      body: JSON.stringify({
+        origin: { lat: destination.lat, lon: destination.lon },
+        mode: 'drive',
+        near_origin: {
+          radius_km: 15,
+          types: types.length > 0 ? types : ['tourist_attraction', 'restaurant'],
+          min_rating: minRating,
+          limit: limit
+        }
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.ok && data.plan) {
+      this.wizardData.generatedPlan = {
+        ...data.plan,
+        destination: destination,
+        dates: dates,
+        preferences: preferences,
+        days: days
+      };
+
+      // Store for later use
+      window._generatedPlan = this.wizardData.generatedPlan;
+
+      // Track stats
+      this.tripsPlanned++;
+      TenantStorage.set('stats-trips', this.tripsPlanned);
+      const aiTrips = parseInt(TenantStorage.get('stats-ai-trips') || '0') + 1;
+      TenantStorage.set('stats-ai-trips', aiTrips);
+      this.addTravelerXP(30);
+      this.updateProfileStats();
+    } else {
+      throw new Error('Failed to generate trip plan');
+    }
+  }
+
+  renderTripReview() {
+    const plan = this.wizardData.generatedPlan;
+    if (!plan) return;
+
+    const { destination, dates, timeline } = plan;
+    const days = plan.days || 1;
+
+    // Update header
+    const header = document.getElementById('wizardReviewHeader');
+    if (header) {
+      header.innerHTML = `
+        <h2 class="wizard-panel-title">${destination.name}</h2>
+        <p class="wizard-panel-subtitle">${dates.start} → ${dates.end}</p>
+      `;
+    }
+
+    // Generate day tabs
+    const tabsContainer = document.getElementById('wizardDayTabs');
+    if (tabsContainer) {
+      tabsContainer.innerHTML = Array.from({ length: days }, (_, i) => `
+        <button class="wizard-day-tab ${i === 0 ? 'active' : ''}" data-day="${i + 1}">
+          ${this.t('wizard.review.day') || 'Day'} ${i + 1}
+        </button>
+      `).join('');
+
+      tabsContainer.addEventListener('click', (e) => {
+        const tab = e.target.closest('.wizard-day-tab');
+        if (tab) {
+          document.querySelectorAll('.wizard-day-tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          this.renderDayTimeline(parseInt(tab.dataset.day));
+        }
+      });
+    }
+
+    // Render first day
+    this.renderDayTimeline(1);
+  }
+
+  renderDayTimeline(dayNumber) {
+    const timelineContainer = document.getElementById('wizardActivityTimeline');
+    if (!timelineContainer) return;
+
+    const plan = this.wizardData.generatedPlan;
+    if (!plan || !plan.timeline) return;
+
+    // Distribute activities across days
+    const activitiesPerDay = Math.ceil(plan.timeline.length / (plan.days || 1));
+    const startIndex = (dayNumber - 1) * activitiesPerDay;
+    const dayActivities = plan.timeline.slice(startIndex, startIndex + activitiesPerDay);
+
+    // Generate time slots starting from 9 AM
+    const baseHour = 9;
+
+    timelineContainer.innerHTML = dayActivities.map((activity, i) => {
+      const name = activity.to?.name || activity.name || `Activity ${i + 1}`;
+      const address = activity.to?.vicinity || activity.address || '';
+      const duration = activity.leg_seconds ? Math.round(activity.leg_seconds / 60) : 60;
+      const hour = baseHour + Math.floor(i * 1.5);
+      const time = `${hour}:00`;
+
+      return `
+        <div class="wizard-activity-card" data-activity-index="${startIndex + i}">
+          <div class="wizard-activity-time">${time}</div>
+          <div class="wizard-activity-content">
+            <div class="wizard-activity-name">${this.escapeHtml(name)}</div>
+            <div class="wizard-activity-address">${this.escapeHtml(address)}</div>
+            <div class="wizard-activity-duration">${duration} min</div>
+          </div>
+          <div class="wizard-activity-actions">
+            <button class="wizard-activity-btn" data-action="edit" title="Edit">✏️</button>
+            <button class="wizard-activity-btn" data-action="remove" title="Remove">🗑️</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Activity action handlers
+    timelineContainer.addEventListener('click', (e) => {
+      const btn = e.target.closest('.wizard-activity-btn');
+      if (!btn) return;
+
+      const card = btn.closest('.wizard-activity-card');
+      const index = parseInt(card.dataset.activityIndex);
+      const action = btn.dataset.action;
+
+      if (action === 'remove') {
+        plan.timeline.splice(index, 1);
+        this.renderDayTimeline(dayNumber);
+      }
+      // Edit action can be added in Phase 2
+    });
+  }
+
+  setupWizardFinalActions() {
+    const startBtn = document.getElementById('wizardStartTrip');
+    const saveBtn = document.getElementById('wizardSaveTrip');
+
+    if (startBtn) {
+      startBtn.addEventListener('click', () => {
+        if (this.wizardData.generatedPlan) {
+          this.setActiveTrip(this.wizardData.generatedPlan);
+          this.showToast(this.t('toast.trip_started') || 'Trip started! Let\'s go!');
+          this.showView('ai');
+        }
+      });
+    }
+
+    if (saveBtn) {
+      saveBtn.addEventListener('click', () => {
+        if (this.wizardData.generatedPlan) {
+          const savedTrips = TenantStorage.get('saved-trips', []);
+          savedTrips.push({
+            ...this.wizardData.generatedPlan,
+            savedAt: new Date().toISOString()
+          });
+          TenantStorage.set('saved-trips', savedTrips);
+          this.showToast(this.t('toast.trip_saved') || 'Trip saved!');
+        }
+      });
     }
   }
 
@@ -1241,6 +1996,13 @@ class SimpleNavigation {
             // FIX: Increment trip counter
             this.tripsPlanned++;
             TenantStorage.set('stats-trips', this.tripsPlanned);
+
+            // Track AI trips for achievements
+            const aiTrips = parseInt(TenantStorage.get('stats-ai-trips') || '0') + 1;
+            TenantStorage.set('stats-ai-trips', aiTrips);
+
+            // Award XP for trip (+20) and AI bonus (+10)
+            this.addTravelerXP(30);
             this.updateProfileStats();
 
             tripDisplay.innerHTML = `
@@ -1354,9 +2116,190 @@ class SimpleNavigation {
   updateProfileStats() {
     const tripsEl = document.getElementById('tripsPlannedCount');
     const placesEl = document.getElementById('placesVisitedCount');
+    const countriesEl = document.getElementById('countriesCount');
+    const scoreDisplayEl = document.getElementById('travelerScoreDisplay');
 
     if (tripsEl) tripsEl.textContent = this.tripsPlanned;
     if (placesEl) placesEl.textContent = this.placesVisited;
+    if (countriesEl) countriesEl.textContent = TenantStorage.get('stats-countries', 1);
+
+    // Update traveler level and XP
+    this.updateTravelerLevel();
+
+    // Update achievements
+    this.checkAchievements();
+  }
+
+  // Calculate current traveler level based on XP score
+  calculateTravelerLevel(score) {
+    for (let i = TRAVELER_LEVELS.length - 1; i >= 0; i--) {
+      if (score >= TRAVELER_LEVELS[i].minScore) {
+        return { level: TRAVELER_LEVELS[i], index: i };
+      }
+    }
+    return { level: TRAVELER_LEVELS[0], index: 0 };
+  }
+
+  // Update the traveler level display
+  updateTravelerLevel() {
+    const score = parseInt(TenantStorage.get('traveler-score', 0));
+    const { level, index } = this.calculateTravelerLevel(score);
+    const nextLevel = TRAVELER_LEVELS[index + 1];
+
+    // Update score display
+    const scoreDisplayEl = document.getElementById('travelerScoreDisplay');
+    if (scoreDisplayEl) scoreDisplayEl.textContent = score;
+
+    // Update level badge
+    const levelIconEl = document.getElementById('levelIcon');
+    const levelNameEl = document.getElementById('levelName');
+    if (levelIconEl) levelIconEl.textContent = level.icon;
+    if (levelNameEl) levelNameEl.textContent = window.currentLang === 'he' ? level.nameHe : level.name;
+
+    // Update progress bar
+    const progressFillEl = document.getElementById('levelProgressFill');
+    const progressTextEl = document.getElementById('levelProgressText');
+
+    if (nextLevel) {
+      const progress = ((score - level.minScore) / (nextLevel.minScore - level.minScore)) * 100;
+      if (progressFillEl) progressFillEl.style.width = `${Math.min(progress, 100)}%`;
+      if (progressTextEl) progressTextEl.textContent = `${score}/${nextLevel.minScore} XP`;
+    } else {
+      // Max level reached
+      if (progressFillEl) progressFillEl.style.width = '100%';
+      if (progressTextEl) progressTextEl.textContent = `${score} XP ⭐`;
+    }
+  }
+
+  // Add XP points and update display
+  addTravelerXP(points) {
+    const current = parseInt(TenantStorage.get('traveler-score', 0));
+    const oldLevel = this.calculateTravelerLevel(current);
+    const newScore = current + points;
+    TenantStorage.set('traveler-score', newScore);
+
+    const newLevel = this.calculateTravelerLevel(newScore);
+
+    // Check for level up
+    if (newLevel.index > oldLevel.index) {
+      const levelName = window.currentLang === 'he' ? newLevel.level.nameHe : newLevel.level.name;
+      this.showToast(`🎉 ${window.currentLang === 'he' ? 'עלית לרמה' : 'Level Up!'} ${newLevel.level.icon} ${levelName}!`);
+    }
+
+    this.updateTravelerLevel();
+  }
+
+  // Check and update achievements
+  checkAchievements() {
+    const unlocked = TenantStorage.get('achievements', []);
+    const aiTrips = parseInt(TenantStorage.get('stats-ai-trips', 0));
+
+    const stats = {
+      trips: this.tripsPlanned,
+      places: this.placesVisited,
+      ai_trips: aiTrips
+    };
+
+    let newUnlocks = [];
+    ACHIEVEMENTS.forEach(achievement => {
+      if (!unlocked.includes(achievement.id)) {
+        const { type, threshold } = achievement.condition;
+        if (stats[type] >= threshold) {
+          unlocked.push(achievement.id);
+          newUnlocks.push(achievement);
+        }
+      }
+    });
+
+    // Save unlocked achievements
+    if (newUnlocks.length > 0) {
+      TenantStorage.set('achievements', unlocked);
+      // Show notification for each new achievement
+      newUnlocks.forEach(achievement => {
+        const msg = window.currentLang === 'he'
+          ? `🏆 הישג חדש: ${achievement.nameHe}!`
+          : `🏆 Achievement Unlocked: ${achievement.name}!`;
+        this.showToast(msg);
+        // Bonus XP for unlocking achievement
+        this.addTravelerXP(15);
+      });
+    }
+
+    // Render achievements grid
+    this.renderAchievements(unlocked);
+  }
+
+  // Render achievements grid
+  renderAchievements(unlockedIds) {
+    const grid = document.getElementById('achievementGrid');
+    if (!grid) return;
+
+    grid.innerHTML = ACHIEVEMENTS.map(a => `
+      <div class="achievement-badge ${unlockedIds.includes(a.id) ? 'unlocked' : 'locked'}" title="${window.currentLang === 'he' ? a.descHe : a.desc}">
+        <span class="achievement-icon">${a.icon}</span>
+        <span class="achievement-name">${window.currentLang === 'he' ? a.nameHe : a.name}</span>
+      </div>
+    `).join('');
+  }
+
+  // Show toast notification
+  showToast(message) {
+    // Check if toast container exists
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.id = 'toastContainer';
+      toastContainer.style.cssText = `
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10000;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        pointer-events: none;
+      `;
+      document.body.appendChild(toastContainer);
+    }
+
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+      background: var(--bg-tertiary, #2C2C2E);
+      color: var(--label-primary, white);
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      animation: toastSlideIn 0.3s ease;
+      pointer-events: auto;
+    `;
+    toast.textContent = message;
+    toastContainer.appendChild(toast);
+
+    // Add animation keyframes if not exists
+    if (!document.getElementById('toastStyles')) {
+      const style = document.createElement('style');
+      style.id = 'toastStyles';
+      style.textContent = `
+        @keyframes toastSlideIn {
+          from { opacity: 0; transform: translateY(-20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes toastSlideOut {
+          from { opacity: 1; transform: translateY(0); }
+          to { opacity: 0; transform: translateY(-20px); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    // Remove toast after 3 seconds
+    setTimeout(() => {
+      toast.style.animation = 'toastSlideOut 0.3s ease forwards';
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
   }
 
   updateRouteInfo(routeData) {
@@ -1422,6 +2365,12 @@ class SimpleNavigation {
         this.isRecording = true;
         voiceBtn.classList.add('recording');
         voiceBtn.innerHTML = '<span class="voice-icon recording-pulse">🔴</span>';
+
+        // Update voice status text
+        const statusEl = document.getElementById('voiceStatus');
+        if (statusEl) {
+          statusEl.textContent = this.t('voice.listening') || 'Listening...';
+        }
 
         if (responseEl) {
           responseEl.innerHTML = `
@@ -1503,6 +2452,12 @@ class SimpleNavigation {
       if (voiceBtn) {
         voiceBtn.classList.remove('recording');
         voiceBtn.innerHTML = '<span class="voice-icon">🎤</span>';
+      }
+
+      // Clear voice status
+      const statusEl = document.getElementById('voiceStatus');
+      if (statusEl) {
+        statusEl.textContent = '';
       }
     }
   }
@@ -2167,6 +3122,13 @@ class SimpleNavigation {
           // FIX: Increment trip counter
           this.tripsPlanned++;
           TenantStorage.set('stats-trips', this.tripsPlanned);
+
+          // Track AI trips for achievements
+          const aiTrips2 = parseInt(TenantStorage.get('stats-ai-trips') || '0') + 1;
+          TenantStorage.set('stats-ai-trips', aiTrips2);
+
+          // Award XP for trip (+20) and AI bonus (+10)
+          this.addTravelerXP(30);
           this.updateProfileStats();
 
           let html = '<div class="ios-card"><div class="ios-card-content">';
@@ -2368,6 +3330,195 @@ class SimpleNavigation {
       }, 300);
     }
   }
+
+  // ===== CHAT FUNCTIONALITY =====
+
+  chatHistory = [];
+
+  setupChat() {
+    // Event listeners
+    document.getElementById('chatSendBtn')?.addEventListener('click', () => this.sendChatMessage());
+    document.getElementById('chatInput')?.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') this.sendChatMessage();
+    });
+
+    // Suggestion chips
+    document.querySelectorAll('.chat-chip').forEach(chip => {
+      chip.addEventListener('click', (e) => {
+        const suggestion = e.target.dataset.suggestion;
+        this.handleSuggestion(suggestion);
+      });
+    });
+
+    // Voice button (placeholder for future voice integration)
+    document.getElementById('chatVoiceBtn')?.addEventListener('click', () => {
+      this.showToast(this.t('voice.coming_soon') || 'Voice coming soon!');
+    });
+
+    // Render welcome message
+    this.renderWelcomeMessage();
+
+    // Show trip banner if active
+    this.updateChatTripBanner();
+  }
+
+  renderWelcomeMessage() {
+    const name = TenantStorage.getTenantName() || '';
+    const greeting = name
+      ? this.t('chat.welcome_name', { name }) || `Hi ${name}! I'm your AI travel co-pilot. How can I help you today?`
+      : this.t('chat.welcome') || "Hi! I'm your AI travel co-pilot. How can I help you today?";
+
+    this.addChatMessage('assistant', greeting);
+  }
+
+  async sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    if (!message) return;
+
+    input.value = '';
+    input.disabled = true;
+    document.getElementById('chatSendBtn').disabled = true;
+
+    // Add user message
+    this.addChatMessage('user', message);
+
+    // Show typing indicator
+    this.showTypingIndicator();
+
+    try {
+      // Get context
+      const context = this.getChatContext();
+
+      // Call AI
+      const response = await this.callChatAI(message, context);
+
+      // Hide typing, show response
+      this.hideTypingIndicator();
+      this.addChatMessage('assistant', response.content);
+
+    } catch (error) {
+      console.error('Chat error:', error);
+      this.hideTypingIndicator();
+      this.addChatMessage('assistant', this.t('chat.error') || "Sorry, I couldn't process that. Please try again.");
+    }
+
+    input.disabled = false;
+    document.getElementById('chatSendBtn').disabled = false;
+    input.focus();
+  }
+
+  addChatMessage(role, content) {
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
+
+    const msg = { id: Date.now(), role, content, timestamp: new Date() };
+    this.chatHistory.push(msg);
+
+    const bubble = document.createElement('div');
+    bubble.className = `chat-message ${role}`;
+    bubble.innerHTML = this.escapeHtml(content);
+    container.appendChild(bubble);
+
+    // Scroll to bottom
+    container.scrollTop = container.scrollHeight;
+  }
+
+  showTypingIndicator() {
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
+
+    const typing = document.createElement('div');
+    typing.id = 'typingIndicator';
+    typing.className = 'chat-message assistant typing';
+    typing.innerHTML = `<div class="typing-dots"><span></span><span></span><span></span></div>`;
+    container.appendChild(typing);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  hideTypingIndicator() {
+    document.getElementById('typingIndicator')?.remove();
+  }
+
+  getChatContext() {
+    const activeTrip = TenantStorage.get('activeTrip');
+    return {
+      activeTrip: activeTrip ? JSON.parse(activeTrip) : null,
+      location: this.userLocation || null,
+      lang: window.currentLang || 'en',
+      history: this.chatHistory.slice(-10) // Last 10 messages for context
+    };
+  }
+
+  async callChatAI(message, context) {
+    // Use existing proxy endpoint
+    const API_BASE = 'https://roamwise-proxy-971999716773.us-central1.run.app';
+
+    const systemPrompt = `You are an expert travel co-pilot for Israel and worldwide destinations.
+Your role: Help users discover places, plan trips, and navigate their journeys.
+Language: Respond in ${context.lang === 'he' ? 'Hebrew' : 'English'}.
+${context.activeTrip ? `Active trip: ${JSON.stringify(context.activeTrip)}` : ''}
+${context.location ? `User location: ${context.location.lat}, ${context.location.lng}` : ''}
+
+Guidelines:
+- Keep responses concise (2-3 sentences)
+- Be helpful and friendly
+- For non-travel topics, politely redirect to travel
+- Suggest relevant actions when appropriate`;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message,
+          context: systemPrompt,
+          history: context.history.map(m => ({ role: m.role, content: m.content }))
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return { content: data.response || data.message || data.content };
+      }
+    } catch (e) {
+      console.warn('Chat API error, using fallback:', e);
+    }
+
+    // Fallback: simple response
+    return {
+      content: this.t('chat.fallback_response') || "I'm here to help with your travel plans! Try asking about restaurants, attractions, or trip planning."
+    };
+  }
+
+  handleSuggestion(type) {
+    const suggestions = {
+      food: this.t('chat.prompt_food') || 'Find good restaurants near me',
+      weather: this.t('chat.prompt_weather') || "What's the weather like today?",
+      plan: this.t('chat.prompt_plan') || 'Help me plan a day trip',
+      nearby: this.t('chat.prompt_nearby') || "What's interesting nearby?"
+    };
+
+    const input = document.getElementById('chatInput');
+    if (input) {
+      input.value = suggestions[type] || '';
+      input.focus();
+    }
+  }
+
+  updateChatTripBanner() {
+    const banner = document.getElementById('chatTripBanner');
+    const activeTrip = TenantStorage.get('activeTrip');
+    if (banner) {
+      banner.style.display = activeTrip ? 'block' : 'none';
+    }
+  }
+
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
 }
 
 // Wait for DOM to be ready
@@ -2378,5 +3529,13 @@ if (document.readyState === 'loading') {
 } else {
   window.simpleApp = new SimpleNavigation();
 }
+
+// Listen for service worker update events
+window.addEventListener('update-available', (e) => {
+  const notification = document.getElementById('updateNotification');
+  if (notification) {
+    notification.classList.remove('hidden');
+  }
+});
 
 console.log('Traveling iOS App loaded');

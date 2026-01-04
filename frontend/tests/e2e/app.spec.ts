@@ -47,14 +47,17 @@ test.describe('RoamWise App', () => {
   test('should perform search', async ({ page }) => {
     // Navigate to search view
     await page.click('.ios-tab[data-view="search"]');
-    
+
+    // Wait for translations to be loaded (button should show translated text, not the i18n key)
+    await expect(page.locator('#searchBtn')).not.toContainText('search.button', { timeout: 5000 });
+
     // Enter search query
     await page.fill('#freeText', 'restaurants');
     await page.click('#searchBtn');
-    
-    // Should show loading state (i18n-aware)
-    await expect(page.locator('#searchBtn')).toContainText(/Searching|מחפש/);
-    
+
+    // Should show loading state (i18n-aware) - accepts "AI Searching..." or Hebrew equivalent
+    await expect(page.locator('#searchBtn')).toContainText(/AI Searching|AI מחפש|Searching|מחפש/);
+
     // Results should appear (mocked)
     await page.waitForTimeout(1000);
     await expect(page.locator('#list')).not.toBeEmpty();
@@ -121,15 +124,21 @@ test.describe('RoamWise App', () => {
     expect(inputValue.length).toBeGreaterThan(0);
   });
 
-  test('should display trip planner', async ({ page }) => {
+  test('should display trip planner wizard', async ({ page }) => {
     // Navigate to trip view
     await page.click('.ios-tab[data-view="trip"]');
 
-    // Trip planner should be visible
-    await expect(page.locator('#tripView')).toBeVisible();
+    // Trip wizard should be visible
+    await expect(page.locator('#tripWizard')).toBeVisible();
 
-    // Duration chips should be present
-    await expect(page.locator('[data-duration]').first()).toBeVisible();
+    // Step 1 (Destination) panel should be active
+    await expect(page.locator('.wizard-panel[data-panel="1"]')).toHaveClass(/active/);
+
+    // Destination cards grid should be visible
+    await expect(page.locator('#destinationsGrid')).toBeVisible();
+
+    // Navigation button should be visible
+    await expect(page.locator('#wizardNext')).toBeVisible();
   });
 
   test.skip('should show update notification', async ({ page }) => {
@@ -176,13 +185,20 @@ test.describe('RoamWise App', () => {
     // Change theme
     await page.click('#themeToggle');
 
-    // Create a trip plan (use actual duration value from DOM)
+    // Interact with wizard (select a duration in Step 2)
     await page.click('.ios-tab[data-view="trip"]');
-    await page.click('[data-duration="2"]');
-    
+
+    // Step 1: Select a destination
+    await page.click('.destination-card');
+    await page.click('#wizardNext');
+
+    // Step 2: Select a quick duration chip
+    await page.click('[data-duration="week"]');
+
     // Reload page
     await page.reload();
-    
+    await dismissModals(page);
+
     // Theme should be preserved
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   });

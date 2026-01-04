@@ -77,7 +77,11 @@ export default defineConfig({
       '@/core': resolve(__dirname, 'src/core'),
       '@/features': resolve(__dirname, 'src/features'),
       '@/providers': resolve(__dirname, 'src/providers'),
-      '@/lib': resolve(__dirname, 'src/lib')
+      '@/lib': resolve(__dirname, 'src/lib'),
+      '@/domain': resolve(__dirname, 'src/domain'),
+      '@/stores': resolve(__dirname, 'src/stores'),
+      '@/shared': resolve(__dirname, 'src/shared'),
+      '@/services': resolve(__dirname, 'src/services')
     }
   },
   server: {

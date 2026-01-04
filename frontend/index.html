@@ -6,7 +6,7 @@
   <title>Traveling — AI-Powered Travel Planner</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
   <meta name="description" content="Smart travel planning with AI integration">
-  <meta name="theme-color" content="#007AFF">
+  <meta name="theme-color" content="#2563EB">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
@@ -17,59 +17,131 @@
 
   <style>
     /* ========================================
-       iOS DESIGN SYSTEM - Traveling
-       Based on Apple Human Interface Guidelines
+       ROAMWISE DESIGN SYSTEM v2.0
+       Travel-Focused Design Language
        ======================================== */
 
     :root {
-      /* iOS Typography Scale */
-      --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-      --font-size-large-title: 34px;
-      --font-size-title-1: 28px;
-      --font-size-title-2: 22px;
-      --font-size-title-3: 20px;
-      --font-size-headline: 17px;
-      --font-size-body: 17px;
-      --font-size-callout: 16px;
-      --font-size-subhead: 15px;
-      --font-size-footnote: 13px;
-      --font-size-caption-1: 12px;
-      --font-size-caption-2: 11px;
+      /* === COLORS === */
+      /* Primary Palette - Ocean Blue */
+      --color-primary: #2563EB;
+      --color-primary-light: #60A5FA;
+      --color-primary-dark: #1D4ED8;
+      --color-primary-subtle: #EFF6FF;
 
-      /* iOS System Colors - Light Mode */
-      --ios-blue: #007AFF;
-      --ios-green: #34C759;
-      --ios-indigo: #5856D6;
-      --ios-orange: #FF9500;
-      --ios-pink: #FF2D55;
-      --ios-purple: #AF52DE;
-      --ios-red: #FF3B30;
-      --ios-teal: #5AC8FA;
-      --ios-yellow: #FFCC00;
+      /* Secondary Palette - Sunset Orange */
+      --color-secondary: #F97316;
+      --color-secondary-light: #FB923C;
+      --color-secondary-dark: #EA580C;
+      --color-secondary-subtle: #FFF7ED;
 
-      /* Background Colors - Light */
-      --bg-primary: #FFFFFF;
-      --bg-secondary: #F2F2F7;
-      --bg-tertiary: #FFFFFF;
-      --bg-grouped: #F2F2F7;
+      /* Accent - Wanderlust Purple (AI features) */
+      --color-accent: #8B5CF6;
+      --color-accent-light: #A78BFA;
+      --color-accent-dark: #7C3AED;
+      --color-accent-subtle: #F5F3FF;
 
-      /* Label Colors - Light */
-      --label-primary: #000000;
-      --label-secondary: rgba(60, 60, 67, 0.6);
-      --label-tertiary: rgba(60, 60, 67, 0.3);
-      --label-quaternary: rgba(60, 60, 67, 0.18);
+      /* Semantic Colors */
+      --color-success: #10B981;
+      --color-success-light: #34D399;
+      --color-success-subtle: #ECFDF5;
+      --color-warning: #F59E0B;
+      --color-warning-light: #FBBF24;
+      --color-warning-subtle: #FFFBEB;
+      --color-error: #EF4444;
+      --color-error-light: #F87171;
+      --color-error-subtle: #FEF2F2;
+      --color-info: #3B82F6;
+      --color-info-light: #60A5FA;
+      --color-info-subtle: #EFF6FF;
 
-      /* Fill Colors - Light */
-      --fill-primary: rgba(120, 120, 128, 0.2);
-      --fill-secondary: rgba(120, 120, 128, 0.16);
-      --fill-tertiary: rgba(118, 118, 128, 0.12);
-      --fill-quaternary: rgba(116, 116, 128, 0.08);
+      /* Neutrals - Slate */
+      --color-neutral-900: #0F172A;
+      --color-neutral-800: #1E293B;
+      --color-neutral-700: #334155;
+      --color-neutral-600: #475569;
+      --color-neutral-500: #64748B;
+      --color-neutral-400: #94A3B8;
+      --color-neutral-300: #CBD5E1;
+      --color-neutral-200: #E2E8F0;
+      --color-neutral-100: #F1F5F9;
+      --color-neutral-50: #F8FAFC;
+      --color-white: #FFFFFF;
+      --color-black: #000000;
 
-      /* Separator */
-      --separator: rgba(60, 60, 67, 0.29);
-      --separator-opaque: #C6C6C8;
+      /* Gradients */
+      --gradient-hero: linear-gradient(135deg, #2563EB 0%, #8B5CF6 100%);
+      --gradient-sunset: linear-gradient(135deg, #F97316 0%, #EC4899 100%);
+      --gradient-ai: linear-gradient(90deg, #8B5CF6, #EC4899, #F97316);
 
-      /* 8pt Grid Spacing */
+      /* === SEMANTIC MAPPINGS === */
+      /* Backgrounds */
+      --bg-primary: var(--color-white);
+      --bg-secondary: var(--color-neutral-100);
+      --bg-tertiary: var(--color-white);
+      --bg-grouped: var(--color-neutral-100);
+
+      /* Text */
+      --text-primary: var(--color-neutral-900);
+      --text-secondary: var(--color-neutral-700);
+      --text-muted: var(--color-neutral-500);
+
+      /* Labels (iOS compatibility aliases) */
+      --label-primary: var(--color-neutral-900);
+      --label-secondary: var(--color-neutral-600);
+      --label-tertiary: var(--color-neutral-400);
+      --label-quaternary: var(--color-neutral-300);
+
+      /* Fill Colors */
+      --fill-primary: rgba(100, 116, 139, 0.2);
+      --fill-secondary: rgba(100, 116, 139, 0.16);
+      --fill-tertiary: rgba(100, 116, 139, 0.12);
+      --fill-quaternary: rgba(100, 116, 139, 0.08);
+
+      /* Borders */
+      --border-default: var(--color-neutral-200);
+      --border-hover: var(--color-neutral-300);
+      --separator: var(--color-neutral-200);
+      --separator-opaque: var(--color-neutral-300);
+
+      /* iOS Color Compatibility Aliases */
+      --ios-blue: var(--color-primary);
+      --ios-green: var(--color-success);
+      --ios-indigo: var(--color-accent);
+      --ios-orange: var(--color-secondary);
+      --ios-pink: #EC4899;
+      --ios-purple: var(--color-accent);
+      --ios-red: var(--color-error);
+      --ios-teal: var(--color-info-light);
+      --ios-yellow: var(--color-warning);
+
+      /* === TYPOGRAPHY === */
+      --font-family: 'Inter', 'Heebo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      /* Typography Scale */
+      --font-size-display: 2rem;      /* 32px */
+      --font-size-h1: 1.5rem;         /* 24px */
+      --font-size-h2: 1.25rem;        /* 20px */
+      --font-size-h3: 1.125rem;       /* 18px */
+      --font-size-body: 1rem;         /* 16px */
+      --font-size-small: 0.875rem;    /* 14px */
+      --font-size-caption: 0.75rem;   /* 12px */
+      --font-size-overline: 0.6875rem;/* 11px */
+
+      /* iOS Typography Aliases */
+      --font-size-large-title: var(--font-size-display);
+      --font-size-title-1: var(--font-size-h1);
+      --font-size-title-2: var(--font-size-h2);
+      --font-size-title-3: var(--font-size-h3);
+      --font-size-headline: var(--font-size-body);
+      --font-size-callout: var(--font-size-body);
+      --font-size-subhead: var(--font-size-small);
+      --font-size-footnote: var(--font-size-small);
+      --font-size-caption-1: var(--font-size-caption);
+      --font-size-caption-2: var(--font-size-overline);
+
+      /* === SPACING (4px base) === */
       --space-1: 4px;
       --space-2: 8px;
       --space-3: 12px;
@@ -79,79 +151,102 @@
       --space-8: 32px;
       --space-10: 40px;
       --space-12: 48px;
+      --space-16: 64px;
 
-      /* Border Radius */
-      --radius-sm: 8px;
-      --radius-md: 12px;
-      --radius-lg: 16px;
-      --radius-xl: 20px;
+      /* === BORDER RADIUS === */
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+      --radius-2xl: 24px;
       --radius-full: 9999px;
 
-      /* iOS Multi-layer Shadows */
-      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
-      --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.06);
-      --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.05);
-      --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.06);
-      --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+      /* === SHADOWS === */
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+      --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+      --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1), 0 10px 10px rgba(0, 0, 0, 0.04);
+      --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
 
-      /* Spring Animations */
+      /* === ANIMATION === */
+      --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+      --ease-in: cubic-bezier(0.32, 0, 0.67, 0);
+      --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+      --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
       --spring-bounce: cubic-bezier(0.175, 0.885, 0.32, 1.275);
       --spring-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
       --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
-      --duration-fast: 150ms;
-      --duration-normal: 300ms;
-      --duration-slow: 500ms;
+      --duration-fast: 100ms;
+      --duration-normal: 200ms;
+      --duration-slow: 300ms;
 
-      /* Touch Targets */
+      /* === LAYOUT === */
       --touch-target: 44px;
-      --touch-target-lg: 56px;
+      --touch-target-lg: 48px;
+      --nav-height: 64px;
+      --header-height: 56px;
+      --content-max-width: 428px;
 
       /* Safe Areas */
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --safe-left: env(safe-area-inset-left, 0px);
       --safe-right: env(safe-area-inset-right, 0px);
-
-      /* Layout */
-      --nav-height: 49px;
-      --header-height: 56px;
-      --content-max-width: 428px;
     }
 
     /* Dark Mode */
     [data-theme="dark"] {
-      --ios-blue: #0A84FF;
-      --ios-green: #30D158;
-      --ios-indigo: #5E5CE6;
-      --ios-orange: #FF9F0A;
-      --ios-pink: #FF375F;
-      --ios-purple: #BF5AF2;
-      --ios-red: #FF453A;
-      --ios-teal: #64D2FF;
-      --ios-yellow: #FFD60A;
+      /* Dark Backgrounds */
+      --bg-primary: #0F172A;
+      --bg-secondary: #1E293B;
+      --bg-tertiary: #334155;
+      --bg-grouped: #0F172A;
 
-      --bg-primary: #000000;
-      --bg-secondary: #1C1C1E;
-      --bg-tertiary: #2C2C2E;
-      --bg-grouped: #000000;
+      /* Dark Text */
+      --text-primary: #F8FAFC;
+      --text-secondary: #E2E8F0;
+      --text-muted: #94A3B8;
 
-      --label-primary: #FFFFFF;
-      --label-secondary: rgba(235, 235, 245, 0.6);
-      --label-tertiary: rgba(235, 235, 245, 0.3);
-      --label-quaternary: rgba(235, 235, 245, 0.18);
+      /* Dark Labels */
+      --label-primary: #F8FAFC;
+      --label-secondary: #CBD5E1;
+      --label-tertiary: #94A3B8;
+      --label-quaternary: #64748B;
 
-      --fill-primary: rgba(120, 120, 128, 0.36);
-      --fill-secondary: rgba(120, 120, 128, 0.32);
-      --fill-tertiary: rgba(118, 118, 128, 0.24);
-      --fill-quaternary: rgba(116, 116, 128, 0.18);
+      /* Dark Fills */
+      --fill-primary: rgba(148, 163, 184, 0.36);
+      --fill-secondary: rgba(148, 163, 184, 0.32);
+      --fill-tertiary: rgba(148, 163, 184, 0.24);
+      --fill-quaternary: rgba(148, 163, 184, 0.18);
 
-      --separator: rgba(84, 84, 88, 0.65);
-      --separator-opaque: #38383A;
+      /* Dark Borders */
+      --border-default: #334155;
+      --border-hover: #475569;
+      --separator: #334155;
+      --separator-opaque: #475569;
 
+      /* Adjusted Primary for Dark Mode */
+      --color-primary: #60A5FA;
+      --color-primary-light: #93C5FD;
+      --color-primary-dark: #3B82F6;
+      --color-primary-subtle: #1E3A5F;
+
+      /* Dark Shadows */
       --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
       --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
       --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
       --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.4);
+
+      /* iOS Aliases for Dark Mode */
+      --ios-blue: var(--color-primary);
+      --ios-green: #34D399;
+      --ios-indigo: #A78BFA;
+      --ios-orange: #FB923C;
+      --ios-pink: #F472B6;
+      --ios-purple: #A78BFA;
+      --ios-red: #F87171;
+      --ios-teal: #67E8F9;
+      --ios-yellow: #FBBF24;
     }
 
     /* Reset */
@@ -2387,6 +2482,736 @@
     .trip-complete-btn:active {
       transform: scale(0.98);
     }
+
+    /* ========================================
+       TRIP PLANNING WIZARD
+       5-Step Intelligent Trip Planner
+       ======================================== */
+
+    .trip-wizard {
+      padding: var(--space-4);
+      padding-bottom: 100px;
+    }
+
+    /* Progress Bar */
+    .wizard-progress {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-6);
+      position: relative;
+    }
+
+    .wizard-progress::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 24px;
+      right: 24px;
+      height: 2px;
+      background: var(--fill-tertiary);
+      transform: translateY(-50%);
+      z-index: 0;
+    }
+
+    .wizard-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-1);
+      z-index: 1;
+      position: relative;
+    }
+
+    .wizard-step-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--bg-primary);
+      border: 2px solid var(--fill-tertiary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: var(--font-size-caption-1);
+      font-weight: 600;
+      color: var(--label-tertiary);
+      transition: all 0.3s var(--spring-smooth);
+    }
+
+    .wizard-step.active .wizard-step-circle {
+      background: var(--ios-blue);
+      border-color: var(--ios-blue);
+      color: white;
+      box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+    }
+
+    .wizard-step.completed .wizard-step-circle {
+      background: var(--ios-green);
+      border-color: var(--ios-green);
+      color: white;
+    }
+
+    .wizard-step-label {
+      font-size: var(--font-size-caption-2);
+      color: var(--label-tertiary);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .wizard-step.active .wizard-step-label {
+      color: var(--ios-blue);
+    }
+
+    .wizard-step.completed .wizard-step-label {
+      color: var(--ios-green);
+    }
+
+    /* Wizard Panels */
+    .wizard-panel {
+      display: none;
+      animation: fadeInPanel 0.3s ease;
+    }
+
+    .wizard-panel.active {
+      display: block;
+    }
+
+    @keyframes fadeInPanel {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .wizard-panel-title {
+      font-size: var(--font-size-title-2);
+      font-weight: 700;
+      color: var(--label-primary);
+      margin: 0 0 var(--space-2) 0;
+      text-align: center;
+    }
+
+    .wizard-panel-subtitle {
+      font-size: var(--font-size-subhead);
+      color: var(--label-secondary);
+      text-align: center;
+      margin-bottom: var(--space-5);
+    }
+
+    /* Step 1: Destinations Grid */
+    .wizard-search-container {
+      margin-bottom: var(--space-4);
+    }
+
+    .wizard-search-input {
+      width: 100%;
+      padding: var(--space-3) var(--space-4);
+      border: 1px solid var(--separator);
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-body);
+      background: var(--bg-primary);
+      color: var(--label-primary);
+      transition: border-color 0.2s;
+    }
+
+    .wizard-search-input:focus {
+      outline: none;
+      border-color: var(--ios-blue);
+    }
+
+    .wizard-section-label {
+      font-size: var(--font-size-footnote);
+      font-weight: 600;
+      color: var(--label-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: var(--space-3);
+    }
+
+    .destinations-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-3);
+    }
+
+    .destination-card {
+      position: relative;
+      height: 120px;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.3s var(--spring-smooth);
+    }
+
+    .destination-card:active {
+      transform: scale(0.97);
+    }
+
+    .destination-card.selected {
+      ring: 3px solid var(--ios-blue);
+      box-shadow: 0 0 0 3px var(--ios-blue);
+    }
+
+    .destination-card-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .destination-card-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 60%);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: var(--space-3);
+    }
+
+    .destination-card-name {
+      color: white;
+      font-size: var(--font-size-subhead);
+      font-weight: 600;
+    }
+
+    .destination-card-country {
+      color: rgba(255, 255, 255, 0.8);
+      font-size: var(--font-size-caption-1);
+    }
+
+    .destination-card-check {
+      position: absolute;
+      top: var(--space-2);
+      right: var(--space-2);
+      width: 24px;
+      height: 24px;
+      background: var(--ios-blue);
+      border-radius: 50%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 14px;
+    }
+
+    .destination-card.selected .destination-card-check {
+      display: flex;
+    }
+
+    /* Step 2: Date Picker */
+    .wizard-date-row {
+      display: flex;
+      gap: var(--space-3);
+      margin-bottom: var(--space-4);
+    }
+
+    .wizard-date-field {
+      flex: 1;
+    }
+
+    .wizard-date-label {
+      font-size: var(--font-size-footnote);
+      color: var(--label-secondary);
+      margin-bottom: var(--space-1);
+      display: block;
+    }
+
+    .wizard-date-input {
+      width: 100%;
+      padding: var(--space-3);
+      border: 1px solid var(--separator);
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-body);
+      background: var(--bg-primary);
+      color: var(--label-primary);
+    }
+
+    .wizard-chips {
+      display: flex;
+      gap: var(--space-2);
+      flex-wrap: wrap;
+      margin-bottom: var(--space-4);
+    }
+
+    .wizard-chip {
+      padding: var(--space-2) var(--space-4);
+      border-radius: var(--radius-full);
+      background: var(--fill-secondary);
+      border: none;
+      font-size: var(--font-size-subhead);
+      font-weight: 500;
+      color: var(--label-primary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .wizard-chip:hover {
+      background: var(--fill-primary);
+    }
+
+    .wizard-chip.selected {
+      background: var(--ios-blue);
+      color: white;
+    }
+
+    .wizard-flexible {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-3);
+      background: var(--fill-quaternary);
+      border-radius: var(--radius-md);
+    }
+
+    .wizard-flexible-label {
+      font-size: var(--font-size-body);
+      color: var(--label-primary);
+    }
+
+    .wizard-toggle {
+      width: 51px;
+      height: 31px;
+      background: var(--fill-primary);
+      border-radius: 16px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .wizard-toggle.active {
+      background: var(--ios-green);
+    }
+
+    .wizard-toggle::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 27px;
+      height: 27px;
+      background: white;
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      transition: transform 0.2s;
+    }
+
+    .wizard-toggle.active::after {
+      transform: translateX(20px);
+    }
+
+    /* Step 3: Preferences */
+    .wizard-pace-section {
+      margin-bottom: var(--space-5);
+    }
+
+    .wizard-pace-slider-container {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      margin-top: var(--space-2);
+    }
+
+    .wizard-pace-label {
+      font-size: var(--font-size-footnote);
+      color: var(--label-secondary);
+      min-width: 60px;
+    }
+
+    .wizard-pace-label:last-child {
+      text-align: right;
+    }
+
+    .wizard-pace-slider {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--fill-tertiary);
+    }
+
+    .wizard-pace-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--ios-blue);
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+    }
+
+    .wizard-interests-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-2);
+      margin-bottom: var(--space-5);
+    }
+
+    .wizard-interest {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-1);
+      padding: var(--space-3) var(--space-2);
+      border: 2px solid var(--separator);
+      border-radius: var(--radius-md);
+      background: var(--bg-primary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .wizard-interest:active {
+      transform: scale(0.95);
+    }
+
+    .wizard-interest.selected {
+      border-color: var(--ios-blue);
+      background: rgba(0, 122, 255, 0.08);
+    }
+
+    .wizard-interest-icon {
+      font-size: 24px;
+    }
+
+    .wizard-interest-label {
+      font-size: var(--font-size-caption-1);
+      color: var(--label-primary);
+      text-align: center;
+    }
+
+    .wizard-button-group {
+      display: flex;
+      gap: var(--space-2);
+      margin-bottom: var(--space-4);
+    }
+
+    .wizard-button-option {
+      flex: 1;
+      padding: var(--space-3);
+      border: 2px solid var(--separator);
+      border-radius: var(--radius-md);
+      background: var(--bg-primary);
+      font-size: var(--font-size-footnote);
+      font-weight: 500;
+      color: var(--label-primary);
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .wizard-button-option:active {
+      transform: scale(0.97);
+    }
+
+    .wizard-button-option.selected {
+      border-color: var(--ios-blue);
+      background: var(--ios-blue);
+      color: white;
+    }
+
+    /* Step 4: AI Generation Animation */
+    .wizard-generating {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 300px;
+      text-align: center;
+    }
+
+    .wizard-generating-icon {
+      font-size: 80px;
+      margin-bottom: var(--space-4);
+      animation: wizardPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes wizardPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.8; }
+    }
+
+    .wizard-generating-title {
+      font-size: var(--font-size-title-3);
+      font-weight: 700;
+      color: var(--label-primary);
+      margin-bottom: var(--space-3);
+    }
+
+    .wizard-generating-progress {
+      width: 200px;
+      height: 6px;
+      background: var(--fill-tertiary);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: var(--space-4);
+    }
+
+    .wizard-generating-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--ios-blue), var(--ios-teal));
+      border-radius: 3px;
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+
+    .wizard-generating-steps {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .wizard-generating-step {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: var(--font-size-footnote);
+      color: var(--label-tertiary);
+    }
+
+    .wizard-generating-step.active {
+      color: var(--ios-blue);
+    }
+
+    .wizard-generating-step.completed {
+      color: var(--ios-green);
+    }
+
+    .wizard-generating-step-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Step 5: Review */
+    .wizard-review-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-4);
+    }
+
+    .wizard-review-title {
+      font-size: var(--font-size-title-3);
+      font-weight: 700;
+      color: var(--label-primary);
+    }
+
+    .wizard-review-meta {
+      font-size: var(--font-size-footnote);
+      color: var(--label-secondary);
+    }
+
+    .wizard-day-tabs {
+      display: flex;
+      gap: var(--space-2);
+      margin-bottom: var(--space-4);
+      overflow-x: auto;
+      padding-bottom: var(--space-2);
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .wizard-day-tab {
+      padding: var(--space-2) var(--space-4);
+      border-radius: var(--radius-full);
+      background: var(--fill-secondary);
+      border: none;
+      font-size: var(--font-size-subhead);
+      font-weight: 500;
+      color: var(--label-primary);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .wizard-day-tab.active {
+      background: var(--ios-blue);
+      color: white;
+    }
+
+    .wizard-timeline {
+      margin-bottom: var(--space-4);
+    }
+
+    .wizard-activity-card {
+      display: flex;
+      gap: var(--space-3);
+      padding: var(--space-3);
+      background: var(--bg-tertiary);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-3);
+      border: 1px solid var(--separator);
+    }
+
+    .wizard-activity-time {
+      min-width: 50px;
+      font-size: var(--font-size-footnote);
+      font-weight: 600;
+      color: var(--ios-blue);
+    }
+
+    .wizard-activity-content {
+      flex: 1;
+    }
+
+    .wizard-activity-name {
+      font-size: var(--font-size-body);
+      font-weight: 600;
+      color: var(--label-primary);
+      margin-bottom: var(--space-1);
+    }
+
+    .wizard-activity-desc {
+      font-size: var(--font-size-footnote);
+      color: var(--label-secondary);
+    }
+
+    .wizard-activity-actions {
+      display: flex;
+      gap: var(--space-1);
+    }
+
+    .wizard-activity-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      background: var(--fill-secondary);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .wizard-activity-btn:active {
+      background: var(--fill-tertiary);
+    }
+
+    /* Wizard Navigation */
+    .wizard-nav {
+      position: fixed;
+      bottom: 80px;
+      left: 0;
+      right: 0;
+      display: flex;
+      gap: var(--space-3);
+      padding: var(--space-4);
+      background: var(--bg-primary);
+      border-top: 1px solid var(--separator);
+      z-index: 50;
+    }
+
+    .wizard-nav-btn {
+      flex: 1;
+      padding: var(--space-3);
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-body);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .wizard-nav-btn.secondary {
+      background: var(--fill-secondary);
+      border: none;
+      color: var(--label-primary);
+    }
+
+    .wizard-nav-btn.primary {
+      background: var(--ios-blue);
+      border: none;
+      color: white;
+    }
+
+    .wizard-nav-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .wizard-nav-btn:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+
+    /* Final Actions (Step 5) */
+    .wizard-final-actions {
+      display: none;
+      position: fixed;
+      bottom: 80px;
+      left: 0;
+      right: 0;
+      padding: var(--space-4);
+      background: var(--bg-primary);
+      border-top: 1px solid var(--separator);
+      z-index: 50;
+    }
+
+    .wizard-final-actions.active {
+      display: block;
+    }
+
+    .wizard-final-btn {
+      width: 100%;
+      padding: var(--space-4);
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-body);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: var(--space-2);
+    }
+
+    .wizard-final-btn.primary {
+      background: var(--ios-blue);
+      border: none;
+      color: white;
+    }
+
+    .wizard-final-btn.secondary {
+      background: var(--fill-secondary);
+      border: none;
+      color: var(--label-primary);
+    }
+
+    .wizard-final-btn:last-child {
+      margin-bottom: 0;
+    }
+
+    .wizard-final-btn:active {
+      transform: scale(0.98);
+    }
+
+    /* RTL Support for Wizard */
+    [dir="rtl"] .wizard-progress::before {
+      left: 24px;
+      right: 24px;
+    }
+
+    [dir="rtl"] .wizard-toggle::after {
+      left: auto;
+      right: 2px;
+    }
+
+    [dir="rtl"] .wizard-toggle.active::after {
+      transform: translateX(-20px);
+    }
+
+    [dir="rtl"] .destination-card-check {
+      right: auto;
+      left: var(--space-2);
+    }
+
+    [dir="rtl"] .wizard-pace-label:last-child {
+      text-align: left;
+    }
+
+    [dir="rtl"] .wizard-pace-label:first-child {
+      text-align: right;
+    }
   </style>
 </head>
 <body>
@@ -2586,116 +3411,213 @@
           </button>
         </div>
 
-        <!-- Trip Planner Section (shown when no active trip) -->
-        <div id="tripPlannerSection">
-          <h1 class="ios-large-title"><span data-i18n="trip.title">Plan Your Trip</span></h1>
-        <p class="ios-subtitle" data-i18n="trip.subtitle">AI-powered trip planning with personalized recommendations</p>
-
-        <!-- Queued Places Section -->
-        <div class="ios-card-section" id="queuedPlacesSection" style="display: none;">
-          <div class="ios-section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <span class="ios-section-label" data-i18n="trip.queued_places">Your Selected Places</span>
-            <span id="queuedCount" class="ios-badge ios-badge-blue">0</span>
-          </div>
-          <div id="queuedPlacesList" class="queued-places-list">
-            <!-- Dynamically filled -->
-          </div>
-          <button id="clearQueueBtn" class="ios-button-text" style="width: 100%; margin-top: 8px; color: var(--ios-red, #FF3B30);">
-            <span data-i18n="trip.clear_queue">Clear All</span>
-          </button>
-        </div>
-
-        <!-- Trip Mode Selector (Smart Route Optimizer) -->
-        <div class="ios-form-group" id="tripModeGroup">
-          <label class="ios-form-label">
-            <span data-i18n="trip.mode">Trip Mode</span>
-            <span id="weatherScoreBadge" class="ios-badge ios-badge-blue" style="margin-left: 0.5rem; display: none;"></span>
-          </label>
-          <div class="ios-mode-selector" data-testid="mode-selector">
-            <button class="ios-mode-btn selected" data-mode="efficiency" data-testid="mode-efficiency">
-              <span class="ios-mode-icon">⚡</span>
-              <span class="ios-mode-label" data-i18n="trip.mode_efficiency">Efficiency</span>
-              <span class="ios-mode-desc" data-i18n="trip.mode_efficiency_desc">Fastest route</span>
-              <span class="ios-mode-recommended" style="display: none;" data-i18n="trip.recommended">Recommended</span>
-            </button>
-            <button class="ios-mode-btn" data-mode="scenic" data-testid="mode-scenic">
-              <span class="ios-mode-icon">🏞️</span>
-              <span class="ios-mode-label" data-i18n="trip.mode_scenic">Scenic</span>
-              <span class="ios-mode-desc" data-i18n="trip.mode_scenic_desc">Beautiful views</span>
-              <span class="ios-mode-recommended" style="display: none;" data-i18n="trip.recommended">Recommended</span>
-            </button>
-            <button class="ios-mode-btn" data-mode="foodie" data-testid="mode-foodie">
-              <span class="ios-mode-icon">🍽️</span>
-              <span class="ios-mode-label" data-i18n="trip.mode_foodie">Foodie</span>
-              <span class="ios-mode-desc" data-i18n="trip.mode_foodie_desc">Best restaurants</span>
-              <span class="ios-mode-recommended" style="display: none;" data-i18n="trip.recommended">Recommended</span>
-            </button>
-          </div>
-          <p id="modeDisabledHint" class="ios-hint ios-hint-warning" style="display: none;" data-i18n="trip.mode_disabled">Not available due to weather</p>
-        </div>
-
-        <div class="ios-form-group">
-          <label class="ios-form-label" data-i18n="trip.duration">Duration</label>
-          <div class="ios-segmented">
-            <button class="ios-segment" data-duration="2" data-i18n="trip.duration_2h">2 hours</button>
-            <button class="ios-segment selected" data-duration="8" data-i18n="trip.duration_full">Full day</button>
-            <button class="ios-segment" data-duration="16" data-i18n="trip.duration_weekend">Weekend</button>
-          </div>
-        </div>
-
-        <div class="ios-form-group">
-          <label class="ios-form-label">
-            <span data-i18n="trip.interests">Interests</span>
-            <span id="interestCount" style="color: var(--ios-blue);">(0/4)</span>
-          </label>
-          <div class="ios-interests-grid">
-            <button class="ios-interest" data-interest="food">
-              <span class="ios-interest-icon">🍽️</span>
-              <span data-i18n="categories.food">Food</span>
-            </button>
-            <button class="ios-interest" data-interest="nature">
-              <span class="ios-interest-icon">🌿</span>
-              <span data-i18n="categories.nature">Nature</span>
-            </button>
-            <button class="ios-interest" data-interest="culture">
-              <span class="ios-interest-icon">🏛️</span>
-              <span data-i18n="categories.culture">Culture</span>
-            </button>
-            <button class="ios-interest" data-interest="shopping">
-              <span class="ios-interest-icon">🛍️</span>
-              <span data-i18n="categories.shopping">Shopping</span>
-            </button>
-            <button class="ios-interest" data-interest="entertainment">
-              <span class="ios-interest-icon">🎯</span>
-              <span data-i18n="categories.entertainment">Entertainment</span>
-            </button>
-            <button class="ios-interest" data-interest="relaxation">
-              <span class="ios-interest-icon">😌</span>
-              <span data-i18n="categories.relaxation">Relaxation</span>
-            </button>
-          </div>
-          <p class="ios-interest-hint" id="interestHint" style="display: none; color: var(--ios-orange);" data-i18n="trip.max_interests">Maximum 4 interests allowed</p>
-        </div>
-
-        <div class="ios-form-group">
-          <label class="ios-form-label" data-i18n="trip.budget">Budget per person</label>
-          <div class="ios-slider-container">
-            <div class="ios-slider-header">
-              <span class="ios-slider-label" data-i18n="trip.budget_label">Budget</span>
-              <span class="ios-slider-value">$<span id="budgetAmount">300</span></span>
+        <!-- Trip Planning Wizard (5-Step Intelligent Planner) -->
+        <div id="tripWizard" class="trip-wizard">
+          <!-- Progress Bar with 5 Steps -->
+          <div class="wizard-progress">
+            <div class="wizard-step active" data-step="1">
+              <div class="wizard-step-circle">1</div>
+              <span class="wizard-step-label" data-i18n="wizard.step.destination">Destination</span>
             </div>
-            <input type="range" id="budgetRange" class="ios-slider" min="50" max="1000" value="300">
+            <div class="wizard-step" data-step="2">
+              <div class="wizard-step-circle">2</div>
+              <span class="wizard-step-label" data-i18n="wizard.step.dates">Dates</span>
+            </div>
+            <div class="wizard-step" data-step="3">
+              <div class="wizard-step-circle">3</div>
+              <span class="wizard-step-label" data-i18n="wizard.step.preferences">Preferences</span>
+            </div>
+            <div class="wizard-step" data-step="4">
+              <div class="wizard-step-circle">4</div>
+              <span class="wizard-step-label" data-i18n="wizard.step.generating">AI</span>
+            </div>
+            <div class="wizard-step" data-step="5">
+              <div class="wizard-step-circle">5</div>
+              <span class="wizard-step-label" data-i18n="wizard.step.review">Review</span>
+            </div>
           </div>
-        </div>
 
-        <button id="generateTripBtn" class="ios-generate-btn">
-          🤖 <span data-i18n="trip.generate">Generate Smart Trip</span>
-        </button>
+          <!-- Step 1: Destination -->
+          <div class="wizard-panel active" data-panel="1">
+            <h2 class="wizard-panel-title" data-i18n="wizard.destination.title">Where are we going?</h2>
+            <p class="wizard-panel-subtitle" data-i18n="wizard.destination.subtitle">Choose your dream destination</p>
 
-        <div id="enhancedTripDisplay" class="ios-results" style="margin-top: var(--space-6);">
-          <!-- Trip results will be inserted here -->
-        </div>
-        </div><!-- End tripPlannerSection -->
+            <div class="wizard-search-container">
+              <input type="text"
+                     id="wizardDestSearch"
+                     class="wizard-search-input"
+                     placeholder="Search destinations..."
+                     data-i18n-placeholder="wizard.destination.search">
+            </div>
+
+            <p class="wizard-section-label" data-i18n="wizard.destination.popular">Popular Destinations</p>
+            <div id="destinationsGrid" class="destinations-grid">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Step 2: Dates -->
+          <div class="wizard-panel" data-panel="2">
+            <h2 class="wizard-panel-title" data-i18n="wizard.dates.title">When are we traveling?</h2>
+            <p class="wizard-panel-subtitle" data-i18n="wizard.dates.subtitle">Pick your travel dates</p>
+
+            <div class="wizard-date-row">
+              <div class="wizard-date-field">
+                <label class="wizard-date-label" data-i18n="wizard.dates.start">Start Date</label>
+                <input type="date" id="wizardStartDate" class="wizard-date-input">
+              </div>
+              <div class="wizard-date-field">
+                <label class="wizard-date-label" data-i18n="wizard.dates.end">End Date</label>
+                <input type="date" id="wizardEndDate" class="wizard-date-input">
+              </div>
+            </div>
+
+            <p class="wizard-section-label" data-i18n="wizard.dates.quick">Quick Select</p>
+            <div class="wizard-chips">
+              <button class="wizard-chip" data-duration="weekend" data-i18n="wizard.dates.weekend">Weekend</button>
+              <button class="wizard-chip" data-duration="week" data-i18n="wizard.dates.week">1 Week</button>
+              <button class="wizard-chip" data-duration="2weeks" data-i18n="wizard.dates.2weeks">2 Weeks</button>
+            </div>
+
+            <div class="wizard-flexible">
+              <span class="wizard-flexible-label" data-i18n="wizard.dates.flexible">Flexible dates</span>
+              <div id="wizardFlexibleToggle" class="wizard-toggle"></div>
+            </div>
+          </div>
+
+          <!-- Step 3: Preferences -->
+          <div class="wizard-panel" data-panel="3">
+            <h2 class="wizard-panel-title" data-i18n="wizard.preferences.title">What matters to you?</h2>
+            <p class="wizard-panel-subtitle" data-i18n="wizard.preferences.subtitle">Customize your perfect trip</p>
+
+            <!-- Pace Slider -->
+            <div class="wizard-pace-section">
+              <p class="wizard-section-label" data-i18n="wizard.preferences.pace">Pace</p>
+              <div class="wizard-pace-slider-container">
+                <span class="wizard-pace-label" data-i18n="wizard.preferences.relaxed">Relaxed</span>
+                <input type="range" id="wizardPaceSlider" class="wizard-pace-slider" min="1" max="5" value="3">
+                <span class="wizard-pace-label" data-i18n="wizard.preferences.intensive">Intensive</span>
+              </div>
+            </div>
+
+            <!-- Interests Grid -->
+            <p class="wizard-section-label">
+              <span data-i18n="wizard.preferences.interests">Interests</span>
+              <span id="wizardInterestCount" style="color: var(--ios-blue); font-weight: normal;"> (0/4)</span>
+            </p>
+            <div id="wizardInterestsGrid" class="wizard-interests-grid">
+              <button class="wizard-interest" data-interest="food">
+                <span class="wizard-interest-icon">🍽️</span>
+                <span class="wizard-interest-label" data-i18n="categories.food">Food</span>
+              </button>
+              <button class="wizard-interest" data-interest="nature">
+                <span class="wizard-interest-icon">🌿</span>
+                <span class="wizard-interest-label" data-i18n="categories.nature">Nature</span>
+              </button>
+              <button class="wizard-interest" data-interest="culture">
+                <span class="wizard-interest-icon">🏛️</span>
+                <span class="wizard-interest-label" data-i18n="categories.culture">Culture</span>
+              </button>
+              <button class="wizard-interest" data-interest="shopping">
+                <span class="wizard-interest-icon">🛍️</span>
+                <span class="wizard-interest-label" data-i18n="categories.shopping">Shopping</span>
+              </button>
+              <button class="wizard-interest" data-interest="art">
+                <span class="wizard-interest-icon">🎨</span>
+                <span class="wizard-interest-label" data-i18n="categories.art">Art</span>
+              </button>
+              <button class="wizard-interest" data-interest="nightlife">
+                <span class="wizard-interest-icon">🌙</span>
+                <span class="wizard-interest-label" data-i18n="categories.nightlife">Nightlife</span>
+              </button>
+              <button class="wizard-interest" data-interest="adventure">
+                <span class="wizard-interest-icon">🧗</span>
+                <span class="wizard-interest-label" data-i18n="categories.adventure">Adventure</span>
+              </button>
+              <button class="wizard-interest" data-interest="wellness">
+                <span class="wizard-interest-icon">🧘</span>
+                <span class="wizard-interest-label" data-i18n="categories.wellness">Wellness</span>
+              </button>
+            </div>
+
+            <!-- Budget Level -->
+            <p class="wizard-section-label" data-i18n="wizard.preferences.budget">Budget Level</p>
+            <div class="wizard-button-group" id="wizardBudgetGroup">
+              <button class="wizard-button-option" data-budget="budget" data-i18n="wizard.budget.budget">Budget</button>
+              <button class="wizard-button-option selected" data-budget="moderate" data-i18n="wizard.budget.moderate">Moderate</button>
+              <button class="wizard-button-option" data-budget="premium" data-i18n="wizard.budget.premium">Premium</button>
+              <button class="wizard-button-option" data-budget="luxury" data-i18n="wizard.budget.luxury">Luxury</button>
+            </div>
+
+            <!-- Travel Style -->
+            <p class="wizard-section-label" data-i18n="wizard.preferences.style">Travel Style</p>
+            <div class="wizard-button-group" id="wizardStyleGroup">
+              <button class="wizard-button-option" data-style="solo" data-i18n="wizard.style.solo">Solo</button>
+              <button class="wizard-button-option selected" data-style="couple" data-i18n="wizard.style.couple">Couple</button>
+              <button class="wizard-button-option" data-style="family" data-i18n="wizard.style.family">Family</button>
+              <button class="wizard-button-option" data-style="group" data-i18n="wizard.style.group">Group</button>
+            </div>
+          </div>
+
+          <!-- Step 4: AI Generation -->
+          <div class="wizard-panel" data-panel="4">
+            <div class="wizard-generating">
+              <div class="wizard-generating-icon">🤖</div>
+              <h3 class="wizard-generating-title" data-i18n="wizard.generating.title">Creating Your Trip</h3>
+              <div class="wizard-generating-progress">
+                <div id="wizardProgressBar" class="wizard-generating-progress-bar"></div>
+              </div>
+              <div class="wizard-generating-steps">
+                <div class="wizard-generating-step active" data-gen-step="1">
+                  <span class="wizard-generating-step-icon">⏳</span>
+                  <span data-i18n="wizard.generating.step1">Analyzing your preferences...</span>
+                </div>
+                <div class="wizard-generating-step" data-gen-step="2">
+                  <span class="wizard-generating-step-icon">⏳</span>
+                  <span data-i18n="wizard.generating.step2">Finding best places...</span>
+                </div>
+                <div class="wizard-generating-step" data-gen-step="3">
+                  <span class="wizard-generating-step-icon">⏳</span>
+                  <span data-i18n="wizard.generating.step3">Optimizing your route...</span>
+                </div>
+                <div class="wizard-generating-step" data-gen-step="4">
+                  <span class="wizard-generating-step-icon">⏳</span>
+                  <span data-i18n="wizard.generating.step4">Adding local tips...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 5: Review -->
+          <div class="wizard-panel" data-panel="5">
+            <div class="wizard-review-header">
+              <h2 class="wizard-review-title" data-i18n="wizard.review.title">Your Trip Itinerary</h2>
+              <span id="wizardReviewMeta" class="wizard-review-meta"></span>
+            </div>
+
+            <!-- Day Tabs -->
+            <div id="wizardDayTabs" class="wizard-day-tabs">
+              <!-- Generated dynamically -->
+            </div>
+
+            <!-- Activity Timeline -->
+            <div id="wizardTimeline" class="wizard-timeline">
+              <!-- Generated dynamically -->
+            </div>
+          </div>
+
+          <!-- Navigation Buttons -->
+          <div id="wizardNav" class="wizard-nav">
+            <button id="wizardBack" class="wizard-nav-btn secondary" data-i18n="wizard.nav.back">Back</button>
+            <button id="wizardNext" class="wizard-nav-btn primary" data-i18n="wizard.nav.next">Next</button>
+          </div>
+
+          <!-- Final Actions (Step 5 only) -->
+          <div id="wizardFinalActions" class="wizard-final-actions">
+            <button id="wizardStartTrip" class="wizard-final-btn primary" data-i18n="wizard.final.start">Start Now</button>
+            <button id="wizardSaveTrip" class="wizard-final-btn secondary" data-i18n="wizard.final.save">Save Trip</button>
+          </div>
+        </div><!-- End tripWizard -->
       </section>
 
       <!-- Profile View -->

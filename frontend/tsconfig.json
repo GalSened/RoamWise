@@ -22,7 +22,11 @@
       "@/core/*": ["src/core/*"],
       "@/features/*": ["src/features/*"],
       "@/providers/*": ["src/providers/*"],
-      "@/lib/*": ["src/lib/*"]
+      "@/lib/*": ["src/lib/*"],
+      "@/domain/*": ["src/domain/*"],
+      "@/stores/*": ["src/stores/*"],
+      "@/shared/*": ["src/shared/*"],
+      "@/services/*": ["src/services/*"]
     }
   },
   "include": ["src"],

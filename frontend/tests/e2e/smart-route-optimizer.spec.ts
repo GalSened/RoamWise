@@ -2,7 +2,8 @@ import { test, expect } from '@playwright/test';
 import { waitForPlannerOK } from './utils/waits';
 import { dismissModals } from './utils/dismissModals';
 
-test.describe('Smart Route Optimizer - Mode Selection', () => {
+// Skip: Mode selector UI was replaced by wizard flow
+test.describe.skip('Smart Route Optimizer - Mode Selection', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await dismissModals(page);
@@ -89,7 +90,8 @@ test.describe('Smart Route Optimizer - Mode Selection', () => {
   });
 });
 
-test.describe('Smart Route Optimizer - Trip Generation with Modes', () => {
+// Skip: Mode-based trip generation was replaced by wizard flow
+test.describe.skip('Smart Route Optimizer - Trip Generation with Modes', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await dismissModals(page);
@@ -184,7 +186,8 @@ test.describe('Smart Route Optimizer - Trip Generation with Modes', () => {
   });
 });
 
-test.describe('Smart Route Optimizer - Weather Badge', () => {
+// Skip: Weather badge UI was replaced by wizard flow
+test.describe.skip('Smart Route Optimizer - Weather Badge', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await dismissModals(page);

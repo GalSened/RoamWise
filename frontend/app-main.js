@@ -297,8 +297,11 @@ class SimpleNavigation {
     const loadTranslations = async (lang) => {
       if (this.translations[lang]) return this.translations[lang];
       try {
-        // Use relative path for Vite base path compatibility
-        const basePath = import.meta.env?.BASE_URL || '/';
+        // Derive base path from current URL (handles /roamwise-app/ or /)
+        const pathParts = window.location.pathname.split('/').filter(Boolean);
+        const basePath = pathParts.length > 0 && pathParts[0] !== 'index.html'
+          ? `/${pathParts[0]}/`
+          : '/';
         const response = await fetch(`${basePath}i18n/${lang}.json`);
         if (response.ok) {
           this.translations[lang] = await response.json();
@@ -1110,15 +1113,16 @@ class SimpleNavigation {
   checkAndRenderActiveTrip() {
     const activeTrip = this.getActiveTrip();
     const activeTripSection = document.getElementById('activeTripSection');
-    const tripPlannerSection = document.getElementById('tripPlannerSection');
+    const tripWizard = document.getElementById('tripWizard');
 
     if (activeTrip && activeTrip.timeline && activeTrip.timeline.length > 0) {
       if (activeTripSection) activeTripSection.style.display = 'block';
-      if (tripPlannerSection) tripPlannerSection.style.display = 'none';
+      if (tripWizard) tripWizard.style.display = 'none';
       this.renderActiveTripView(activeTrip);
     } else {
       if (activeTripSection) activeTripSection.style.display = 'none';
-      if (tripPlannerSection) tripPlannerSection.style.display = 'block';
+      if (tripWizard) tripWizard.style.display = 'block';
+      this.initWizard();
     }
   }
 
@@ -1352,6 +1356,561 @@ class SimpleNavigation {
     }
     // Legacy behavior for AI view - just update chat trip banner
     this.updateChatTripBanner();
+  }
+
+  // ===== TRIP PLANNING WIZARD =====
+
+  initWizard() {
+    this.wizardStep = 1;
+    this.wizardData = {
+      destination: null,
+      dates: { start: null, end: null, flexible: false },
+      preferences: { pace: 3, interests: [], budget: 'moderate', style: 'couple' },
+      generatedPlan: null
+    };
+
+    // Render popular destinations
+    this.renderPopularDestinations();
+
+    // Setup all step handlers
+    this.setupWizardStep1();
+    this.setupWizardStep2();
+    this.setupWizardStep3();
+    this.setupWizardNavigation();
+    this.setupWizardFinalActions();
+
+    // Reset to step 1
+    this.goToWizardStep(1);
+  }
+
+  setupWizardStep1() {
+    // Destination search
+    const searchInput = document.getElementById('wizardDestSearch');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        // Filter destinations by search query (basic filter)
+        const query = e.target.value.toLowerCase();
+        document.querySelectorAll('.destination-card').forEach(card => {
+          const name = card.querySelector('.destination-name')?.textContent.toLowerCase() || '';
+          card.style.display = name.includes(query) ? 'flex' : 'none';
+        });
+      });
+    }
+
+    // Destination card selection
+    document.getElementById('destinationsGrid')?.addEventListener('click', (e) => {
+      const card = e.target.closest('.destination-card');
+      if (card) {
+        this.selectDestination(card);
+      }
+    });
+  }
+
+  renderPopularDestinations() {
+    const grid = document.getElementById('destinationsGrid');
+    if (!grid) return;
+
+    const destinations = [
+      { id: 'paris', name: 'Paris', country: 'France', lat: 48.8566, lon: 2.3522, emoji: '🇫🇷' },
+      { id: 'tokyo', name: 'Tokyo', country: 'Japan', lat: 35.6762, lon: 139.6503, emoji: '🇯🇵' },
+      { id: 'rome', name: 'Rome', country: 'Italy', lat: 41.9028, lon: 12.4964, emoji: '🇮🇹' },
+      { id: 'barcelona', name: 'Barcelona', country: 'Spain', lat: 41.3874, lon: 2.1686, emoji: '🇪🇸' },
+      { id: 'london', name: 'London', country: 'UK', lat: 51.5074, lon: -0.1278, emoji: '🇬🇧' },
+      { id: 'tel-aviv', name: 'Tel Aviv', country: 'Israel', lat: 32.0853, lon: 34.7818, emoji: '🇮🇱' }
+    ];
+
+    grid.innerHTML = destinations.map(dest => `
+      <div class="destination-card" data-dest-id="${dest.id}" data-lat="${dest.lat}" data-lon="${dest.lon}">
+        <img class="destination-image"
+             src="https://source.unsplash.com/400x300/?${dest.name},city"
+             alt="${dest.name}"
+             onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 400 300%22><rect fill=%22%23e0e0e0%22 width=%22400%22 height=%22300%22/><text x=%22200%22 y=%22150%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2240%22>${dest.emoji}</text></svg>'">
+        <div class="destination-overlay">
+          <span class="destination-name">${dest.name}</span>
+          <span class="destination-country">${dest.country}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  selectDestination(card) {
+    // Remove previous selection
+    document.querySelectorAll('.destination-card.selected').forEach(c => c.classList.remove('selected'));
+
+    // Select this card
+    card.classList.add('selected');
+
+    // Store destination data
+    const destId = card.dataset.destId;
+    const lat = parseFloat(card.dataset.lat);
+    const lon = parseFloat(card.dataset.lon);
+    const name = card.querySelector('.destination-name')?.textContent || destId;
+    const country = card.querySelector('.destination-country')?.textContent || '';
+
+    this.wizardData.destination = { id: destId, name, country, lat, lon };
+  }
+
+  setupWizardStep2() {
+    // Date inputs
+    const startDate = document.getElementById('wizardStartDate');
+    const endDate = document.getElementById('wizardEndDate');
+
+    // Set default dates (today + 7 days)
+    const today = new Date();
+    const weekLater = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    if (startDate) {
+      startDate.valueAsDate = today;
+      startDate.addEventListener('change', () => {
+        this.wizardData.dates.start = startDate.value;
+      });
+    }
+    if (endDate) {
+      endDate.valueAsDate = weekLater;
+      endDate.addEventListener('change', () => {
+        this.wizardData.dates.end = endDate.value;
+      });
+    }
+
+    // Quick duration chips
+    document.querySelectorAll('.wizard-chip[data-duration]').forEach(chip => {
+      chip.addEventListener('click', () => {
+        this.setQuickDuration(chip.dataset.duration);
+        // Update active state
+        document.querySelectorAll('.wizard-chip[data-duration]').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+      });
+    });
+
+    // Flexible dates toggle
+    const flexToggle = document.getElementById('flexibleDatesToggle');
+    if (flexToggle) {
+      flexToggle.addEventListener('click', () => {
+        flexToggle.classList.toggle('active');
+        this.wizardData.dates.flexible = flexToggle.classList.contains('active');
+      });
+    }
+  }
+
+  setQuickDuration(duration) {
+    const startDate = document.getElementById('wizardStartDate');
+    const endDate = document.getElementById('wizardEndDate');
+
+    const today = new Date();
+    let end = new Date(today);
+
+    switch (duration) {
+      case 'weekend':
+        // Find next Friday
+        const daysUntilFriday = (5 - today.getDay() + 7) % 7 || 7;
+        end = new Date(today.getTime() + (daysUntilFriday + 2) * 24 * 60 * 60 * 1000);
+        break;
+      case 'week':
+        end = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '2weeks':
+        end = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000);
+        break;
+    }
+
+    if (startDate) startDate.valueAsDate = today;
+    if (endDate) endDate.valueAsDate = end;
+
+    this.wizardData.dates.start = today.toISOString().split('T')[0];
+    this.wizardData.dates.end = end.toISOString().split('T')[0];
+  }
+
+  setupWizardStep3() {
+    // Pace slider
+    const paceSlider = document.getElementById('wizardPaceSlider');
+    const paceValue = document.getElementById('wizardPaceValue');
+    if (paceSlider) {
+      paceSlider.addEventListener('input', () => {
+        this.wizardData.preferences.pace = parseInt(paceSlider.value);
+        if (paceValue) paceValue.textContent = paceSlider.value;
+      });
+    }
+
+    // Interests selection
+    document.querySelectorAll('.wizard-interest').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.toggleWizardInterest(btn);
+      });
+    });
+
+    // Budget buttons
+    document.querySelectorAll('.wizard-button[data-budget]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.wizard-button[data-budget]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.wizardData.preferences.budget = btn.dataset.budget;
+      });
+    });
+
+    // Style buttons
+    document.querySelectorAll('.wizard-button[data-style]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.wizard-button[data-style]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.wizardData.preferences.style = btn.dataset.style;
+      });
+    });
+  }
+
+  toggleWizardInterest(btn) {
+    const interest = btn.dataset.interest;
+    const interests = this.wizardData.preferences.interests;
+
+    if (btn.classList.contains('active')) {
+      // Deselect
+      btn.classList.remove('active');
+      const index = interests.indexOf(interest);
+      if (index > -1) interests.splice(index, 1);
+    } else {
+      // Select (max 4)
+      if (interests.length < 4) {
+        btn.classList.add('active');
+        interests.push(interest);
+      } else {
+        this.showToast(this.t('trip.max_interests') || 'Maximum 4 interests allowed');
+      }
+    }
+  }
+
+  setupWizardNavigation() {
+    const backBtn = document.getElementById('wizardBack');
+    const nextBtn = document.getElementById('wizardNext');
+
+    if (backBtn) {
+      backBtn.addEventListener('click', () => this.prevWizardStep());
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => this.nextWizardStep());
+    }
+  }
+
+  goToWizardStep(step) {
+    this.wizardStep = step;
+
+    // Update progress bar
+    document.querySelectorAll('.wizard-step').forEach((el, i) => {
+      el.classList.remove('active', 'completed');
+      if (i + 1 < step) {
+        el.classList.add('completed');
+      } else if (i + 1 === step) {
+        el.classList.add('active');
+      }
+    });
+
+    // Show/hide panels
+    document.querySelectorAll('.wizard-panel').forEach(panel => {
+      panel.classList.remove('active');
+      if (parseInt(panel.dataset.panel) === step) {
+        panel.classList.add('active');
+      }
+    });
+
+    // Update navigation buttons
+    const backBtn = document.getElementById('wizardBack');
+    const nextBtn = document.getElementById('wizardNext');
+    const navContainer = document.getElementById('wizardNav');
+    const finalActions = document.getElementById('wizardFinalActions');
+
+    if (backBtn) backBtn.style.display = step === 1 ? 'none' : 'flex';
+
+    if (nextBtn) {
+      if (step === 3) {
+        nextBtn.textContent = this.t('wizard.nav.generate') || 'Generate';
+      } else if (step < 5) {
+        nextBtn.textContent = this.t('wizard.nav.next') || 'Next';
+      }
+    }
+
+    // Hide nav on step 4 (generating) and 5 (review)
+    if (navContainer) navContainer.style.display = step >= 4 ? 'none' : 'flex';
+    if (finalActions) finalActions.style.display = step === 5 ? 'flex' : 'none';
+  }
+
+  validateCurrentStep() {
+    switch (this.wizardStep) {
+      case 1:
+        if (!this.wizardData.destination) {
+          this.showToast(this.t('wizard.select_destination') || 'Please select a destination');
+          return false;
+        }
+        break;
+      case 2:
+        if (!this.wizardData.dates.start || !this.wizardData.dates.end) {
+          this.showToast(this.t('wizard.select_dates') || 'Please select travel dates');
+          return false;
+        }
+        break;
+      case 3:
+        if (this.wizardData.preferences.interests.length === 0) {
+          this.showToast(this.t('trip.select_at_least_one') || 'Please select at least 1 interest');
+          return false;
+        }
+        break;
+    }
+    return true;
+  }
+
+  nextWizardStep() {
+    if (!this.validateCurrentStep()) return;
+
+    if (this.wizardStep === 3) {
+      // Go to generation step
+      this.goToWizardStep(4);
+      this.startGeneration();
+    } else if (this.wizardStep < 5) {
+      this.goToWizardStep(this.wizardStep + 1);
+    }
+  }
+
+  prevWizardStep() {
+    if (this.wizardStep > 1 && this.wizardStep !== 4) {
+      this.goToWizardStep(this.wizardStep - 1);
+    }
+  }
+
+  async startGeneration() {
+    const progressBar = document.getElementById('wizardGeneratingProgress');
+    const steps = document.querySelectorAll('.wizard-gen-step');
+
+    // Animate progress
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+      progress += 2;
+      if (progressBar) progressBar.style.width = `${Math.min(progress, 95)}%`;
+
+      // Update step indicators
+      if (progress >= 20 && steps[0]) steps[0].classList.add('done');
+      if (progress >= 45 && steps[1]) steps[1].classList.add('done');
+      if (progress >= 70 && steps[2]) steps[2].classList.add('done');
+      if (progress >= 90 && steps[3]) steps[3].classList.add('done');
+    }, 100);
+
+    try {
+      await this.generateTripPlan();
+      clearInterval(progressInterval);
+      if (progressBar) progressBar.style.width = '100%';
+
+      // Small delay to show completion
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Go to review step
+      this.goToWizardStep(5);
+      this.renderTripReview();
+    } catch (error) {
+      clearInterval(progressInterval);
+      console.error('Trip generation error:', error);
+      this.showToast(this.t('trip.error') || 'Error generating trip');
+      this.goToWizardStep(3);
+    }
+  }
+
+  async generateTripPlan() {
+    const { destination, dates, preferences } = this.wizardData;
+
+    // Calculate trip days
+    const startDate = new Date(dates.start);
+    const endDate = new Date(dates.end);
+    const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+
+    // Map interests to API types
+    const interestToType = {
+      'food': 'restaurant',
+      'nature': 'park',
+      'culture': 'museum',
+      'shopping': 'shopping_mall',
+      'entertainment': 'tourist_attraction',
+      'relaxation': 'spa',
+      'art': 'art_gallery',
+      'history': 'museum',
+      'nightlife': 'night_club',
+      'adventure': 'tourist_attraction',
+      'wellness': 'spa'
+    };
+    const types = preferences.interests.map(i => interestToType[i] || 'tourist_attraction');
+
+    // Adjust limit based on pace (1-5) and days
+    const activitiesPerDay = 2 + preferences.pace;
+    const limit = Math.min(activitiesPerDay * days, 20);
+
+    // Map budget to min rating
+    const budgetToRating = {
+      'budget': 3.5,
+      'moderate': 4.0,
+      'premium': 4.3,
+      'luxury': 4.5
+    };
+    const minRating = budgetToRating[preferences.budget] || 4.0;
+
+    const response = await fetch(`${API_BASE_URL}/planner/plan-day`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Lang': localStorage.getItem('app-language') || 'en'
+      },
+      body: JSON.stringify({
+        origin: { lat: destination.lat, lon: destination.lon },
+        mode: 'drive',
+        near_origin: {
+          radius_km: 15,
+          types: types.length > 0 ? types : ['tourist_attraction', 'restaurant'],
+          min_rating: minRating,
+          limit: limit
+        }
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.ok && data.plan) {
+      this.wizardData.generatedPlan = {
+        ...data.plan,
+        destination: destination,
+        dates: dates,
+        preferences: preferences,
+        days: days
+      };
+
+      // Store for later use
+      window._generatedPlan = this.wizardData.generatedPlan;
+
+      // Track stats
+      this.tripsPlanned++;
+      TenantStorage.set('stats-trips', this.tripsPlanned);
+      const aiTrips = parseInt(TenantStorage.get('stats-ai-trips') || '0') + 1;
+      TenantStorage.set('stats-ai-trips', aiTrips);
+      this.addTravelerXP(30);
+      this.updateProfileStats();
+    } else {
+      throw new Error('Failed to generate trip plan');
+    }
+  }
+
+  renderTripReview() {
+    const plan = this.wizardData.generatedPlan;
+    if (!plan) return;
+
+    const { destination, dates, timeline } = plan;
+    const days = plan.days || 1;
+
+    // Update header
+    const header = document.getElementById('wizardReviewHeader');
+    if (header) {
+      header.innerHTML = `
+        <h2 class="wizard-panel-title">${destination.name}</h2>
+        <p class="wizard-panel-subtitle">${dates.start} → ${dates.end}</p>
+      `;
+    }
+
+    // Generate day tabs
+    const tabsContainer = document.getElementById('wizardDayTabs');
+    if (tabsContainer) {
+      tabsContainer.innerHTML = Array.from({ length: days }, (_, i) => `
+        <button class="wizard-day-tab ${i === 0 ? 'active' : ''}" data-day="${i + 1}">
+          ${this.t('wizard.review.day') || 'Day'} ${i + 1}
+        </button>
+      `).join('');
+
+      tabsContainer.addEventListener('click', (e) => {
+        const tab = e.target.closest('.wizard-day-tab');
+        if (tab) {
+          document.querySelectorAll('.wizard-day-tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          this.renderDayTimeline(parseInt(tab.dataset.day));
+        }
+      });
+    }
+
+    // Render first day
+    this.renderDayTimeline(1);
+  }
+
+  renderDayTimeline(dayNumber) {
+    const timelineContainer = document.getElementById('wizardActivityTimeline');
+    if (!timelineContainer) return;
+
+    const plan = this.wizardData.generatedPlan;
+    if (!plan || !plan.timeline) return;
+
+    // Distribute activities across days
+    const activitiesPerDay = Math.ceil(plan.timeline.length / (plan.days || 1));
+    const startIndex = (dayNumber - 1) * activitiesPerDay;
+    const dayActivities = plan.timeline.slice(startIndex, startIndex + activitiesPerDay);
+
+    // Generate time slots starting from 9 AM
+    const baseHour = 9;
+
+    timelineContainer.innerHTML = dayActivities.map((activity, i) => {
+      const name = activity.to?.name || activity.name || `Activity ${i + 1}`;
+      const address = activity.to?.vicinity || activity.address || '';
+      const duration = activity.leg_seconds ? Math.round(activity.leg_seconds / 60) : 60;
+      const hour = baseHour + Math.floor(i * 1.5);
+      const time = `${hour}:00`;
+
+      return `
+        <div class="wizard-activity-card" data-activity-index="${startIndex + i}">
+          <div class="wizard-activity-time">${time}</div>
+          <div class="wizard-activity-content">
+            <div class="wizard-activity-name">${this.escapeHtml(name)}</div>
+            <div class="wizard-activity-address">${this.escapeHtml(address)}</div>
+            <div class="wizard-activity-duration">${duration} min</div>
+          </div>
+          <div class="wizard-activity-actions">
+            <button class="wizard-activity-btn" data-action="edit" title="Edit">✏️</button>
+            <button class="wizard-activity-btn" data-action="remove" title="Remove">🗑️</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Activity action handlers
+    timelineContainer.addEventListener('click', (e) => {
+      const btn = e.target.closest('.wizard-activity-btn');
+      if (!btn) return;
+
+      const card = btn.closest('.wizard-activity-card');
+      const index = parseInt(card.dataset.activityIndex);
+      const action = btn.dataset.action;
+
+      if (action === 'remove') {
+        plan.timeline.splice(index, 1);
+        this.renderDayTimeline(dayNumber);
+      }
+      // Edit action can be added in Phase 2
+    });
+  }
+
+  setupWizardFinalActions() {
+    const startBtn = document.getElementById('wizardStartTrip');
+    const saveBtn = document.getElementById('wizardSaveTrip');
+
+    if (startBtn) {
+      startBtn.addEventListener('click', () => {
+        if (this.wizardData.generatedPlan) {
+          this.setActiveTrip(this.wizardData.generatedPlan);
+          this.showToast(this.t('toast.trip_started') || 'Trip started! Let\'s go!');
+          this.showView('ai');
+        }
+      });
+    }
+
+    if (saveBtn) {
+      saveBtn.addEventListener('click', () => {
+        if (this.wizardData.generatedPlan) {
+          const savedTrips = TenantStorage.get('saved-trips', []);
+          savedTrips.push({
+            ...this.wizardData.generatedPlan,
+            savedAt: new Date().toISOString()
+          });
+          TenantStorage.set('saved-trips', savedTrips);
+          this.showToast(this.t('toast.trip_saved') || 'Trip saved!');
+        }
+      });
+    }
   }
 
   setupTripGeneration() {

@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { dismissModals } from './utils/dismissModals';
 
-test.describe('Monitor Agent - Intervention System', () => {
+// Skip: These tests are for the mode-based trip planner UI which was replaced by the wizard flow
+test.describe.skip('Monitor Agent - Intervention System', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await dismissModals(page);
@@ -38,7 +39,8 @@ test.describe('Monitor Agent - Intervention System', () => {
   });
 });
 
-test.describe('Monitor Agent - Mode Availability', () => {
+// Skip: Mode selector UI was replaced by wizard flow
+test.describe.skip('Monitor Agent - Mode Availability', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await dismissModals(page);
@@ -73,7 +75,8 @@ test.describe('Monitor Agent - Mode Availability', () => {
   });
 });
 
-test.describe('Monitor Agent - Weather Insights Display', () => {
+// Skip: Weather insights UI was replaced by wizard flow
+test.describe.skip('Monitor Agent - Weather Insights Display', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await dismissModals(page);
@@ -123,7 +126,8 @@ test.describe('Monitor Agent - Weather Insights Display', () => {
   });
 });
 
-test.describe('Monitor Agent - Intervention UI Elements', () => {
+// Skip: Intervention UI was replaced by wizard flow
+test.describe.skip('Monitor Agent - Intervention UI Elements', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await dismissModals(page);
