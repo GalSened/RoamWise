@@ -10,25 +10,25 @@
   --warning: var(--color-warning);
   --success: var(--color-success);
 
-  /* Neutral Palette - using design system neutrals */
-  --bg: linear-gradient(135deg, var(--color-neutral-50) 0%, var(--color-neutral-200) 100%);
-  --surface: rgba(255, 255, 255, 0.95);
-  --surface-hover: rgba(255, 255, 255, 1);
-  --surface-active: var(--color-neutral-50);
+  /* Neutral Palette - Black background theme */
+  --bg: #000000;
+  --surface: rgba(17, 17, 17, 0.95);
+  --surface-hover: rgba(26, 26, 26, 1);
+  --surface-active: #1a1a1a;
 
   /* Text Colors - using design system text tokens */
   /* --text-primary, --text-secondary, --text-muted defined in index.html */
-  --text-disabled: var(--color-neutral-400);
-  --text-emphasis: var(--color-neutral-900);
+  --text-disabled: var(--color-neutral-500);
+  --text-emphasis: #FFFFFF;
 
-  /* Borders & Dividers */
-  --border: var(--border-default);
-  --border-hover: var(--border-hover);
-  --divider: var(--color-neutral-200);
+  /* Borders & Dividers - Dark theme */
+  --border: #333333;
+  --border-hover: #444444;
+  --divider: #222222;
 
-  /* Glassmorphism */
-  --glass: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(30, 41, 59, 0.2);
+  /* Glassmorphism - Dark theme */
+  --glass: rgba(17, 17, 17, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.1);
   --backdrop-blur: blur(20px);
 
   /* Shadows - using design system shadows */

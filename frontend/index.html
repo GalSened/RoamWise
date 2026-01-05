@@ -75,22 +75,22 @@
       --gradient-ai: linear-gradient(90deg, #8B5CF6, #EC4899, #F97316);
 
       /* === SEMANTIC MAPPINGS === */
-      /* Backgrounds */
-      --bg-primary: var(--color-white);
-      --bg-secondary: var(--color-neutral-100);
-      --bg-tertiary: var(--color-white);
-      --bg-grouped: var(--color-neutral-100);
+      /* Backgrounds - Dark Theme by Default */
+      --bg-primary: #000000;
+      --bg-secondary: #0A0A0A;
+      --bg-tertiary: #111111;
+      --bg-grouped: #0A0A0A;
 
-      /* Text */
-      --text-primary: var(--color-neutral-900);
-      --text-secondary: var(--color-neutral-700);
-      --text-muted: var(--color-neutral-500);
+      /* Text - Light for dark background */
+      --text-primary: #F8FAFC;
+      --text-secondary: #E2E8F0;
+      --text-muted: #94A3B8;
 
-      /* Labels (iOS compatibility aliases) */
-      --label-primary: var(--color-neutral-900);
-      --label-secondary: var(--color-neutral-600);
-      --label-tertiary: var(--color-neutral-400);
-      --label-quaternary: var(--color-neutral-300);
+      /* Labels (iOS compatibility aliases) - Light for dark background */
+      --label-primary: #F8FAFC;
+      --label-secondary: #CBD5E1;
+      --label-tertiary: #94A3B8;
+      --label-quaternary: #64748B;
 
       /* Fill Colors */
       --fill-primary: rgba(100, 116, 139, 0.2);
@@ -98,11 +98,11 @@
       --fill-tertiary: rgba(100, 116, 139, 0.12);
       --fill-quaternary: rgba(100, 116, 139, 0.08);
 
-      /* Borders */
-      --border-default: var(--color-neutral-200);
-      --border-hover: var(--color-neutral-300);
-      --separator: var(--color-neutral-200);
-      --separator-opaque: var(--color-neutral-300);
+      /* Borders - Dark theme */
+      --border-default: #333333;
+      --border-hover: #444444;
+      --separator: #222222;
+      --separator-opaque: #333333;
 
       /* iOS Color Compatibility Aliases */
       --ios-blue: var(--color-primary);
@@ -3695,7 +3695,7 @@
                 <div class="ios-list-title" data-i18n="profile.home_country">Home Country</div>
               </div>
             </div>
-            <select id="homeCountrySelect" class="home-base-select">
+            <select id="homeCountrySelect" class="home-base-select" aria-label="Home Country">
               <option value="IL">Israel 🇮🇱</option>
               <option value="US">United States 🇺🇸</option>
               <option value="GB">United Kingdom 🇬🇧</option>
