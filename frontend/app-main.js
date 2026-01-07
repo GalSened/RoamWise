@@ -55,6 +55,489 @@ function truncateText(text, maxLength = 50) {
   return text.substring(0, maxLength) + '...';
 }
 
+// ============================================================================
+// TOAST NOTIFICATION SYSTEM
+// ============================================================================
+const ToastSystem = {
+  container: null,
+  queue: [],
+  maxVisible: 3,
+
+  init() {
+    this.container = document.getElementById('toastContainer');
+    if (!this.container) {
+      this.container = document.createElement('div');
+      this.container.id = 'toastContainer';
+      this.container.className = 'toast-container';
+      document.body.prepend(this.container);
+    }
+  },
+
+  /**
+   * Show a toast notification
+   * @param {string} message - The message to display
+   * @param {string} type - 'success' | 'error' | 'warning' | 'info'
+   * @param {number} duration - Duration in ms (default 3000)
+   * @returns {HTMLElement} The toast element
+   */
+  show(message, type = 'info', duration = 3000) {
+    if (!this.container) this.init();
+
+    const icons = {
+      success: '✓',
+      error: '✕',
+      warning: '⚠',
+      info: 'ℹ'
+    };
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `
+      <span class="toast-icon">${icons[type] || icons.info}</span>
+      <div class="toast-content">
+        <span class="toast-message">${message}</span>
+      </div>
+      <button class="toast-close" aria-label="Close">×</button>
+      <div class="toast-progress" style="animation-duration: ${duration}ms"></div>
+    `;
+
+    // Close button handler
+    const closeBtn = toast.querySelector('.toast-close');
+    closeBtn.addEventListener('click', () => this.dismiss(toast));
+
+    // Add to container
+    this.container.appendChild(toast);
+    this.queue.push(toast);
+
+    // Manage max visible toasts
+    while (this.queue.length > this.maxVisible) {
+      const oldest = this.queue.shift();
+      if (oldest && oldest.parentNode) {
+        this.dismiss(oldest, true);
+      }
+    }
+
+    // Auto-dismiss
+    if (duration > 0) {
+      setTimeout(() => this.dismiss(toast), duration);
+    }
+
+    return toast;
+  },
+
+  dismiss(toast, immediate = false) {
+    if (!toast || !toast.parentNode) return;
+
+    if (immediate) {
+      toast.remove();
+    } else {
+      toast.classList.add('toast-exit');
+      setTimeout(() => toast.remove(), 200);
+    }
+
+    // Remove from queue
+    const index = this.queue.indexOf(toast);
+    if (index > -1) this.queue.splice(index, 1);
+  },
+
+  // Convenience methods
+  success(message, duration) { return this.show(message, 'success', duration); },
+  error(message, duration) { return this.show(message, 'error', duration || 5000); },
+  warning(message, duration) { return this.show(message, 'warning', duration || 4000); },
+  info(message, duration) { return this.show(message, 'info', duration); }
+};
+
+// Global function for easy access
+function showToast(message, type = 'info', duration = 3000) {
+  return ToastSystem.show(message, type, duration);
+}
+
+// ============================================================================
+// CONFIRMATION DIALOG SYSTEM
+// ============================================================================
+const ConfirmDialog = {
+  /**
+   * Show a confirmation dialog
+   * @param {Object} options - Dialog options
+   * @param {string} options.title - Dialog title
+   * @param {string} options.message - Dialog message
+   * @param {string} options.icon - Emoji icon (optional)
+   * @param {string} options.confirmText - Confirm button text
+   * @param {string} options.cancelText - Cancel button text
+   * @param {string} options.confirmType - 'primary' | 'danger'
+   * @returns {Promise<boolean>} Resolves true if confirmed, false if cancelled
+   */
+  show(options) {
+    return new Promise((resolve) => {
+      const {
+        title = 'Confirm',
+        message = 'Are you sure?',
+        icon = '❓',
+        confirmText = 'Confirm',
+        cancelText = 'Cancel',
+        confirmType = 'primary'
+      } = options;
+
+      const overlay = document.createElement('div');
+      overlay.className = 'confirm-overlay';
+      overlay.innerHTML = `
+        <div class="confirm-dialog">
+          <div class="confirm-header">
+            <div class="confirm-icon">${icon}</div>
+            <h3 class="confirm-title">${title}</h3>
+            <p class="confirm-message">${message}</p>
+          </div>
+          <div class="confirm-actions">
+            <button class="confirm-btn confirm-btn-${confirmType}" data-action="confirm">${confirmText}</button>
+            <button class="confirm-btn confirm-btn-secondary" data-action="cancel">${cancelText}</button>
+          </div>
+        </div>
+      `;
+
+      const close = (result) => {
+        overlay.classList.add('confirm-exit');
+        setTimeout(() => {
+          overlay.remove();
+          resolve(result);
+        }, 150);
+      };
+
+      // Button handlers
+      overlay.querySelector('[data-action="confirm"]').addEventListener('click', () => close(true));
+      overlay.querySelector('[data-action="cancel"]').addEventListener('click', () => close(false));
+
+      // Click outside to cancel
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) close(false);
+      });
+
+      // Escape key to cancel
+      const escHandler = (e) => {
+        if (e.key === 'Escape') {
+          document.removeEventListener('keydown', escHandler);
+          close(false);
+        }
+      };
+      document.addEventListener('keydown', escHandler);
+
+      document.body.appendChild(overlay);
+    });
+  },
+
+  // Convenience method for destructive actions
+  async confirmDelete(itemName) {
+    return this.show({
+      title: 'Delete?',
+      message: `Are you sure you want to delete "${itemName}"? This cannot be undone.`,
+      icon: '🗑️',
+      confirmText: 'Delete',
+      cancelText: 'Keep',
+      confirmType: 'danger'
+    });
+  },
+
+  // Convenience method for ending trip
+  async confirmEndTrip(progress) {
+    return this.show({
+      title: 'End trip early?',
+      message: progress ? `You've completed ${progress}. Your progress will be saved.` : 'Your progress will be saved.',
+      icon: '🏁',
+      confirmText: 'End Trip',
+      cancelText: 'Keep Going',
+      confirmType: 'danger'
+    });
+  }
+};
+
+
+// ============================================
+// FEATURE HINTS SYSTEM - First-time user guidance
+// ============================================
+const FeatureHints = {
+  _shownHints: null,
+  
+  _loadShownHints() {
+    if (this._shownHints === null) {
+      try {
+        this._shownHints = JSON.parse(TenantStorage.get('feature-hints-shown', '[]'));
+      } catch {
+        this._shownHints = [];
+      }
+    }
+    return this._shownHints;
+  },
+  
+  _saveHint(featureId) {
+    const shown = this._loadShownHints();
+    if (!shown.includes(featureId)) {
+      shown.push(featureId);
+      TenantStorage.set('feature-hints-shown', JSON.stringify(shown));
+    }
+  },
+  
+  wasShown(featureId) {
+    return this._loadShownHints().includes(featureId);
+  },
+  
+  reset() {
+    this._shownHints = [];
+    TenantStorage.remove('feature-hints-shown');
+  },
+  
+  /**
+   * Show a feature hint if not already shown
+   * @param {string} featureId - Unique feature identifier
+   * @param {Object} options - Hint options
+   * @param {string} options.title - Hint title
+   * @param {string} options.body - Hint description
+   * @param {string} options.targetSelector - CSS selector for target element
+   * @param {string} options.position - 'top' | 'bottom' | 'left' | 'right'
+   * @param {string} options.icon - Emoji icon (optional)
+   * @returns {boolean} True if hint was shown, false if already seen
+   */
+  show(featureId, options) {
+    if (this.wasShown(featureId)) return false;
+    
+    const {
+      title,
+      body,
+      targetSelector,
+      position = 'bottom',
+      icon = '💡'
+    } = options;
+    
+    // Find target element
+    const target = targetSelector ? document.querySelector(targetSelector) : null;
+    
+    // Create hint overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'feature-hint-overlay';
+    overlay.setAttribute('data-feature', featureId);
+    
+    const hint = document.createElement('div');
+    hint.className = `feature-hint feature-hint-${position}`;
+    hint.innerHTML = `
+      <div class="feature-hint-arrow"></div>
+      <div class="feature-hint-content">
+        <div class="feature-hint-header">
+          <span class="feature-hint-icon">${icon}</span>
+          <span class="feature-hint-title">${title}</span>
+        </div>
+        <p class="feature-hint-body">${body}</p>
+        <button class="feature-hint-dismiss">Got it!</button>
+      </div>
+    `;
+    
+    overlay.appendChild(hint);
+    
+    // Position hint near target
+    if (target) {
+      const rect = target.getBoundingClientRect();
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+      
+      switch (position) {
+        case 'top':
+          hint.style.left = `${rect.left + scrollLeft + rect.width / 2}px`;
+          hint.style.top = `${rect.top + scrollTop - 10}px`;
+          hint.style.transform = 'translateX(-50%) translateY(-100%)';
+          break;
+        case 'bottom':
+          hint.style.left = `${rect.left + scrollLeft + rect.width / 2}px`;
+          hint.style.top = `${rect.bottom + scrollTop + 10}px`;
+          hint.style.transform = 'translateX(-50%)';
+          break;
+        case 'left':
+          hint.style.left = `${rect.left + scrollLeft - 10}px`;
+          hint.style.top = `${rect.top + scrollTop + rect.height / 2}px`;
+          hint.style.transform = 'translateX(-100%) translateY(-50%)';
+          break;
+        case 'right':
+          hint.style.left = `${rect.right + scrollLeft + 10}px`;
+          hint.style.top = `${rect.top + scrollTop + rect.height / 2}px`;
+          hint.style.transform = 'translateY(-50%)';
+          break;
+      }
+      
+      // Highlight target element
+      target.classList.add('feature-hint-target');
+    } else {
+      // Center if no target
+      hint.style.position = 'fixed';
+      hint.style.left = '50%';
+      hint.style.top = '50%';
+      hint.style.transform = 'translate(-50%, -50%)';
+    }
+    
+    // Dismiss handler
+    const dismiss = () => {
+      this._saveHint(featureId);
+      overlay.classList.add('feature-hint-exit');
+      if (target) target.classList.remove('feature-hint-target');
+      setTimeout(() => overlay.remove(), 200);
+    };
+    
+    hint.querySelector('.feature-hint-dismiss').addEventListener('click', dismiss);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) dismiss();
+    });
+    
+    document.body.appendChild(overlay);
+    return true;
+  },
+  
+  // Pre-defined hints for key features
+  hints: {
+    search: {
+      title: 'Find Your Next Adventure',
+      body: 'Type a destination or tap categories below to explore nearby places.',
+      targetSelector: '#freeText, #searchInput',
+      position: 'bottom',
+      icon: '🔍'
+    },
+    tripWizard: {
+      title: 'Plan in 5 Easy Steps',
+      body: 'Answer a few quick questions and AI will create your perfect itinerary.',
+      targetSelector: '.nav-btn[data-view="trip"]',
+      position: 'top',
+      icon: '🗺️'
+    },
+    chat: {
+      title: 'Your AI Travel Assistant',
+      body: 'Ask me anything about travel! I can find places, check weather, and more.',
+      targetSelector: '#chatInput',
+      position: 'top',
+      icon: '🤖'
+    },
+    profile: {
+      title: 'Track Your Adventures',
+      body: 'View your saved places, trips, achievements, and traveler level here.',
+      targetSelector: '.nav-btn[data-view="profile"]',
+      position: 'top',
+      icon: '👤'
+    },
+    savedPlaces: {
+      title: 'Your Collection',
+      body: 'Save places you love and easily add them to future trips.',
+      targetSelector: '#savedPlacesList',
+      position: 'top',
+      icon: '❤️'
+    }
+  },
+  
+  // Show a predefined hint
+  showHint(hintKey) {
+    const hintConfig = this.hints[hintKey];
+    if (hintConfig) {
+      return this.show(hintKey, hintConfig);
+    }
+    return false;
+  }
+};
+
+// Make globally available
+window.FeatureHints = FeatureHints;
+
+// Global function for easy access
+function showConfirmDialog(options) {
+  return ConfirmDialog.show(options);
+}
+
+// ============================================================================
+// LOADING SKELETON SYSTEM
+// ============================================================================
+const LoadingSkeleton = {
+  /**
+   * Show skeleton loading cards in a container
+   * @param {HTMLElement|string} container - Container element or selector
+   * @param {number} count - Number of skeleton cards to show
+   */
+  show(container, count = 3) {
+    const el = typeof container === 'string' ? document.querySelector(container) : container;
+    if (!el) return;
+
+    const skeletons = Array(count).fill(0).map(() => `
+      <div class="skeleton-card">
+        <div class="skeleton skeleton-title"></div>
+        <div class="skeleton skeleton-text"></div>
+        <div class="skeleton skeleton-text-short"></div>
+        <div class="skeleton-meta">
+          <div class="skeleton skeleton-badge"></div>
+          <div class="skeleton skeleton-badge"></div>
+        </div>
+      </div>
+    `).join('');
+
+    el.innerHTML = skeletons;
+  },
+
+  /**
+   * Hide skeleton loading
+   * @param {HTMLElement|string} container - Container element or selector
+   */
+  hide(container) {
+    const el = typeof container === 'string' ? document.querySelector(container) : container;
+    if (el) el.innerHTML = '';
+  }
+};
+
+// Generation progress messages
+const GENERATION_STEPS = [
+  { key: 'analyzing', message: 'Analyzing your preferences...', icon: '🔍' },
+  { key: 'finding', message: 'Finding best destinations...', icon: '📍' },
+  { key: 'optimizing', message: 'Optimizing your route...', icon: '🛣️' },
+  { key: 'recommendations', message: 'Adding local recommendations...', icon: '⭐' },
+  { key: 'finalizing', message: 'Finalizing your itinerary!', icon: '✨' }
+];
+
+/**
+ * Show generation progress in a container
+ * @param {HTMLElement|string} container - Container element or selector
+ * @returns {Object} Controller with updateStep(index) and complete() methods
+ */
+function showGenerationProgress(container) {
+  const el = typeof container === 'string' ? document.querySelector(container) : container;
+  if (!el) return null;
+
+  el.innerHTML = `
+    <div class="generation-progress">
+      ${GENERATION_STEPS.map((step, i) => `
+        <div class="gen-step ${i === 0 ? 'active' : ''}" data-step="${i}">
+          <span class="gen-step-icon">${i === 0 ? '⏳' : '○'}</span>
+          <span>${step.message}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  return {
+    updateStep(index) {
+      const steps = el.querySelectorAll('.gen-step');
+      steps.forEach((step, i) => {
+        step.classList.remove('active', 'completed');
+        const icon = step.querySelector('.gen-step-icon');
+        if (i < index) {
+          step.classList.add('completed');
+          icon.textContent = '✓';
+        } else if (i === index) {
+          step.classList.add('active');
+          icon.textContent = '⏳';
+        } else {
+          icon.textContent = '○';
+        }
+      });
+    },
+    complete() {
+      const steps = el.querySelectorAll('.gen-step');
+      steps.forEach(step => {
+        step.classList.remove('active');
+        step.classList.add('completed');
+        step.querySelector('.gen-step-icon').textContent = '✓';
+      });
+    }
+  };
+}
+
 // Multi-tenant storage manager - prefixes all keys with tenant ID
 const TenantStorage = {
   getTenantId() {
@@ -122,9 +605,46 @@ class SimpleNavigation {
     this.updateProfileStats();
     this.showView('search');
 
+    // Initialize user location for distance calculations
+    this.initUserLocation();
+
     // Show greeting on every launch (after welcome modal for new users)
     if (!isFirstTime) {
       this.showTravelGreeting();
+    }
+  }
+
+  // Get user's location for distance calculations
+  initUserLocation() {
+    // Try to load cached location first
+    const cached = TenantStorage.get('user-location', null);
+    if (cached && Date.now() - cached.timestamp < 30 * 60 * 1000) { // 30 min cache
+      this.userLocation = { lat: cached.lat, lon: cached.lon };
+      return;
+    }
+
+    // Request fresh location
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          this.userLocation = {
+            lat: position.coords.latitude,
+            lon: position.coords.longitude
+          };
+          // Cache for 30 minutes
+          TenantStorage.set('user-location', {
+            ...this.userLocation,
+            timestamp: Date.now()
+          });
+          console.log('User location updated:', this.userLocation);
+        },
+        (error) => {
+          console.log('Geolocation not available:', error.message);
+          // Use default location (Tel Aviv) if no permission
+          this.userLocation = { lat: 32.0853, lon: 34.7818 };
+        },
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 }
+      );
     }
   }
 
@@ -141,6 +661,8 @@ class SimpleNavigation {
     const input = document.getElementById('tenantNameInput');
     const btn = document.getElementById('welcomeStartBtn');
     const hint = document.getElementById('welcomeHint');
+    const skipBtn = document.getElementById('welcomeSkipBtn');
+    const skipWarning = document.getElementById('welcomeSkipWarning');
 
     if (!modal || !input || !btn) return;
 
@@ -160,6 +682,10 @@ class SimpleNavigation {
       // Show/hide validation hint
       if (hint) {
         hint.style.opacity = input.value.length > 0 && !valid ? '1' : '0';
+      }
+      // Hide skip warning when typing
+      if (skipWarning && input.value.length > 0) {
+        skipWarning.style.display = 'none';
       }
     });
 
@@ -181,6 +707,31 @@ class SimpleNavigation {
     input.addEventListener('keypress', (e) => {
       if (e.key === 'Enter' && !btn.disabled) btn.click();
     });
+
+    // Skip button - first click shows warning, second click confirms
+    let skipClicked = false;
+    if (skipBtn) {
+      skipBtn.addEventListener('click', () => {
+        if (!skipClicked) {
+          // First click - show warning
+          skipClicked = true;
+          if (skipWarning) {
+            skipWarning.style.display = 'block';
+          }
+          skipBtn.textContent = this.t('welcome.skip_confirm') || 'Yes, skip setup';
+          skipBtn.style.color = 'var(--ios-orange)';
+        } else {
+          // Second click - confirm skip
+          TenantStorage.setTenantId('Traveler');
+          modal.classList.remove('welcome-modal-visible');
+          setTimeout(() => {
+            modal.style.display = 'none';
+            this.showToast(this.t('welcome.skipped') || 'Using default settings. Change in Profile anytime!', 'info');
+          }, 200);
+          this.updateProfileHeader();
+        }
+      });
+    }
   }
 
   updateProfileHeader() {
@@ -247,7 +798,17 @@ class SimpleNavigation {
     this.currentView = viewName;
 
     // View-specific actions
-    if (viewName === 'trip') {
+    if (viewName === 'search') {
+      // Render recently viewed section
+      const recentContainer = document.getElementById('recentlyViewedContainer');
+      if (recentContainer) {
+        recentContainer.innerHTML = this.renderRecentlyViewed();
+      }
+      // Render next achievement hint
+      this.renderNextAchievementHint();
+      // Clear category filters when returning to search
+      this.clearCategoryFilters();
+    } else if (viewName === 'trip') {
       this.checkAndRenderActiveTrip();
       this.renderQueuedPlaces();
       this.loadPreselectedInterests();
@@ -256,6 +817,27 @@ class SimpleNavigation {
       this.renderProfileData();
     } else if (viewName === 'ai') {
       this.renderActiveTrip();
+    }
+    
+    // Show first-time hints after a short delay (allow view to render)
+    setTimeout(() => {
+      this.showFirstTimeHint(viewName);
+    }, 300);
+  }
+
+
+  showFirstTimeHint(viewName) {
+    // Map view names to feature hint keys
+    const hintMap = {
+      'search': 'search',
+      'trip': 'tripWizard',
+      'ai': 'chat',
+      'profile': 'profile'
+    };
+    
+    const hintKey = hintMap[viewName];
+    if (hintKey && typeof FeatureHints !== 'undefined') {
+      FeatureHints.showHint(hintKey);
     }
   }
 
@@ -606,120 +1188,261 @@ class SimpleNavigation {
 
     console.log('Setting up search - Button:', !!searchBtn, 'Input:', !!searchInput);
 
+    // Store reference for retry functionality
+    this._lastSearchQuery = '';
+
     if (searchBtn && searchInput) {
       searchBtn.addEventListener('click', async () => {
         const query = searchInput.value.trim();
-
-        // FIX: Handle empty search - show ready state, not previous results
-        if (!query) {
-          if (resultsList) {
-            resultsList.innerHTML = `
-              <div class="ios-empty-state" style="text-align: center; padding: 3rem 1.5rem; color: var(--label-secondary);">
-                <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
-                <h3 style="margin: 0 0 0.5rem; color: var(--label-primary);">${this.t('search.ready') || 'Ready to Search'}</h3>
-                <p style="margin: 0;">${this.t('search.enter_query') || 'Enter a location or place to find nearby options'}</p>
-              </div>
-            `;
-          }
-          return;
-        }
-
-        console.log('Searching with Personal AI for:', query);
-        searchBtn.textContent = this.t('search.searching') || 'AI Searching...';
-        searchBtn.disabled = true;
-
-        try {
-          // Use Google Places API via backend proxy
-          const response = await fetch(`${API_BASE_URL}/api/places/search`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Lang': localStorage.getItem('app-language') || 'en'
-            },
-            body: JSON.stringify({
-              query: query,
-              minRating: 3.5
-            })
-          });
-
-          const data = await response.json();
-
-          if (data.ok && data.items && data.items.length > 0) {
-            // Track places visited
-            this.placesVisited += data.items.length;
-            TenantStorage.set('stats-places', this.placesVisited);
-            this.updateProfileStats();
-
-            // Store places data for action handlers
-            window._searchResults = data.items;
-
-            resultsList.innerHTML = data.items.map((place, index) => {
-              // FIX: Format price level properly
-              const priceDisplay = formatPriceLevel(place.priceLevel);
-              const isSaved = this.isPlaceSaved(place.placeId);
-
-              return `
-                <div class="ios-card search-result" data-place-index="${index}">
-                  <div class="ios-card-content">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                      <h3 style="margin: 0 0 0.25rem; font-size: 17px; font-weight: 600; flex: 1;">📍 ${place.displayName?.text || place.name || 'Unknown'}</h3>
-                      <button class="save-place-btn" data-index="${index}" style="background: none; border: none; font-size: 22px; cursor: pointer; padding: 0 4px;">
-                        ${isSaved ? '❤️' : '🤍'}
-                      </button>
-                    </div>
-                    <p style="margin: 0 0 0.5rem; color: var(--label-secondary); font-size: 15px;">${place.formattedAddress || place.vicinity || ''}</p>
-                    <div style="display: flex; gap: 1rem; font-size: 13px; color: var(--label-secondary); margin-bottom: 0.75rem;">
-                      <span>⭐ ${place.rating?.toFixed(1) || 'N/A'} (${place.userRatingCount || 0})</span>
-                      ${priceDisplay ? `<span>💰 ${priceDisplay}</span>` : ''}
-                    </div>
-                    <div style="display: flex; gap: 8px;">
-                      <button class="add-to-trip-btn ios-button-small" data-index="${index}" style="flex: 1; padding: 8px 12px; font-size: 13px; border-radius: 8px; background: var(--ios-blue, #007AFF); color: white; border: none; cursor: pointer;">
-                        📍 ${this.t('search.add_to_trip') || 'Add to Trip'}
-                      </button>
-                      <button class="open-maps-btn ios-button-small" data-index="${index}" style="flex: 1; padding: 8px 12px; font-size: 13px; border-radius: 8px; background: var(--fill-tertiary, #E5E5EA); color: var(--label-primary); border: none; cursor: pointer;">
-                        🗺️ ${this.t('search.view_map') || 'View Map'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              `;
-            }).join('');
-
-            // Attach event handlers
-            this.attachSearchResultActions();
-          } else {
-            // FIX: Truncate long query in error message
-            const displayQuery = truncateText(query, 40);
-            resultsList.innerHTML = `
-              <div class="ios-empty-state" style="text-align: center; padding: 3rem 1.5rem;">
-                <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
-                <h3 style="margin: 0 0 0.5rem;">${this.t('search.no_results') || 'No Results'}</h3>
-                <p style="margin: 0; color: var(--label-secondary);">${this.t('search.no_results') || 'No results for'} "<span class="ios-error-query">${displayQuery}</span>"</p>
-                <p style="margin: 0.5rem 0 0; color: var(--label-tertiary); font-size: 13px;">${this.t('search.no_results_hint') || 'Try a different search term'}</p>
-              </div>
-            `;
-          }
-        } catch (error) {
-          console.error('Search error:', error);
-          resultsList.innerHTML = `
-            <div class="ios-empty-state" style="text-align: center; padding: 3rem 1.5rem;">
-              <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
-              <h3 style="margin: 0 0 0.5rem;">${this.t('search.error') || 'Search Error'}</h3>
-              <p style="margin: 0; color: var(--label-secondary);">${this.t('search.error_hint') || 'Unable to connect. Please try again.'}</p>
-            </div>
-          `;
-        }
-
-        searchBtn.textContent = this.t('search.button') || 'Search';
-        searchBtn.disabled = false;
+        await this.performSearch(query);
       });
     } else {
       console.error('Search elements not found - Button:', !!searchBtn, 'Input:', !!searchInput);
     }
   }
 
+
+  async performSearch(query) {
+    const searchBtn = document.getElementById('searchBtn');
+    const searchInput = document.getElementById('freeText') || document.getElementById('searchInput');
+    const resultsList = document.getElementById('list') || document.getElementById('searchResults');
+
+    // FIX: Handle empty search - show ready state, not previous results
+    if (!query) {
+      if (resultsList) {
+        resultsList.innerHTML = `
+          <div class="ios-empty-state" style="text-align: center; padding: 3rem 1.5rem; color: var(--label-secondary);">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+            <h3 style="margin: 0 0 0.5rem; color: var(--label-primary);">${this.t('search.ready') || 'Ready to Search'}</h3>
+            <p style="margin: 0;">${this.t('search.enter_query') || 'Enter a location or place to find nearby options'}</p>
+          </div>
+        `;
+      }
+      return;
+    }
+
+    // Store for retry
+    this._lastSearchQuery = query;
+
+    console.log('Searching with Personal AI for:', query);
+    if (searchBtn) {
+      searchBtn.textContent = this.t('search.searching') || 'AI Searching...';
+      searchBtn.disabled = true;
+    }
+
+    try {
+      // Use Google Places API via backend proxy
+      const response = await fetch(`${API_BASE_URL}/api/places/search`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Lang': localStorage.getItem('app-language') || 'en'
+        },
+        body: JSON.stringify({
+          query: query,
+          minRating: 3.5
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.ok && data.items && data.items.length > 0) {
+        // Track places visited
+        this.placesVisited += data.items.length;
+        TenantStorage.set('stats-places', this.placesVisited);
+        this.updateProfileStats();
+
+        // Store places data for action handlers
+        window._searchResults = data.items;
+
+        resultsList.innerHTML = data.items.map((place, index) => {
+          // FIX: Format price level properly
+          const priceDisplay = formatPriceLevel(place.priceLevel);
+          const isSaved = this.isPlaceSaved(place.placeId);
+
+          // Get category icon based on place type
+          const categoryIcon = this.getCategoryIcon(place.types?.[0] || place.primaryType || 'default');
+
+          // Calculate distance if user location available
+          const distance = this.calculateDistanceFromUser(place);
+          const distanceText = distance ? `${distance < 1 ? (distance * 1000).toFixed(0) + 'm' : distance.toFixed(1) + ' km'}` : null;
+
+          // Determine open status
+          const isOpen = place.currentOpeningHours?.openNow ?? place.openingHours?.openNow;
+          const openStatusHtml = isOpen !== undefined ? `
+            <span class="open-status ${isOpen ? 'open' : 'closed'}">${isOpen ? 'Open' : 'Closed'}</span>
+          ` : '';
+
+          // Track as recently viewed
+          this.trackRecentlyViewed(place);
+
+          return `
+            <div class="search-result-card" data-place-index="${index}">
+              <div class="search-result-image">
+                <span class="category-icon">${categoryIcon}</span>
+                <div class="search-result-badges">
+                  ${distanceText ? `<span class="distance-badge">📍 ${distanceText}</span>` : '<span></span>'}
+                  ${openStatusHtml}
+                </div>
+              </div>
+              <div class="search-result-content">
+                <div class="search-result-header">
+                  <h3 class="search-result-title">${place.displayName?.text || place.name || 'Unknown'}</h3>
+                  <button class="save-btn-icon save-place-btn" data-index="${index}" aria-label="Save place">
+                    ${isSaved ? '❤️' : '🤍'}
+                  </button>
+                </div>
+                <p class="search-result-address">${place.formattedAddress || place.vicinity || ''}</p>
+                <div class="search-result-meta">
+                  <span class="meta-item rating">⭐ ${place.rating?.toFixed(1) || 'N/A'} (${place.userRatingCount || 0})</span>
+                  ${priceDisplay ? `<span class="meta-item price">💰 ${priceDisplay}</span>` : ''}
+                </div>
+                <div class="search-result-quick-actions">
+                  <button class="quick-action-btn primary add-to-trip-btn" data-index="${index}">
+                    📍 ${this.t('search.add_to_trip') || 'Add to Trip'}
+                  </button>
+                  <button class="quick-action-btn secondary open-maps-btn" data-index="${index}">
+                    🗺️ ${this.t('search.navigate') || 'Navigate'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        // Attach event handlers
+        this.attachSearchResultActions();
+      } else {
+        // FIX: Truncate long query in error message
+        const displayQuery = truncateText(query, 40);
+        resultsList.innerHTML = `
+          <div class="ios-empty-state" style="text-align: center; padding: 2rem 1.5rem;">
+            <div style="font-size: 3rem; margin-bottom: 0.75rem;">🔍</div>
+            <h3 style="margin: 0 0 0.5rem; font-size: 17px; font-weight: 600;">${this.t('search.no_results') || 'No Results Found'}</h3>
+            <p style="margin: 0; color: var(--label-secondary); font-size: 14px;">Nothing matches "<span style="font-weight: 500;">${displayQuery}</span>"</p>
+            <p style="margin: 0.75rem 0 1rem; color: var(--label-tertiary); font-size: 13px;">${this.t('search.no_results_hint') || 'Try a different term or explore categories'}</p>
+            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;">
+              <button class="empty-state-category" data-category="restaurants" style="
+                background: var(--fill-tertiary);
+                border: none;
+                padding: 8px 14px;
+                border-radius: 16px;
+                font-size: 13px;
+                cursor: pointer;
+              ">🍽️ Restaurants</button>
+              <button class="empty-state-category" data-category="attractions" style="
+                background: var(--fill-tertiary);
+                border: none;
+                padding: 8px 14px;
+                border-radius: 16px;
+                font-size: 13px;
+                cursor: pointer;
+              ">🎯 Attractions</button>
+              <button class="empty-state-category" data-category="parks" style="
+                background: var(--fill-tertiary);
+                border: none;
+                padding: 8px 14px;
+                border-radius: 16px;
+                font-size: 13px;
+                cursor: pointer;
+              ">🌿 Parks</button>
+            </div>
+          </div>
+        `;
+
+        // Attach category click handlers
+        resultsList.querySelectorAll('.empty-state-category').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const category = btn.dataset.category;
+            const searchInput = document.getElementById('freeText') || document.getElementById('searchInput');
+            if (searchInput) {
+              searchInput.value = category;
+              this.performSearch(category);
+            }
+          });
+        });
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      resultsList.innerHTML = `
+        <div class="ios-empty-state error-recovery-state" style="text-align: center; padding: 3rem 1.5rem;">
+          <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+          <h3 style="margin: 0 0 0.5rem;">${this.t('search.error') || 'Search Error'}</h3>
+          <p style="margin: 0 0 1rem; color: var(--label-secondary);">${this.t('search.error_hint') || 'Unable to connect. Please try again.'}</p>
+          <div style="display: flex; gap: 8px; justify-content: center;">
+            <button class="retry-search-btn" style="padding: 10px 20px; font-size: 15px; border-radius: 10px; background: var(--ios-blue, #007AFF); color: white; border: none; cursor: pointer; font-weight: 500;">
+              🔄 ${this.t('common.retry') || 'Retry'}
+            </button>
+            <button class="skip-search-btn" style="padding: 10px 20px; font-size: 15px; border-radius: 10px; background: var(--fill-tertiary, #E5E5EA); color: var(--label-primary); border: none; cursor: pointer;">
+              ${this.t('common.skip') || 'Skip'}
+            </button>
+          </div>
+        </div>
+      `;
+
+      // Attach retry handler
+      const retryBtn = resultsList.querySelector('.retry-search-btn');
+      const skipBtn = resultsList.querySelector('.skip-search-btn');
+      
+      if (retryBtn) {
+        retryBtn.addEventListener('click', () => {
+          this.performSearch(this._lastSearchQuery);
+        });
+      }
+      
+      if (skipBtn) {
+        skipBtn.addEventListener('click', () => {
+          resultsList.innerHTML = `
+            <div class="ios-empty-state" style="text-align: center; padding: 3rem 1.5rem; color: var(--label-secondary);">
+              <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+              <h3 style="margin: 0 0 0.5rem; color: var(--label-primary);">${this.t('search.ready') || 'Ready to Search'}</h3>
+              <p style="margin: 0;">${this.t('search.enter_query') || 'Enter a location or place to find nearby options'}</p>
+            </div>
+          `;
+        });
+      }
+    }
+
+    if (searchBtn) {
+      searchBtn.textContent = this.t('search.button') || 'Search';
+      searchBtn.disabled = false;
+    }
+  }
+
   setupCategoryButtons() {
-    // Category chip buttons trigger search with that category
+    // Track selected category filters
+    this.selectedCategories = new Set();
+
+    // Category chip buttons - new multi-select filter system
+    document.querySelectorAll('.category-chip[data-category]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const category = btn.getAttribute('data-category');
+
+        // Toggle selection
+        if (btn.classList.contains('selected')) {
+          btn.classList.remove('selected');
+          this.selectedCategories.delete(category);
+        } else {
+          // Limit to 3 categories max
+          if (this.selectedCategories.size >= 3) {
+            this.showToast(this.t('search.max_categories') || 'Max 3 categories at once', 'warning');
+            return;
+          }
+          btn.classList.add('selected');
+          this.selectedCategories.add(category);
+        }
+
+        // Auto-search when categories selected
+        if (this.selectedCategories.size > 0) {
+          this.searchByCategories();
+        } else {
+          // Clear results if no categories selected
+          this.showSearchReadyState();
+        }
+      });
+    });
+
+    // Legacy ios-chip support for backward compatibility
     document.querySelectorAll('.ios-chip[data-category]').forEach(btn => {
       btn.addEventListener('click', () => {
         const category = btn.getAttribute('data-category');
@@ -745,6 +1468,58 @@ class SimpleNavigation {
     console.log('Category buttons setup complete');
   }
 
+  // Search by selected category filters
+  searchByCategories() {
+    const categories = Array.from(this.selectedCategories);
+    if (categories.length === 0) return;
+
+    // Build search query from selected categories
+    const categoryNames = {
+      restaurant: 'restaurants',
+      cafe: 'cafes coffee',
+      tourist_attraction: 'attractions sights',
+      museum: 'museums galleries',
+      park: 'parks nature',
+      shopping_mall: 'shopping malls',
+      bar: 'bars nightlife',
+      spa: 'spa wellness'
+    };
+
+    const query = categories.map(c => categoryNames[c] || c).join(' ');
+    this.performSearch(query);
+  }
+
+  // Show ready state when no search active
+  showSearchReadyState() {
+    const resultsList = document.getElementById('list') || document.getElementById('searchResults');
+    if (!resultsList) return;
+
+    // Render recently viewed if available
+    const recentHtml = this.renderRecentlyViewed();
+    const recentContainer = document.getElementById('recentlyViewedContainer');
+    if (recentContainer) {
+      recentContainer.innerHTML = recentHtml;
+    }
+
+    resultsList.innerHTML = `
+      <div class="ios-card">
+        <div class="ios-card-title">🔍 ${this.t('search.ready') || 'Ready to Search'}</div>
+        <p class="ios-card-subtitle">${this.t('search.ready_desc') || 'Enter what you\'re looking for above or select categories to filter'}</p>
+        <div class="ios-card-meta">
+          <span>🤖 ${this.t('search.powered_by') || 'Powered by AI'}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  // Clear category filters
+  clearCategoryFilters() {
+    this.selectedCategories?.clear();
+    document.querySelectorAll('.category-chip.selected').forEach(chip => {
+      chip.classList.remove('selected');
+    });
+  }
+
   preselectInterest(category) {
     const interestMap = {
       restaurant: 'Food',
@@ -768,13 +1543,173 @@ class SimpleNavigation {
     return this.getSavedPlaces().some(p => p.placeId === placeId);
   }
 
+  // Get category icon based on place type
+  getCategoryIcon(type) {
+    const iconMap = {
+      // Food & Drink
+      'restaurant': '🍽️',
+      'cafe': '☕',
+      'bar': '🍺',
+      'bakery': '🥐',
+      'fast_food': '🍔',
+      'food': '🍽️',
+      // Entertainment
+      'tourist_attraction': '🎯',
+      'museum': '🏛️',
+      'art_gallery': '🎨',
+      'amusement_park': '🎢',
+      'zoo': '🦁',
+      'aquarium': '🐠',
+      'movie_theater': '🎬',
+      'night_club': '🎉',
+      // Nature & Outdoors
+      'park': '🌳',
+      'beach': '🏖️',
+      'natural_feature': '🏞️',
+      'hiking': '🥾',
+      'garden': '🌷',
+      // Shopping
+      'shopping_mall': '🛍️',
+      'store': '🏪',
+      'clothing_store': '👕',
+      'jewelry_store': '💎',
+      'market': '🛒',
+      // Services
+      'spa': '💆',
+      'gym': '💪',
+      'hotel': '🏨',
+      'lodging': '🛏️',
+      // Transport
+      'airport': '✈️',
+      'train_station': '🚂',
+      'bus_station': '🚌',
+      // Religious
+      'church': '⛪',
+      'mosque': '🕌',
+      'synagogue': '🕍',
+      // Default
+      'default': '📍'
+    };
+    return iconMap[type] || iconMap['default'];
+  }
+
+  // Calculate distance from user location
+  calculateDistanceFromUser(place) {
+    if (!this.userLocation) return null;
+
+    const lat = place.location?.latitude || place.lat;
+    const lon = place.location?.longitude || place.lon;
+
+    if (!lat || !lon) return null;
+
+    // Haversine formula
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat - this.userLocation.lat) * Math.PI / 180;
+    const dLon = (lon - this.userLocation.lon) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(this.userLocation.lat * Math.PI / 180) * Math.cos(lat * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  }
+
+  // Track recently viewed places
+  trackRecentlyViewed(place) {
+    const recent = TenantStorage.get('recently-viewed', []);
+    const placeId = place.placeId || place.id;
+
+    // Remove if already exists (to move to front)
+    const filtered = recent.filter(p => p.placeId !== placeId);
+
+    // Add to front
+    filtered.unshift({
+      placeId: placeId,
+      name: place.displayName?.text || place.name,
+      address: place.formattedAddress || place.vicinity,
+      rating: place.rating,
+      type: place.types?.[0] || place.primaryType || 'default',
+      viewedAt: Date.now()
+    });
+
+    // Keep only last 10
+    TenantStorage.set('recently-viewed', filtered.slice(0, 10));
+  }
+
+  // Get recently viewed places
+  getRecentlyViewed() {
+    return TenantStorage.get('recently-viewed', []);
+  }
+
+  // Render recently viewed section
+  renderRecentlyViewed() {
+    const recent = this.getRecentlyViewed();
+    if (recent.length === 0) return '';
+
+    return `
+      <div class="recently-viewed-section">
+        <div class="section-header">
+          <span class="section-title">${this.t('search.recently_viewed') || 'Recently Viewed'}</span>
+          <button class="section-action" onclick="app.clearRecentlyViewed()">
+            ${this.t('common.clear') || 'Clear'}
+          </button>
+        </div>
+        <div class="recently-viewed-scroll">
+          ${recent.map((place, index) => `
+            <div class="recent-place-card" data-recent-index="${index}" onclick="app.searchRecentPlace(${index})">
+              <div class="recent-place-image">
+                <span class="place-icon">${this.getCategoryIcon(place.type)}</span>
+              </div>
+              <div class="recent-place-info">
+                <p class="recent-place-name">${place.name}</p>
+                <span class="recent-place-meta">
+                  ${place.rating ? `⭐ ${place.rating.toFixed(1)}` : ''}
+                </span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // Clear recently viewed
+  clearRecentlyViewed() {
+    this.showConfirmDialog({
+      title: this.t('confirm.clear_recent_title') || 'Clear History?',
+      message: this.t('confirm.clear_recent_message') || 'This will remove all recently viewed places.',
+      confirmText: this.t('common.clear') || 'Clear',
+      cancelText: this.t('common.cancel') || 'Cancel',
+      onConfirm: () => {
+        TenantStorage.remove('recently-viewed');
+        this.showToast(this.t('toast.history_cleared') || 'History cleared', 'info');
+        // Re-render search view if on search
+        if (this.currentNav === 'search') {
+          this.showView('search');
+        }
+      }
+    });
+  }
+
+  // Search for a recent place
+  searchRecentPlace(index) {
+    const recent = this.getRecentlyViewed();
+    const place = recent[index];
+    if (place) {
+      const searchInput = document.getElementById('freeText') || document.getElementById('searchInput');
+      if (searchInput) {
+        searchInput.value = place.name;
+        this.performSearch(place.name);
+      }
+    }
+  }
+
   toggleSavePlace(placeData) {
     const saved = this.getSavedPlaces();
     const index = saved.findIndex(p => p.placeId === placeData.placeId);
 
     if (index > -1) {
       saved.splice(index, 1);
-      this.showToast(this.t('toast.place_removed') || 'Removed from saved places');
+      this.showToast(this.t('toast.place_removed') || 'Removed from saved places', 'info');
     } else {
       saved.push({
         placeId: placeData.placeId,
@@ -785,7 +1720,7 @@ class SimpleNavigation {
         lon: placeData.location?.longitude,
         savedAt: new Date().toISOString()
       });
-      this.showToast(this.t('toast.place_added') || 'Saved to My Places!');
+      this.showToast(this.t('toast.place_added') || '❤️ Saved to My Places!', 'success');
       // Award XP for saving a place
       this.addTravelerXP(5);
     }
@@ -812,7 +1747,7 @@ class SimpleNavigation {
         rating: place.rating
       });
       TenantStorage.set('trip-queue', queue);
-      this.showToast(this.t('toast.added_to_trip') || `${place.displayName?.text || place.name} added to trip!`);
+      this.showToast(this.t('toast.added_to_trip') || `➕ ${place.displayName?.text || place.name} added to trip!`, 'success');
       return true;
     }
     return false;
@@ -823,33 +1758,21 @@ class SimpleNavigation {
   }
 
   // ===== TOAST NOTIFICATION =====
-  showToast(message, duration = 3000) {
-    // Remove existing toast
-    const existing = document.querySelector('.roamwise-toast');
-    if (existing) existing.remove();
+  showToast(message, typeOrDuration = 'info', duration = 3000) {
+    // Support both old signature (message, duration) and new (message, type, duration)
+    let type = 'info';
+    let actualDuration = duration;
 
-    const toast = document.createElement('div');
-    toast.className = 'roamwise-toast';
-    toast.textContent = message;
-    toast.style.cssText = `
-      position: fixed;
-      bottom: 100px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.85);
-      color: white;
-      padding: 12px 24px;
-      border-radius: 25px;
-      z-index: 10000;
-      font-size: 14px;
-      animation: fadeInUp 0.3s ease;
-    `;
-    document.body.appendChild(toast);
+    if (typeof typeOrDuration === 'number') {
+      // Old signature: showToast(message, duration)
+      actualDuration = typeOrDuration;
+    } else if (typeof typeOrDuration === 'string') {
+      // New signature: showToast(message, type, duration)
+      type = typeOrDuration;
+    }
 
-    setTimeout(() => {
-      toast.style.animation = 'fadeOut 0.3s ease';
-      setTimeout(() => toast.remove(), 300);
-    }, duration);
+    // Use the enhanced ToastSystem
+    return ToastSystem.show(message, type, actualDuration);
   }
 
   // ===== SEARCH RESULT ACTIONS =====
@@ -881,7 +1804,7 @@ class SimpleNavigation {
             btn.disabled = true;
             btn.style.background = 'var(--ios-green, #34C759)';
           } else {
-            this.showToast(this.t('toast.already_in_trip') || 'Already in your trip!');
+            this.showToast(this.t('toast.already_in_trip') || 'Already in your trip!', 'warning');
           }
         }
       });
@@ -933,13 +1856,22 @@ class SimpleNavigation {
         });
       });
 
-      // Clear all button
+      // Clear all button - with confirmation
       const clearBtn = document.getElementById('clearQueueBtn');
       if (clearBtn) {
-        clearBtn.onclick = () => {
-          this.clearTripQueue();
-          this.renderQueuedPlaces();
-          this.showToast(this.t('toast.queue_cleared') || 'Trip queue cleared');
+        clearBtn.onclick = async () => {
+          const confirmed = await ConfirmDialog.show({
+            title: this.t('confirm.clear_queue_title') || 'Clear trip queue?',
+            message: this.t('confirm.clear_queue_message') || 'This will remove all places from your trip queue.',
+            confirmText: this.t('confirm.clear') || 'Clear All',
+            cancelText: this.t('confirm.cancel') || 'Keep Places',
+            type: 'warning'
+          });
+          if (confirmed) {
+            this.clearTripQueue();
+            this.renderQueuedPlaces();
+            this.showToast(this.t('toast.queue_cleared') || 'Trip queue cleared', 'info');
+          }
         };
       }
     } else if (section) {
@@ -994,7 +1926,22 @@ class SimpleNavigation {
         // Attach handlers
         this.attachProfileActions();
       } else {
-        placesList.innerHTML = `<p class="empty-state" style="text-align: center; color: var(--label-secondary); padding: 20px; font-size: 14px;">${this.t('profile.no_places') || 'No saved places yet. Search and save your favorites!'}</p>`;
+        placesList.innerHTML = `
+          <div class="ios-empty-state" style="text-align: center; padding: 2rem 1rem;">
+            <div style="font-size: 3rem; margin-bottom: 0.75rem;">📍</div>
+            <h4 style="margin: 0 0 0.5rem; color: var(--label-primary); font-size: 16px; font-weight: 600;">${this.t('profile.no_places_title') || 'Start Your Collection'}</h4>
+            <p style="margin: 0 0 1rem; color: var(--label-secondary); font-size: 14px; line-height: 1.4;">${this.t('profile.no_places') || 'Discover amazing places and save your favorites for easy access.'}</p>
+            <button class="empty-state-cta" onclick="window.simpleApp?.showView('search')" style="
+              background: var(--ios-blue);
+              color: white;
+              border: none;
+              padding: 10px 20px;
+              border-radius: 20px;
+              font-size: 14px;
+              font-weight: 600;
+              cursor: pointer;
+            ">🔍 ${this.t('common.explore') || 'Explore & Save'}</button>
+          </div>`;
       }
     }
 
@@ -1015,7 +1962,22 @@ class SimpleNavigation {
           </div>
         `).join('');
       } else {
-        tripsList.innerHTML = `<p class="empty-state" style="text-align: center; color: var(--label-secondary); padding: 20px; font-size: 14px;">${this.t('profile.no_trips') || 'No trips yet. Plan your first adventure!'}</p>`;
+        tripsList.innerHTML = `
+          <div class="ios-empty-state" style="text-align: center; padding: 2rem 1rem;">
+            <div style="font-size: 3rem; margin-bottom: 0.75rem;">🗺️</div>
+            <h4 style="margin: 0 0 0.5rem; color: var(--label-primary); font-size: 16px; font-weight: 600;">${this.t('profile.no_trips_title') || 'No Adventures Yet'}</h4>
+            <p style="margin: 0 0 1rem; color: var(--label-secondary); font-size: 14px; line-height: 1.4;">${this.t('profile.no_trips') || 'Plan your first trip and let AI create the perfect itinerary.'}</p>
+            <button class="empty-state-cta" onclick="window.simpleApp?.showView('trip')" style="
+              background: var(--ios-blue);
+              color: white;
+              border: none;
+              padding: 10px 20px;
+              border-radius: 20px;
+              font-size: 14px;
+              font-weight: 600;
+              cursor: pointer;
+            ">✨ ${this.t('trip.plan_first') || 'Plan Your First Trip'}</button>
+          </div>`;
       }
     }
   }
@@ -1033,12 +1995,16 @@ class SimpleNavigation {
 
     // Remove saved place
     document.querySelectorAll('.remove-saved-place').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const saved = this.getSavedPlaces();
-        const filtered = saved.filter(p => p.placeId !== btn.dataset.id);
-        TenantStorage.set('saved-places', filtered);
-        this.renderProfileData();
-        this.showToast(this.t('toast.place_removed') || 'Removed from saved places');
+      btn.addEventListener('click', async () => {
+        const placeName = btn.dataset.name || 'this place';
+        const confirmed = await ConfirmDialog.confirmDelete(placeName);
+        if (confirmed) {
+          const saved = this.getSavedPlaces();
+          const filtered = saved.filter(p => p.placeId !== btn.dataset.id);
+          TenantStorage.set('saved-places', filtered);
+          this.renderProfileData();
+          this.showToast(this.t('toast.place_removed') || 'Removed from saved places', 'info');
+        }
       });
     });
 
@@ -1048,17 +2014,22 @@ class SimpleNavigation {
         const trip = JSON.parse(btn.dataset.trip);
         this.setActiveTrip(trip);
         this.showView('ai');
+        this.showToast(this.t('toast.trip_started') || '🚀 Trip started! Let\'s go!', 'success');
       });
     });
 
-    // Delete saved trip
+    // Delete saved trip - with confirmation
     document.querySelectorAll('.delete-saved-trip').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const trips = this.getSavedTrips();
-        const filtered = trips.filter(t => t.id !== parseInt(btn.dataset.id));
-        TenantStorage.set('trips', filtered);
-        this.renderProfileData();
-        this.showToast(this.t('toast.trip_deleted') || 'Trip deleted');
+      btn.addEventListener('click', async () => {
+        const tripName = btn.dataset.name || 'this trip';
+        const confirmed = await ConfirmDialog.confirmDelete(tripName);
+        if (confirmed) {
+          const trips = this.getSavedTrips();
+          const filtered = trips.filter(t => t.id !== parseInt(btn.dataset.id));
+          TenantStorage.set('trips', filtered);
+          this.renderProfileData();
+          this.showToast(this.t('toast.trip_deleted') || 'Trip deleted', 'info');
+        }
       });
     });
   }
@@ -1079,7 +2050,7 @@ class SimpleNavigation {
     };
     trips.push(newTrip);
     TenantStorage.set('trips', trips);
-    this.showToast(this.t('toast.trip_saved') || 'Trip saved! View it in your Profile.');
+    this.showToast(this.t('toast.trip_saved') || '✅ Trip saved! View it in your Profile.', 'success');
     this.clearTripQueue();
     return newTrip;
   }
@@ -1152,20 +2123,129 @@ class SimpleNavigation {
       if (nameEl) nameEl.textContent = name;
       if (addressEl) addressEl.textContent = address;
       if (timeEl) timeEl.textContent = time;
+
+      // Set up countdown timer
+      this.setupActivityCountdown(trip, current, currentIndex);
     }
 
-    // Render next up
+    // Render enhanced next up preview
     const nextUpPreview = document.getElementById('nextUpPreview');
     const nextUpName = document.getElementById('nextUpName');
+    const nextUpTime = document.getElementById('nextUpTime');
+    const nextUpTravelInfo = document.getElementById('nextUpTravelInfo');
+    const nextUpTravelTime = document.getElementById('nextUpTravelTime');
+
     if (next && nextUpPreview && nextUpName) {
       nextUpPreview.style.display = 'flex';
       nextUpName.textContent = next.to?.name || next.name || next.title || `Stop ${currentIndex + 2}`;
+
+      // Calculate estimated arrival time
+      const travelSeconds = next.leg_seconds || 0;
+      if (nextUpTime) {
+        const arrivalTime = new Date(Date.now() + (30 * 60 * 1000) + (travelSeconds * 1000)); // 30 min assumed activity + travel
+        nextUpTime.textContent = arrivalTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+
+      // Show travel time if available
+      if (nextUpTravelInfo && travelSeconds > 0) {
+        nextUpTravelInfo.style.display = 'flex';
+        const mins = Math.round(travelSeconds / 60);
+        nextUpTravelTime.textContent = mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
+      } else if (nextUpTravelInfo) {
+        nextUpTravelInfo.style.display = 'none';
+      }
     } else if (nextUpPreview) {
       nextUpPreview.style.display = 'none';
     }
 
     // Render timeline
     this.renderTimeline(stops, currentIndex);
+  }
+
+  setupActivityCountdown(trip, activity, activityIndex) {
+    const countdownContainer = document.getElementById('activityCountdown');
+    const countdownTime = document.getElementById('countdownTime');
+    const runningLateBtn = document.getElementById('runningLateBtn');
+
+    if (!countdownContainer) return;
+
+    // Track when activity started
+    if (!trip.activityStartTimes) {
+      trip.activityStartTimes = {};
+    }
+
+    const activityKey = `activity_${activityIndex}`;
+    if (!trip.activityStartTimes[activityKey]) {
+      trip.activityStartTimes[activityKey] = Date.now();
+      TenantStorage.set('active-trip', trip);
+    }
+
+    // Default activity duration: 30 minutes (or use leg_seconds if available)
+    const activityDuration = (activity.duration_seconds || activity.suggested_duration || 30 * 60) * 1000;
+    const startTime = trip.activityStartTimes[activityKey];
+    const endTime = startTime + activityDuration;
+
+    // Show countdown
+    countdownContainer.style.display = 'flex';
+
+    // Clear any existing countdown interval
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+    }
+
+    const updateCountdown = () => {
+      const remaining = endTime - Date.now();
+
+      if (remaining <= 0) {
+        countdownTime.textContent = 'Time to go!';
+        countdownTime.className = 'countdown-time urgent';
+        return;
+      }
+
+      const mins = Math.floor(remaining / 60000);
+      const secs = Math.floor((remaining % 60000) / 1000);
+
+      if (mins >= 60) {
+        countdownTime.textContent = `${Math.floor(mins / 60)}h ${mins % 60}m`;
+      } else if (mins > 0) {
+        countdownTime.textContent = `${mins} min`;
+      } else {
+        countdownTime.textContent = `${secs}s`;
+      }
+
+      // Update urgency styling
+      if (remaining < 5 * 60 * 1000) { // Less than 5 minutes
+        countdownTime.className = 'countdown-time urgent';
+      } else if (remaining < 10 * 60 * 1000) { // Less than 10 minutes
+        countdownTime.className = 'countdown-time warning';
+      } else {
+        countdownTime.className = 'countdown-time';
+      }
+    };
+
+    // Initial update
+    updateCountdown();
+
+    // Update every second
+    this.countdownInterval = setInterval(updateCountdown, 1000);
+
+    // Set up "running late" button
+    if (runningLateBtn) {
+      runningLateBtn.onclick = () => {
+        this.handleRunningLate(trip, activityIndex);
+      };
+    }
+  }
+
+  handleRunningLate(trip, activityIndex) {
+    // Add 15 minutes to the current activity
+    const activityKey = `activity_${activityIndex}`;
+    if (trip.activityStartTimes && trip.activityStartTimes[activityKey]) {
+      trip.activityStartTimes[activityKey] += 15 * 60 * 1000; // Add 15 minutes
+      TenantStorage.set('active-trip', trip);
+      this.setupActivityCountdown(trip, trip.timeline[activityIndex], activityIndex);
+      this.showToast('Added 15 minutes to your schedule', 'info');
+    }
   }
 
   renderTimeline(stops, currentIndex) {
@@ -1240,18 +2320,104 @@ class SimpleNavigation {
       stops[currentIndex].status = 'completed';
     }
 
+    // Calculate completed count for milestones
+    const completedBefore = stops.filter((s, i) => i < currentIndex && s.status === 'completed').length;
+    const completedNow = completedBefore + 1;
+    const total = stops.length;
+
+    // Show XP animation from the complete button
+    const completeBtn = document.getElementById('completeBtn');
+    this.showXPAnimation(10, completeBtn);
+
+    // Award XP immediately for activity completion
+    const currentXP = TenantStorage.get('userXP', 0);
+    TenantStorage.set('userXP', currentXP + 10);
+    this.updateProfileStats();
+
+    // Check for milestones
+    if (completedNow === 1) {
+      // First activity!
+      setTimeout(() => {
+        this.showMilestonePopup('🚀', "You're on your way!", 'First activity completed');
+      }, 500);
+    } else if (completedNow === Math.ceil(total / 2) && total > 2) {
+      // Halfway there!
+      setTimeout(() => {
+        this.showMilestonePopup('🎯', 'Halfway there!', `${completedNow}/${total} activities done`);
+      }, 500);
+    }
+
+    // Pulse the progress ring
+    const progressRing = document.querySelector('.activity-progress');
+    if (progressRing) {
+      progressRing.classList.add('milestone-pulse');
+      setTimeout(() => progressRing.classList.remove('milestone-pulse'), 2000);
+    }
+
     // Move to next
     const nextIndex = currentIndex + 1;
 
     if (nextIndex >= stops.length) {
-      // Trip complete
-      this.completeTripWithReward(trip);
+      // Trip complete - delay to let XP animation play
+      setTimeout(() => this.completeTripWithReward(trip), 800);
     } else {
       trip.currentStopIndex = nextIndex;
       TenantStorage.set('active-trip', trip);
-      this.renderActiveTripView(trip);
-      this.showToast(this.t('active.activity_completed') || 'Activity completed!');
+
+      // Delay view update to let animation complete
+      setTimeout(() => {
+        this.renderActiveTripView(trip);
+      }, 300);
+
+      this.showToast(this.t('active.activity_completed') || '✅ Activity completed!', 'success');
     }
+  }
+
+  showXPAnimation(xp, anchorElement) {
+    // Create floating XP element
+    const container = document.createElement('div');
+    container.className = 'xp-float-container';
+
+    const float = document.createElement('div');
+    float.className = 'xp-float';
+    float.innerHTML = `<span class="xp-icon">⭐</span><span>+${xp} XP</span>`;
+    container.appendChild(float);
+
+    // Position near the anchor element or center of screen
+    if (anchorElement) {
+      const rect = anchorElement.getBoundingClientRect();
+      container.style.left = `${rect.left + rect.width / 2 - 50}px`;
+      container.style.top = `${rect.top - 20}px`;
+    } else {
+      container.style.left = '50%';
+      container.style.top = '50%';
+      container.style.transform = 'translate(-50%, -50%)';
+    }
+
+    document.body.appendChild(container);
+
+    // Remove after animation completes
+    setTimeout(() => {
+      container.remove();
+    }, 1500);
+  }
+
+  showMilestonePopup(icon, title, subtitle) {
+    const popup = document.createElement('div');
+    popup.className = 'milestone-popup';
+    popup.innerHTML = `
+      <span class="milestone-icon">${icon}</span>
+      <div class="milestone-title">${title}</div>
+      <div class="milestone-subtitle">${subtitle}</div>
+    `;
+
+    document.body.appendChild(popup);
+
+    // Auto-remove after 2.5 seconds
+    setTimeout(() => {
+      popup.style.animation = 'fadeInModal 0.3s ease reverse';
+      setTimeout(() => popup.remove(), 300);
+    }, 2500);
   }
 
   skipActivity() {
@@ -1275,17 +2441,22 @@ class SimpleNavigation {
       trip.currentStopIndex = nextIndex;
       TenantStorage.set('active-trip', trip);
       this.renderActiveTripView(trip);
-      this.showToast(this.t('active.activity_skipped') || 'Activity skipped');
+      this.showToast(this.t('active.activity_skipped') || 'Activity skipped', 'info');
     }
   }
 
-  endActiveTrip() {
-    const confirmMsg = this.t('active.end_confirm') || 'End this trip? Progress will be saved.';
-    if (confirm(confirmMsg)) {
-      const trip = this.getActiveTrip();
-      if (trip) {
-        this.completeTripWithReward(trip);
-      }
+  async endActiveTrip() {
+    const trip = this.getActiveTrip();
+    if (!trip) return;
+
+    const stops = trip.timeline || trip.stops || trip.places || [];
+    const completed = stops.filter(s => s.status === 'completed').length;
+    const total = stops.length;
+    const progress = `${completed}/${total}`;
+
+    const confirmed = await ConfirmDialog.confirmEndTrip(progress);
+    if (confirmed) {
+      this.completeTripWithReward(trip);
     }
   }
 
@@ -1316,25 +2487,96 @@ class SimpleNavigation {
   }
 
   showTripCompleteModal(completed, total, xp) {
+    // Trigger confetti!
+    this.showConfetti();
+
+    // Calculate level progress
+    const totalXP = TenantStorage.get('userXP', 0);
+    const levels = [
+      { name: 'Newbie', min: 0, max: 100 },
+      { name: 'Explorer', min: 100, max: 500 },
+      { name: 'Adventurer', min: 500, max: 1500 },
+      { name: 'Globetrotter', min: 1500, max: 3500 },
+      { name: 'Legend', min: 3500, max: 10000 }
+    ];
+    const currentLevel = levels.find(l => totalXP >= l.min && totalXP < l.max) || levels[levels.length - 1];
+    const nextLevel = levels[levels.indexOf(currentLevel) + 1] || currentLevel;
+    const levelProgress = Math.min(100, ((totalXP - currentLevel.min) / (currentLevel.max - currentLevel.min)) * 100);
+
+    // Get trip stats
+    const tripsCompleted = TenantStorage.get('stats-trips-completed', 0);
+    const skippedCount = total - completed;
+
+    // Check for achievements
+    let achievement = null;
+    if (tripsCompleted === 1) {
+      achievement = { icon: '🎯', text: 'First Adventure!' };
+    } else if (completed === total) {
+      achievement = { icon: '⭐', text: 'Perfect Trip!' };
+    } else if (tripsCompleted === 5) {
+      achievement = { icon: '🌟', text: 'Frequent Flyer!' };
+    }
+
     const modal = document.createElement('div');
     modal.className = 'trip-complete-modal';
-
-    const visitedText = (this.t('active.visited_places') || 'You visited {completed} of {total} places')
-      .replace('{completed}', completed)
-      .replace('{total}', total);
 
     modal.innerHTML = `
       <div class="trip-complete-content">
         <div class="trip-complete-icon">🎉</div>
         <h2 class="trip-complete-title">${this.t('active.trip_complete') || 'Trip Complete!'}</h2>
-        <p>${visitedText}</p>
+
+        ${achievement ? `
+          <div class="trip-complete-achievement">
+            <span>${achievement.icon}</span>
+            <span>${achievement.text}</span>
+          </div>
+        ` : ''}
+
         <div class="trip-complete-xp">+${xp} XP</div>
-        <button class="trip-complete-btn">${this.t('active.great') || 'Great!'}</button>
+
+        <div class="trip-complete-stats">
+          <div class="stat-item">
+            <span class="stat-value">${completed}</span>
+            <span class="stat-label">Visited</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">${skippedCount}</span>
+            <span class="stat-label">Skipped</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">${tripsCompleted}</span>
+            <span class="stat-label">Total Trips</span>
+          </div>
+        </div>
+
+        <div class="trip-complete-level">
+          <div class="level-header">
+            <span class="level-badge">🧭 ${currentLevel.name}</span>
+            <span class="level-xp">${totalXP} / ${currentLevel.max} XP</span>
+          </div>
+          <div class="level-progress-bar">
+            <div class="level-progress-fill" style="width: ${levelProgress}%"></div>
+          </div>
+        </div>
+
+        <div class="trip-complete-actions">
+          <button class="trip-complete-btn secondary" id="shareTrip">
+            📤 Share
+          </button>
+          <button class="trip-complete-btn" id="closeComplete">
+            ${this.t('active.great') || 'Awesome!'}
+          </button>
+        </div>
       </div>
     `;
 
-    modal.querySelector('.trip-complete-btn').addEventListener('click', () => {
+    // Event handlers
+    modal.querySelector('#closeComplete').addEventListener('click', () => {
       modal.remove();
+    });
+
+    modal.querySelector('#shareTrip')?.addEventListener('click', () => {
+      this.shareTrip(completed, total, xp);
     });
 
     // Close on backdrop click
@@ -1345,6 +2587,68 @@ class SimpleNavigation {
     });
 
     document.body.appendChild(modal);
+
+    // Animate level progress bar
+    setTimeout(() => {
+      const fill = modal.querySelector('.level-progress-fill');
+      if (fill) fill.style.width = `${levelProgress}%`;
+    }, 100);
+  }
+
+  showConfetti() {
+    const container = document.createElement('div');
+    container.className = 'confetti-container';
+
+    const colors = ['#FF3B30', '#FF9500', '#FFCC00', '#34C759', '#007AFF', '#5856D6', '#AF52DE'];
+    const confettiCount = 50;
+
+    for (let i = 0; i < confettiCount; i++) {
+      const confetti = document.createElement('div');
+      confetti.className = 'confetti';
+      confetti.style.left = `${Math.random() * 100}%`;
+      confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      confetti.style.animationDelay = `${Math.random() * 2}s`;
+      confetti.style.animationDuration = `${2 + Math.random() * 2}s`;
+
+      // Random shapes
+      if (Math.random() > 0.5) {
+        confetti.style.borderRadius = '50%';
+      } else {
+        confetti.style.width = '8px';
+        confetti.style.height = '12px';
+      }
+
+      container.appendChild(confetti);
+    }
+
+    document.body.appendChild(container);
+
+    // Remove after animation
+    setTimeout(() => container.remove(), 5000);
+  }
+
+  shareTrip(completed, total, xp) {
+    const text = `🎉 Just completed a trip with RoamWise!\n📍 Visited ${completed}/${total} places\n⭐ Earned ${xp} XP\n\nPlan your adventure at roamwise.app`;
+
+    if (navigator.share) {
+      navigator.share({
+        title: 'My RoamWise Trip',
+        text: text
+      }).catch(() => {
+        // User cancelled or error
+        this.copyToClipboard(text);
+      });
+    } else {
+      this.copyToClipboard(text);
+    }
+  }
+
+  copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+      this.showToast('Copied to clipboard!', 'success');
+    }).catch(() => {
+      this.showToast('Could not copy', 'error');
+    });
   }
 
   // Legacy renderActiveTrip for backwards compatibility (AI view)
@@ -1410,21 +2714,29 @@ class SimpleNavigation {
     const grid = document.getElementById('destinationsGrid');
     if (!grid) return;
 
+    // Using reliable Unsplash image IDs for each destination
     const destinations = [
-      { id: 'paris', name: 'Paris', country: 'France', lat: 48.8566, lon: 2.3522, emoji: '🇫🇷' },
-      { id: 'tokyo', name: 'Tokyo', country: 'Japan', lat: 35.6762, lon: 139.6503, emoji: '🇯🇵' },
-      { id: 'rome', name: 'Rome', country: 'Italy', lat: 41.9028, lon: 12.4964, emoji: '🇮🇹' },
-      { id: 'barcelona', name: 'Barcelona', country: 'Spain', lat: 41.3874, lon: 2.1686, emoji: '🇪🇸' },
-      { id: 'london', name: 'London', country: 'UK', lat: 51.5074, lon: -0.1278, emoji: '🇬🇧' },
-      { id: 'tel-aviv', name: 'Tel Aviv', country: 'Israel', lat: 32.0853, lon: 34.7818, emoji: '🇮🇱' }
+      { id: 'paris', name: 'Paris', country: 'France', lat: 48.8566, lon: 2.3522, emoji: '🇫🇷',
+        image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400&h=300&fit=crop' },
+      { id: 'tokyo', name: 'Tokyo', country: 'Japan', lat: 35.6762, lon: 139.6503, emoji: '🇯🇵',
+        image: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400&h=300&fit=crop' },
+      { id: 'rome', name: 'Rome', country: 'Italy', lat: 41.9028, lon: 12.4964, emoji: '🇮🇹',
+        image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=400&h=300&fit=crop' },
+      { id: 'barcelona', name: 'Barcelona', country: 'Spain', lat: 41.3874, lon: 2.1686, emoji: '🇪🇸',
+        image: 'https://images.unsplash.com/photo-1583422409516-2895a77efded?w=400&h=300&fit=crop' },
+      { id: 'london', name: 'London', country: 'UK', lat: 51.5074, lon: -0.1278, emoji: '🇬🇧',
+        image: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=400&h=300&fit=crop' },
+      { id: 'tel-aviv', name: 'Tel Aviv', country: 'Israel', lat: 32.0853, lon: 34.7818, emoji: '🇮🇱',
+        image: 'https://images.unsplash.com/photo-1544967082-d9d25d867d66?w=400&h=300&fit=crop' }
     ];
 
     grid.innerHTML = destinations.map(dest => `
       <div class="destination-card" data-dest-id="${dest.id}" data-lat="${dest.lat}" data-lon="${dest.lon}">
         <img class="destination-image"
-             src="https://source.unsplash.com/400x300/?${dest.name},city"
+             src="${dest.image}"
              alt="${dest.name}"
-             onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 400 300%22><rect fill=%22%23e0e0e0%22 width=%22400%22 height=%22300%22/><text x=%22200%22 y=%22150%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2240%22>${dest.emoji}</text></svg>'">
+             loading="lazy"
+             onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 400 300%22><rect fill=%22%231a1a1a%22 width=%22400%22 height=%22300%22/><text x=%22200%22 y=%22150%22 text-anchor=%22middle%22 fill=%22%23666%22 font-size=%2260%22>${dest.emoji}</text></svg>'">
         <div class="destination-overlay">
           <span class="destination-name">${dest.name}</span>
           <span class="destination-country">${dest.country}</span>
@@ -1455,21 +2767,37 @@ class SimpleNavigation {
     const startDate = document.getElementById('wizardStartDate');
     const endDate = document.getElementById('wizardEndDate');
 
-    // Set default dates (today + 7 days)
+    // Smart default: upcoming weekend (Friday-Sunday)
     const today = new Date();
-    const weekLater = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const dayOfWeek = today.getDay(); // 0=Sun, 5=Fri
+    // Find next Friday (or this Friday if today is early in the week)
+    let daysUntilFriday = (5 - dayOfWeek + 7) % 7;
+    if (daysUntilFriday === 0) daysUntilFriday = 7; // If today is Friday, use next Friday
+
+    const nextFriday = new Date(today.getTime() + daysUntilFriday * 24 * 60 * 60 * 1000);
+    const nextSunday = new Date(nextFriday.getTime() + 2 * 24 * 60 * 60 * 1000);
 
     if (startDate) {
-      startDate.valueAsDate = today;
+      startDate.valueAsDate = nextFriday;
+      // Initialize wizardData with smart weekend defaults
+      this.wizardData.dates.start = nextFriday.toISOString().split('T')[0];
       startDate.addEventListener('change', () => {
         this.wizardData.dates.start = startDate.value;
       });
     }
     if (endDate) {
-      endDate.valueAsDate = weekLater;
+      endDate.valueAsDate = nextSunday;
+      // Initialize wizardData with smart weekend defaults
+      this.wizardData.dates.end = nextSunday.toISOString().split('T')[0];
       endDate.addEventListener('change', () => {
         this.wizardData.dates.end = endDate.value;
       });
+    }
+
+    // Auto-select weekend chip since we defaulted to weekend
+    const weekendChip = document.querySelector('.wizard-chip[data-duration="weekend"]');
+    if (weekendChip) {
+      weekendChip.classList.add('active');
     }
 
     // Quick duration chips
@@ -1521,13 +2849,23 @@ class SimpleNavigation {
   }
 
   setupWizardStep3() {
+    // Load last saved preferences
+    const savedPrefs = this.loadSavedWizardPreferences();
+
     // Pace slider
     const paceSlider = document.getElementById('wizardPaceSlider');
     const paceValue = document.getElementById('wizardPaceValue');
     if (paceSlider) {
+      // Restore saved pace
+      if (savedPrefs.pace) {
+        paceSlider.value = savedPrefs.pace;
+        this.wizardData.preferences.pace = savedPrefs.pace;
+        if (paceValue) paceValue.textContent = savedPrefs.pace;
+      }
       paceSlider.addEventListener('input', () => {
         this.wizardData.preferences.pace = parseInt(paceSlider.value);
         if (paceValue) paceValue.textContent = paceSlider.value;
+        this.saveWizardPreferences();
       });
     }
 
@@ -1540,40 +2878,78 @@ class SimpleNavigation {
 
     // Budget buttons
     document.querySelectorAll('.wizard-button[data-budget]').forEach(btn => {
+      // Restore saved budget selection
+      if (savedPrefs.budget && btn.dataset.budget === savedPrefs.budget) {
+        document.querySelectorAll('.wizard-button[data-budget]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.wizardData.preferences.budget = savedPrefs.budget;
+      }
       btn.addEventListener('click', () => {
         document.querySelectorAll('.wizard-button[data-budget]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         this.wizardData.preferences.budget = btn.dataset.budget;
+        this.saveWizardPreferences();
       });
     });
 
     // Style buttons
     document.querySelectorAll('.wizard-button[data-style]').forEach(btn => {
+      // Restore saved style selection
+      if (savedPrefs.style && btn.dataset.style === savedPrefs.style) {
+        document.querySelectorAll('.wizard-button[data-style]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.wizardData.preferences.style = savedPrefs.style;
+      }
       btn.addEventListener('click', () => {
         document.querySelectorAll('.wizard-button[data-style]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         this.wizardData.preferences.style = btn.dataset.style;
+        this.saveWizardPreferences();
       });
     });
+  }
+
+  loadSavedWizardPreferences() {
+    try {
+      const saved = TenantStorage.getItem('wizardPreferences');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  saveWizardPreferences() {
+    const prefs = {
+      pace: this.wizardData.preferences.pace,
+      budget: this.wizardData.preferences.budget,
+      style: this.wizardData.preferences.style
+    };
+    TenantStorage.setItem('wizardPreferences', JSON.stringify(prefs));
   }
 
   toggleWizardInterest(btn) {
     const interest = btn.dataset.interest;
     const interests = this.wizardData.preferences.interests;
 
-    if (btn.classList.contains('active')) {
+    if (btn.classList.contains('selected')) {
       // Deselect
-      btn.classList.remove('active');
+      btn.classList.remove('selected');
       const index = interests.indexOf(interest);
       if (index > -1) interests.splice(index, 1);
     } else {
       // Select (max 4)
       if (interests.length < 4) {
-        btn.classList.add('active');
+        btn.classList.add('selected');
         interests.push(interest);
       } else {
-        this.showToast(this.t('trip.max_interests') || 'Maximum 4 interests allowed');
+        this.showToast(this.t('trip.max_interests') || 'Maximum 4 interests allowed', 'warning');
       }
+    }
+
+    // Update counter
+    const counter = document.getElementById('wizardInterestCount');
+    if (counter) {
+      counter.textContent = `${interests.length}/4`;
     }
   }
 
@@ -1587,6 +2963,18 @@ class SimpleNavigation {
     if (nextBtn) {
       nextBtn.addEventListener('click', () => this.nextWizardStep());
     }
+
+    // Allow clicking on completed steps to jump back
+    document.querySelectorAll('.wizard-step').forEach((el, i) => {
+      el.addEventListener('click', () => {
+        const stepNumber = i + 1;
+        // Only allow jumping to completed steps (not current or future)
+        if (el.classList.contains('completed') && stepNumber < this.wizardStep) {
+          this.goToWizardStep(stepNumber);
+          this.showToast(`Back to Step ${stepNumber}`, 'info', 1500);
+        }
+      });
+    });
   }
 
   goToWizardStep(step) {
@@ -1597,10 +2985,38 @@ class SimpleNavigation {
       el.classList.remove('active', 'completed');
       if (i + 1 < step) {
         el.classList.add('completed');
+        // Make completed steps clickable
+        el.style.cursor = 'pointer';
       } else if (i + 1 === step) {
         el.classList.add('active');
+        el.style.cursor = 'default';
+      } else {
+        el.style.cursor = 'default';
       }
     });
+
+    // Update progress percentage (steps 1-3 are user input, 4 is AI, 5 is review)
+    const progressPercent = document.getElementById('wizardProgressPercent');
+    if (progressPercent) {
+      const percent = Math.min(Math.round(((step - 1) / 4) * 100), 100);
+      progressPercent.textContent = `${percent}% complete`;
+    }
+
+    // Show draft saved indicator when user has filled some data (step > 1)
+    const draftSaved = document.getElementById('wizardDraftSaved');
+    if (draftSaved) {
+      if (step > 1 && step < 5) {
+        draftSaved.style.display = 'inline';
+        // Briefly highlight when saving
+        draftSaved.style.opacity = '0';
+        setTimeout(() => {
+          draftSaved.style.opacity = '1';
+          draftSaved.style.transition = 'opacity 0.3s';
+        }, 100);
+      } else {
+        draftSaved.style.display = 'none';
+      }
+    }
 
     // Show/hide panels
     document.querySelectorAll('.wizard-panel').forEach(panel => {
@@ -1635,19 +3051,19 @@ class SimpleNavigation {
     switch (this.wizardStep) {
       case 1:
         if (!this.wizardData.destination) {
-          this.showToast(this.t('wizard.select_destination') || 'Please select a destination');
+          this.showToast(this.t('wizard.select_destination') || 'Please select a destination', 'warning');
           return false;
         }
         break;
       case 2:
         if (!this.wizardData.dates.start || !this.wizardData.dates.end) {
-          this.showToast(this.t('wizard.select_dates') || 'Please select travel dates');
+          this.showToast(this.t('wizard.select_dates') || 'Please select travel dates', 'warning');
           return false;
         }
         break;
       case 3:
         if (this.wizardData.preferences.interests.length === 0) {
-          this.showToast(this.t('trip.select_at_least_one') || 'Please select at least 1 interest');
+          this.showToast(this.t('trip.select_at_least_one') || 'Please select at least 1 interest', 'warning');
           return false;
         }
         break;
@@ -1674,29 +3090,82 @@ class SimpleNavigation {
   }
 
   async startGeneration() {
-    const progressBar = document.getElementById('wizardGeneratingProgress');
-    const steps = document.querySelectorAll('.wizard-gen-step');
+    const progressBar = document.getElementById('wizardProgressBar');
+    const steps = document.querySelectorAll('.wizard-generating-step');
 
-    // Animate progress
+    // Populate preferences summary
+    this.updateGenerationSummary();
+
+    // Reset all steps first
+    steps.forEach(step => {
+      step.classList.remove('active', 'completed');
+      const icon = step.querySelector('.wizard-generating-step-icon');
+      if (icon) icon.textContent = '⏳';
+    });
+
+    // Start with step 1 active
+    if (steps[0]) steps[0].classList.add('active');
+
+    // Animate progress with step transitions
     let progress = 0;
+    const stepThresholds = [
+      { progress: 20, step: 0, message: 'preferences' },
+      { progress: 45, step: 1, message: 'places' },
+      { progress: 70, step: 2, message: 'route' },
+      { progress: 90, step: 3, message: 'tips' }
+    ];
+    let currentStep = 0;
+
+    const updateStep = (stepIndex, completed = false) => {
+      const step = steps[stepIndex];
+      if (!step) return;
+      
+      const icon = step.querySelector('.wizard-generating-step-icon');
+      
+      if (completed) {
+        step.classList.remove('active');
+        step.classList.add('completed');
+        if (icon) icon.textContent = '✓';
+        
+        // Activate next step
+        const nextStep = steps[stepIndex + 1];
+        if (nextStep) nextStep.classList.add('active');
+      } else {
+        step.classList.add('active');
+      }
+    };
+
     const progressInterval = setInterval(() => {
       progress += 2;
       if (progressBar) progressBar.style.width = `${Math.min(progress, 95)}%`;
 
-      // Update step indicators
-      if (progress >= 20 && steps[0]) steps[0].classList.add('done');
-      if (progress >= 45 && steps[1]) steps[1].classList.add('done');
-      if (progress >= 70 && steps[2]) steps[2].classList.add('done');
-      if (progress >= 90 && steps[3]) steps[3].classList.add('done');
+      // Check step thresholds and update
+      for (const threshold of stepThresholds) {
+        if (progress >= threshold.progress && currentStep < threshold.step + 1) {
+          if (currentStep > 0) {
+            updateStep(currentStep - 1, true);
+          }
+          currentStep = threshold.step + 1;
+        }
+      }
     }, 100);
 
     try {
       await this.generateTripPlan();
       clearInterval(progressInterval);
+      
+      // Complete all steps
+      steps.forEach((step, idx) => {
+        step.classList.remove('active');
+        step.classList.add('completed');
+        const icon = step.querySelector('.wizard-generating-step-icon');
+        if (icon) icon.textContent = '✓';
+      });
+      
       if (progressBar) progressBar.style.width = '100%';
 
       // Small delay to show completion
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 600));
 
       // Go to review step
       this.goToWizardStep(5);
@@ -1704,8 +3173,57 @@ class SimpleNavigation {
     } catch (error) {
       clearInterval(progressInterval);
       console.error('Trip generation error:', error);
-      this.showToast(this.t('trip.error') || 'Error generating trip');
+      
+      // Mark current step as failed
+      if (steps[currentStep]) {
+        steps[currentStep].classList.remove('active');
+        steps[currentStep].classList.add('error');
+        const icon = steps[currentStep].querySelector('.wizard-generating-step-icon');
+        if (icon) icon.textContent = '✗';
+      }
+      
+      this.showToast(this.t('trip.error') || '⚠️ Error generating trip. Please try again.', 'error');
+      
+      // Delay before going back to let user see what failed
+      await new Promise(resolve => setTimeout(resolve, 1000));
       this.goToWizardStep(3);
+    }
+  }
+
+  updateGenerationSummary() {
+    const { destination, dates, preferences } = this.wizardData;
+
+    // Destination
+    const destEl = document.getElementById('genSummaryDest');
+    if (destEl && destination) {
+      destEl.textContent = `${destination.name}, ${destination.country}`;
+    }
+
+    // Dates
+    const datesEl = document.getElementById('genSummaryDates');
+    if (datesEl && dates.start && dates.end) {
+      const start = new Date(dates.start);
+      const end = new Date(dates.end);
+      const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+      const options = { month: 'short', day: 'numeric' };
+      datesEl.textContent = `${start.toLocaleDateString('en-US', options)} - ${end.toLocaleDateString('en-US', options)} (${days} days)`;
+    }
+
+    // Interests
+    const interestsEl = document.getElementById('genSummaryInterests');
+    if (interestsEl && preferences.interests.length > 0) {
+      const interestLabels = {
+        'food': 'Food',
+        'nature': 'Nature',
+        'culture': 'Culture',
+        'shopping': 'Shopping',
+        'art': 'Art',
+        'nightlife': 'Nightlife',
+        'adventure': 'Adventure',
+        'wellness': 'Wellness'
+      };
+      const names = preferences.interests.map(i => interestLabels[i] || i);
+      interestsEl.textContent = names.join(', ');
     }
   }
 
@@ -1797,14 +3315,14 @@ class SimpleNavigation {
     const { destination, dates, timeline } = plan;
     const days = plan.days || 1;
 
-    // Update header
-    const header = document.getElementById('wizardReviewHeader');
-    if (header) {
-      header.innerHTML = `
-        <h2 class="wizard-panel-title">${destination.name}</h2>
-        <p class="wizard-panel-subtitle">${dates.start} → ${dates.end}</p>
-      `;
+    // Update meta info
+    const metaEl = document.getElementById('wizardReviewMeta');
+    if (metaEl) {
+      metaEl.textContent = `${destination.name} • ${days} day${days > 1 ? 's' : ''} • ${timeline?.length || 0} activities`;
     }
+
+    // Render category breakdown
+    this.renderCategoryBreakdown(timeline);
 
     // Generate day tabs
     const tabsContainer = document.getElementById('wizardDayTabs');
@@ -1884,6 +3402,74 @@ class SimpleNavigation {
     });
   }
 
+  renderCategoryBreakdown(timeline) {
+    // Create or get the breakdown container
+    let container = document.getElementById('wizardCategoryBreakdown');
+    if (!container) {
+      // Create and insert after regen options
+      container = document.createElement('div');
+      container.id = 'wizardCategoryBreakdown';
+      container.className = 'wizard-category-breakdown';
+      const regenOptions = document.getElementById('wizardRegenOptions');
+      if (regenOptions) {
+        regenOptions.after(container);
+      }
+    }
+
+    if (!timeline || timeline.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+
+    // Categorize activities
+    const categories = {
+      'food': { icon: '🍽️', label: 'Food & Dining', count: 0 },
+      'culture': { icon: '🏛️', label: 'Culture', count: 0 },
+      'nature': { icon: '🌿', label: 'Nature', count: 0 },
+      'shopping': { icon: '🛍️', label: 'Shopping', count: 0 },
+      'attraction': { icon: '🎯', label: 'Attractions', count: 0 },
+      'other': { icon: '📍', label: 'Other', count: 0 }
+    };
+
+    // Map place types to categories
+    const typeToCategory = {
+      'restaurant': 'food',
+      'cafe': 'food',
+      'bar': 'food',
+      'museum': 'culture',
+      'art_gallery': 'culture',
+      'park': 'nature',
+      'beach': 'nature',
+      'shopping_mall': 'shopping',
+      'store': 'shopping',
+      'tourist_attraction': 'attraction',
+      'point_of_interest': 'attraction'
+    };
+
+    timeline.forEach(activity => {
+      const type = activity.to?.type || activity.type || 'other';
+      const category = typeToCategory[type] || 'other';
+      if (categories[category]) {
+        categories[category].count++;
+      } else {
+        categories.other.count++;
+      }
+    });
+
+    // Render only categories with activities
+    const categoriesHtml = Object.entries(categories)
+      .filter(([_, cat]) => cat.count > 0)
+      .map(([_, cat]) => `
+        <div class="category-chip">
+          <span class="category-icon">${cat.icon}</span>
+          <span class="category-label">${cat.label}</span>
+          <span class="category-count">${cat.count}</span>
+        </div>
+      `).join('');
+
+    container.innerHTML = categoriesHtml;
+  }
+
   setupWizardFinalActions() {
     const startBtn = document.getElementById('wizardStartTrip');
     const saveBtn = document.getElementById('wizardSaveTrip');
@@ -1892,7 +3478,7 @@ class SimpleNavigation {
       startBtn.addEventListener('click', () => {
         if (this.wizardData.generatedPlan) {
           this.setActiveTrip(this.wizardData.generatedPlan);
-          this.showToast(this.t('toast.trip_started') || 'Trip started! Let\'s go!');
+          this.showToast(this.t('toast.trip_started') || '🚀 Trip started! Let\'s go!', 'success');
           this.showView('ai');
         }
       });
@@ -1907,10 +3493,69 @@ class SimpleNavigation {
             savedAt: new Date().toISOString()
           });
           TenantStorage.set('saved-trips', savedTrips);
-          this.showToast(this.t('toast.trip_saved') || 'Trip saved!');
+          this.showToast(this.t('toast.trip_saved') || '✅ Trip saved!', 'success');
         }
       });
     }
+
+    // Regenerate button toggle
+    const regenBtn = document.getElementById('wizardRegenBtn');
+    const regenMenu = document.getElementById('wizardRegenMenu');
+    if (regenBtn && regenMenu) {
+      regenBtn.addEventListener('click', () => {
+        const isVisible = regenMenu.style.display !== 'none';
+        regenMenu.style.display = isVisible ? 'none' : 'flex';
+      });
+    }
+
+    // Regenerate options
+    document.querySelectorAll('.regen-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        const focus = opt.dataset.focus;
+        this.regenerateWithFocus(focus);
+      });
+    });
+  }
+
+  async regenerateWithFocus(focus) {
+    // Map focus to preference adjustments
+    const focusMap = {
+      'more-food': { addInterests: ['food'], removeInterests: [] },
+      'more-culture': { addInterests: ['culture', 'art'], removeInterests: [] },
+      'relaxed': { pace: 2 },
+      'packed': { pace: 5 }
+    };
+
+    const adjustment = focusMap[focus] || {};
+
+    // Adjust preferences
+    if (adjustment.addInterests) {
+      adjustment.addInterests.forEach(interest => {
+        if (!this.wizardData.preferences.interests.includes(interest)) {
+          this.wizardData.preferences.interests.push(interest);
+        }
+      });
+    }
+    if (adjustment.pace !== undefined) {
+      this.wizardData.preferences.pace = adjustment.pace;
+    }
+
+    // Show feedback
+    const focusLabels = {
+      'more-food': 'more food spots',
+      'more-culture': 'more cultural activities',
+      'relaxed': 'a slower pace',
+      'packed': 'more activities'
+    };
+    this.showToast(`Regenerating with ${focusLabels[focus]}...`, 'info');
+
+    // Hide the menu
+    const regenMenu = document.getElementById('wizardRegenMenu');
+    if (regenMenu) regenMenu.style.display = 'none';
+
+    // Go back to generation step
+    this.goToWizardStep(4);
+    await this.startGeneration();
   }
 
   setupTripGeneration() {
@@ -2072,7 +3717,7 @@ class SimpleNavigation {
 
             document.getElementById('startTripBtn')?.addEventListener('click', () => {
               this.setActiveTrip(window._generatedPlan);
-              this.showToast(this.t('toast.trip_started') || 'Trip started! Head to AI tab for navigation.');
+              this.showToast(this.t('toast.trip_started') || '🚀 Trip started! Head to AI tab for navigation.', 'success');
               this.showView('ai');
             });
 
@@ -2143,6 +3788,9 @@ class SimpleNavigation {
   // Update the traveler level display
   updateTravelerLevel() {
     const score = parseInt(TenantStorage.get('traveler-score', 0));
+    const prevScore = this._lastTravelerScore || 0;
+    this._lastTravelerScore = score;
+
     const { level, index } = this.calculateTravelerLevel(score);
     const nextLevel = TRAVELER_LEVELS[index + 1];
 
@@ -2169,6 +3817,18 @@ class SimpleNavigation {
       if (progressFillEl) progressFillEl.style.width = '100%';
       if (progressTextEl) progressTextEl.textContent = `${score} XP ⭐`;
     }
+
+    // Add animation if XP increased
+    if (score > prevScore && progressFillEl && progressTextEl) {
+      progressFillEl.classList.add('xp-pulse');
+      progressTextEl.classList.add('xp-gained');
+
+      // Remove animation classes after animation completes
+      setTimeout(() => {
+        progressFillEl.classList.remove('xp-pulse');
+        progressTextEl.classList.remove('xp-gained');
+      }, 600);
+    }
   }
 
   // Add XP points and update display
@@ -2183,7 +3843,7 @@ class SimpleNavigation {
     // Check for level up
     if (newLevel.index > oldLevel.index) {
       const levelName = window.currentLang === 'he' ? newLevel.level.nameHe : newLevel.level.name;
-      this.showToast(`🎉 ${window.currentLang === 'he' ? 'עלית לרמה' : 'Level Up!'} ${newLevel.level.icon} ${levelName}!`);
+      this.showToast(`🎉 ${window.currentLang === 'he' ? 'עלית לרמה' : 'Level Up!'} ${newLevel.level.icon} ${levelName}!`, 'success', 5000);
     }
 
     this.updateTravelerLevel();
@@ -2219,7 +3879,7 @@ class SimpleNavigation {
         const msg = window.currentLang === 'he'
           ? `🏆 הישג חדש: ${achievement.nameHe}!`
           : `🏆 Achievement Unlocked: ${achievement.name}!`;
-        this.showToast(msg);
+        this.showToast(msg, 'success', 5000);
         // Bonus XP for unlocking achievement
         this.addTravelerXP(15);
       });
@@ -2229,77 +3889,120 @@ class SimpleNavigation {
     this.renderAchievements(unlocked);
   }
 
-  // Render achievements grid
+  // Render achievements grid with progress for locked achievements
   renderAchievements(unlockedIds) {
     const grid = document.getElementById('achievementGrid');
     if (!grid) return;
 
-    grid.innerHTML = ACHIEVEMENTS.map(a => `
-      <div class="achievement-badge ${unlockedIds.includes(a.id) ? 'unlocked' : 'locked'}" title="${window.currentLang === 'he' ? a.descHe : a.desc}">
-        <span class="achievement-icon">${a.icon}</span>
-        <span class="achievement-name">${window.currentLang === 'he' ? a.nameHe : a.name}</span>
-      </div>
-    `).join('');
+    // Get current stats for progress calculation
+    const aiTrips = parseInt(TenantStorage.get('stats-ai-trips', 0));
+    const stats = {
+      trips: this.tripsPlanned,
+      places: this.placesVisited,
+      ai_trips: aiTrips,
+      countries: parseInt(TenantStorage.get('stats-countries', 1))
+    };
+
+    grid.innerHTML = ACHIEVEMENTS.map(a => {
+      const isUnlocked = unlockedIds.includes(a.id);
+      const { type, threshold } = a.condition;
+      const current = stats[type] || 0;
+      const progress = Math.min(Math.round((current / threshold) * 100), 100);
+      const title = window.currentLang === 'he' ? a.descHe : a.desc;
+
+      if (isUnlocked) {
+        return `
+          <div class="achievement-badge unlocked" title="${title}">
+            <span class="achievement-icon">${a.icon}</span>
+            <span class="achievement-name">${window.currentLang === 'he' ? a.nameHe : a.name}</span>
+            <span class="achievement-status">✓</span>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="achievement-badge locked" title="${title}">
+            <span class="achievement-icon">${a.icon}</span>
+            <span class="achievement-name">${window.currentLang === 'he' ? a.nameHe : a.name}</span>
+            <div class="achievement-progress">
+              <div class="achievement-progress-bar">
+                <div class="achievement-progress-fill" style="width: ${progress}%"></div>
+              </div>
+              <span class="achievement-progress-text">${current}/${threshold}</span>
+            </div>
+          </div>
+        `;
+      }
+    }).join('');
   }
 
-  // Show toast notification
-  showToast(message) {
-    // Check if toast container exists
-    let toastContainer = document.getElementById('toastContainer');
-    if (!toastContainer) {
-      toastContainer = document.createElement('div');
-      toastContainer.id = 'toastContainer';
-      toastContainer.style.cssText = `
-        position: fixed;
-        top: 80px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 10000;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        pointer-events: none;
-      `;
-      document.body.appendChild(toastContainer);
+  // Render next achievement hint on home/search view
+  renderNextAchievementHint() {
+    const container = document.getElementById('nextAchievementHint');
+    if (!container) return;
+
+    // Get unlocked achievements
+    const unlockedIds = TenantStorage.get('unlocked-achievements', []);
+
+    // Get current stats
+    const aiTrips = parseInt(TenantStorage.get('stats-ai-trips', 0));
+    const stats = {
+      trips: this.tripsPlanned,
+      places: this.placesVisited,
+      ai_trips: aiTrips,
+      countries: parseInt(TenantStorage.get('stats-countries', 1))
+    };
+
+    // Find the closest achievement to unlock (highest progress among locked)
+    let closest = null;
+    let highestProgress = -1;
+
+    ACHIEVEMENTS.forEach(a => {
+      if (unlockedIds.includes(a.id)) return; // Skip unlocked
+
+      const { type, threshold } = a.condition;
+      const current = stats[type] || 0;
+      const progress = Math.min((current / threshold) * 100, 99); // Cap at 99 for unlocked
+
+      if (progress > highestProgress) {
+        highestProgress = progress;
+        closest = {
+          ...a,
+          current,
+          threshold,
+          progress: Math.round(progress)
+        };
+      }
+    });
+
+    // If no locked achievements, hide the hint
+    if (!closest) {
+      container.style.display = 'none';
+      return;
     }
 
-    const toast = document.createElement('div');
-    toast.style.cssText = `
-      background: var(--bg-tertiary, #2C2C2E);
-      color: var(--label-primary, white);
-      padding: 12px 20px;
-      border-radius: 12px;
-      font-size: 14px;
-      font-weight: 500;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      animation: toastSlideIn 0.3s ease;
-      pointer-events: auto;
+    // Render the hint card
+    const name = window.currentLang === 'he' ? closest.nameHe : closest.name;
+    const label = window.currentLang === 'he' ? 'ההישג הבא שלך' : 'Your next achievement';
+
+    container.innerHTML = `
+      <div class="next-achievement-icon">${closest.icon}</div>
+      <div class="next-achievement-content">
+        <div class="next-achievement-label">${label}</div>
+        <div class="next-achievement-name">${this.escapeHtml(name)}</div>
+        <div class="next-achievement-progress-wrap">
+          <div class="next-achievement-bar">
+            <div class="next-achievement-fill" style="width: ${closest.progress}%"></div>
+          </div>
+          <span class="next-achievement-percent">${closest.progress}%</span>
+        </div>
+      </div>
     `;
-    toast.textContent = message;
-    toastContainer.appendChild(toast);
+    container.style.display = 'flex';
+  }
 
-    // Add animation keyframes if not exists
-    if (!document.getElementById('toastStyles')) {
-      const style = document.createElement('style');
-      style.id = 'toastStyles';
-      style.textContent = `
-        @keyframes toastSlideIn {
-          from { opacity: 0; transform: translateY(-20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes toastSlideOut {
-          from { opacity: 1; transform: translateY(0); }
-          to { opacity: 0; transform: translateY(-20px); }
-        }
-      `;
-      document.head.appendChild(style);
-    }
-
-    // Remove toast after 3 seconds
-    setTimeout(() => {
-      toast.style.animation = 'toastSlideOut 0.3s ease forwards';
-      setTimeout(() => toast.remove(), 300);
-    }, 3000);
+  // Show toast notification - delegates to global ToastSystem
+  showToast(message, type = 'info', duration = 3000) {
+    return ToastSystem.show(message, type, duration);
   }
 
   updateRouteInfo(routeData) {
@@ -2783,13 +4486,38 @@ class SimpleNavigation {
       console.error('Weather error:', error);
       if (responseEl) {
         responseEl.innerHTML = `
-          <div class="ios-card" style="background: var(--ios-red-bg, #FEE2E2); border: 1px solid var(--ios-red);">
+          <div class="ios-card error-recovery-state" style="background: var(--ios-red-bg, #FEE2E2); border: 1px solid var(--ios-red);">
             <div class="ios-card-content" style="text-align: center; padding: 1.5rem;">
               <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚠️</div>
-              <p style="margin: 0;">${this.t('weather.error') || 'Unable to get weather. Please try again.'}</p>
+              <p style="margin: 0 0 1rem;">${this.t('weather.error') || 'Unable to get weather. Please try again.'}</p>
+              <div style="display: flex; gap: 8px; justify-content: center;">
+                <button class="retry-weather-btn" style="padding: 10px 20px; font-size: 15px; border-radius: 10px; background: var(--ios-blue, #007AFF); color: white; border: none; cursor: pointer; font-weight: 500;">
+                  🔄 ${this.t('common.retry') || 'Retry'}
+                </button>
+                <button class="skip-weather-btn" style="padding: 10px 20px; font-size: 15px; border-radius: 10px; background: var(--fill-tertiary, #E5E5EA); color: var(--label-primary); border: none; cursor: pointer;">
+                  ${this.t('common.skip') || 'Skip'}
+                </button>
+              </div>
             </div>
           </div>
         `;
+
+        // Attach retry handler
+        const retryBtn = responseEl.querySelector('.retry-weather-btn');
+        const skipBtn = responseEl.querySelector('.skip-weather-btn');
+
+        if (retryBtn) {
+          retryBtn.addEventListener('click', () => {
+            this.handleCheckWeather(responseEl);
+          });
+        }
+
+        if (skipBtn) {
+          skipBtn.addEventListener('click', () => {
+            responseEl.innerHTML = '';
+            responseEl.style.display = 'none';
+          });
+        }
       }
     }
   }
@@ -3350,10 +5078,8 @@ class SimpleNavigation {
       });
     });
 
-    // Voice button (placeholder for future voice integration)
-    document.getElementById('chatVoiceBtn')?.addEventListener('click', () => {
-      this.showToast(this.t('voice.coming_soon') || 'Voice coming soon!');
-    });
+    // Voice button - using Web Speech API
+    this.setupChatVoiceInput();
 
     // Render welcome message
     this.renderWelcomeMessage();
@@ -3362,13 +5088,135 @@ class SimpleNavigation {
     this.updateChatTripBanner();
   }
 
+
+  setupChatVoiceInput() {
+    const voiceBtn = document.getElementById('chatVoiceBtn');
+    if (!voiceBtn) return;
+
+    // Check for Web Speech API support
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      // Web Speech API not supported - hide button
+      voiceBtn.style.display = 'none';
+      console.warn('Web Speech API not supported');
+      return;
+    }
+
+    let isListening = false;
+    let recognition = null;
+
+    voiceBtn.addEventListener('click', () => {
+      if (isListening) {
+        // Stop listening
+        if (recognition) {
+          recognition.stop();
+        }
+        return;
+      }
+
+      // Start listening
+      recognition = new SpeechRecognition();
+      recognition.lang = this.currentLang === 'he' ? 'he-IL' : 'en-US';
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      // Update UI
+      isListening = true;
+      voiceBtn.classList.add('recording');
+      voiceBtn.innerHTML = '🔴';
+      this.showToast(this.t('voice.listening') || '🎤 Listening...', 'info', 2000);
+
+      recognition.onresult = (event) => {
+        const input = document.getElementById('chatInput');
+        let transcript = '';
+        
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        
+        if (input) {
+          input.value = transcript;
+        }
+        
+        // If final result, send the message
+        if (event.results[event.results.length - 1].isFinal) {
+          if (input && input.value.trim()) {
+            this.sendChatMessage();
+          }
+        }
+      };
+
+      recognition.onend = () => {
+        isListening = false;
+        voiceBtn.classList.remove('recording');
+        voiceBtn.innerHTML = '🎤';
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        isListening = false;
+        voiceBtn.classList.remove('recording');
+        voiceBtn.innerHTML = '🎤';
+
+        let errorMsg = this.t('voice.error') || 'Voice input error';
+        if (event.error === 'not-allowed') {
+          errorMsg = this.t('voice.mic_denied') || 'Microphone access denied';
+        } else if (event.error === 'no-speech') {
+          errorMsg = this.t('voice.no_speech') || 'No speech detected';
+        }
+        this.showToast(errorMsg, 'error');
+      };
+
+      try {
+        recognition.start();
+      } catch (error) {
+        console.error('Failed to start recognition:', error);
+        isListening = false;
+        voiceBtn.classList.remove('recording');
+        voiceBtn.innerHTML = '🎤';
+        this.showToast(this.t('voice.error') || 'Could not start voice input', 'error');
+      }
+    });
+  }
+
   renderWelcomeMessage() {
     const name = TenantStorage.getTenantName() || '';
-    const greeting = name
-      ? this.t('chat.welcome_name', { name }) || `Hi ${name}! I'm your AI travel co-pilot. How can I help you today?`
-      : this.t('chat.welcome') || "Hi! I'm your AI travel co-pilot. How can I help you today?";
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
 
-    this.addChatMessage('assistant', greeting);
+    // Create welcome card with AI capabilities
+    const welcomeCard = document.createElement('div');
+    welcomeCard.className = 'chat-welcome-card';
+    welcomeCard.innerHTML = `
+      <div class="welcome-avatar">🤖</div>
+      <h3 class="welcome-title">${name ? `Hi ${this.escapeHtml(name)}!` : 'Hi!'} ${this.t('chat.welcome_intro') || "I'm your AI travel co-pilot"}</h3>
+      <p class="welcome-subtitle">${this.t('chat.welcome_subtitle') || 'Here\'s what I can help you with:'}</p>
+      <div class="welcome-capabilities">
+        <div class="capability-item">
+          <span class="capability-icon">🍽️</span>
+          <span class="capability-text">${this.t('chat.capability_food') || 'Find restaurants & cafes'}</span>
+        </div>
+        <div class="capability-item">
+          <span class="capability-icon">🎯</span>
+          <span class="capability-text">${this.t('chat.capability_attractions') || 'Discover attractions'}</span>
+        </div>
+        <div class="capability-item">
+          <span class="capability-icon">🌤️</span>
+          <span class="capability-text">${this.t('chat.capability_weather') || 'Check weather conditions'}</span>
+        </div>
+        <div class="capability-item">
+          <span class="capability-icon">🗺️</span>
+          <span class="capability-text">${this.t('chat.capability_plan') || 'Plan your perfect day'}</span>
+        </div>
+        <div class="capability-item">
+          <span class="capability-icon">📍</span>
+          <span class="capability-text">${this.t('chat.capability_directions') || 'Get directions'}</span>
+        </div>
+      </div>
+      <p class="welcome-prompt">${this.t('chat.welcome_prompt') || 'Ask me anything about travel!'}</p>
+    `;
+    container.appendChild(welcomeCard);
   }
 
   async sendChatMessage() {
@@ -3393,14 +5241,24 @@ class SimpleNavigation {
       // Call AI
       const response = await this.callChatAI(message, context);
 
-      // Hide typing, show response
+      // Hide typing
       this.hideTypingIndicator();
-      this.addChatMessage('assistant', response.content);
+
+      // Generate contextual actions based on message and response
+      const actions = this.generateChatActions(message, response);
+
+      // Show response with actions
+      this.addChatMessage('assistant', response.content, actions);
 
     } catch (error) {
       console.error('Chat error:', error);
       this.hideTypingIndicator();
-      this.addChatMessage('assistant', this.t('chat.error') || "Sorry, I couldn't process that. Please try again.");
+
+      // Store last message for retry
+      this._lastChatMessage = message;
+
+      // Add error message with retry button
+      this.addChatErrorWithRetry(this.t('chat.error') || "Sorry, I couldn't process that.");
     }
 
     input.disabled = false;
@@ -3408,7 +5266,118 @@ class SimpleNavigation {
     input.focus();
   }
 
-  addChatMessage(role, content) {
+  generateChatActions(userMessage, response) {
+    const actions = [];
+    const msgLower = userMessage.toLowerCase();
+    const contentLower = (response.content || '').toLowerCase();
+
+    // If response contains place data, add place-specific actions
+    if (response.place) {
+      const placeData = {
+        place: {
+          id: response.place.placeId || response.place.id,
+          name: response.place.name,
+          address: response.place.address || response.place.formattedAddress,
+          lat: response.place.location?.latitude || response.place.lat,
+          lng: response.place.location?.longitude || response.place.lng,
+          rating: response.place.rating
+        }
+      };
+
+      actions.push({
+        type: 'navigate',
+        label: this.t('chat.action_navigate') || 'Navigate',
+        data: { lat: placeData.place.lat, lng: placeData.place.lng, address: placeData.place.address }
+      });
+
+      actions.push({
+        type: 'add-to-trip',
+        label: this.t('chat.action_add_trip') || 'Add to Trip',
+        data: placeData
+      });
+
+      actions.push({
+        type: 'save',
+        label: this.t('chat.action_save') || 'Save',
+        data: placeData
+      });
+
+      return actions;
+    }
+
+    // Detect search intent - offer to search
+    const searchKeywords = ['restaurant', 'cafe', 'coffee', 'food', 'eat', 'museum', 'park', 'beach', 'hotel', 'bar', 'shop', 'attraction'];
+    const hasSearchIntent = searchKeywords.some(kw => msgLower.includes(kw) || contentLower.includes(kw));
+
+    if (hasSearchIntent) {
+      // Extract the most relevant search term
+      const foundKeyword = searchKeywords.find(kw => msgLower.includes(kw)) || searchKeywords.find(kw => contentLower.includes(kw));
+      if (foundKeyword) {
+        actions.push({
+          type: 'search',
+          label: this.t('chat.action_search') || `Search ${foundKeyword}s`,
+          data: { query: foundKeyword }
+        });
+      }
+    }
+
+    // Detect planning intent - offer to start trip wizard
+    const planKeywords = ['plan', 'trip', 'itinerary', 'day trip', 'weekend', 'vacation'];
+    const hasPlanIntent = planKeywords.some(kw => msgLower.includes(kw));
+
+    if (hasPlanIntent && actions.length === 0) {
+      actions.push({
+        type: 'search',
+        label: this.t('chat.action_plan_trip') || 'Plan a Trip',
+        data: { query: 'trip' }
+      });
+    }
+
+    // Weather queries - offer current location
+    if (msgLower.includes('weather') && this.userLocation) {
+      actions.push({
+        type: 'navigate',
+        label: this.t('chat.action_current_location') || 'My Location',
+        data: { lat: this.userLocation.lat, lng: this.userLocation.lon }
+      });
+    }
+
+    return actions;
+  }
+
+  addChatErrorWithRetry(errorMessage) {
+    const container = document.getElementById('chatMessages');
+    if (!container) return;
+
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-message assistant error-recovery-state';
+    bubble.innerHTML = `
+      <div style="margin-bottom: 8px;">${this.escapeHtml(errorMessage)}</div>
+      <button class="retry-chat-btn" style="padding: 6px 14px; font-size: 13px; border-radius: 8px; background: var(--ios-blue, #007AFF); color: white; border: none; cursor: pointer; font-weight: 500; margin-right: 8px;">
+        🔄 ${this.t('common.retry') || 'Retry'}
+      </button>
+    `;
+    container.appendChild(bubble);
+    container.scrollTop = container.scrollHeight;
+
+    // Attach retry handler
+    const retryBtn = bubble.querySelector('.retry-chat-btn');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', () => {
+        // Remove error bubble
+        bubble.remove();
+
+        // Retry with stored message
+        if (this._lastChatMessage) {
+          const input = document.getElementById('chatInput');
+          input.value = this._lastChatMessage;
+          this.sendChatMessage();
+        }
+      });
+    }
+  }
+
+  addChatMessage(role, content, actions = null) {
     const container = document.getElementById('chatMessages');
     if (!container) return;
 
@@ -3417,11 +5386,171 @@ class SimpleNavigation {
 
     const bubble = document.createElement('div');
     bubble.className = `chat-message ${role}`;
-    bubble.innerHTML = this.escapeHtml(content);
+
+    // Basic message content
+    let html = `<div class="chat-content">${this.escapeHtml(content)}</div>`;
+
+    // Add action cards if provided
+    if (actions && actions.length > 0) {
+      html += `<div class="chat-actions">`;
+      actions.forEach(action => {
+        const icon = this.getChatActionIcon(action.type);
+        html += `
+          <button class="chat-action-btn" data-action-type="${action.type}" data-action-data='${JSON.stringify(action.data || {})}'>
+            <span class="chat-action-icon">${icon}</span>
+            <span class="chat-action-label">${this.escapeHtml(action.label)}</span>
+          </button>
+        `;
+      });
+      html += `</div>`;
+    }
+
+    bubble.innerHTML = html;
     container.appendChild(bubble);
+
+    // Attach action handlers
+    bubble.querySelectorAll('.chat-action-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const actionType = btn.getAttribute('data-action-type');
+        let actionData = {};
+        try {
+          actionData = JSON.parse(btn.getAttribute('data-action-data') || '{}');
+        } catch (e) { /* ignore */ }
+        this.handleChatAction(actionType, actionData);
+      });
+    });
 
     // Scroll to bottom
     container.scrollTop = container.scrollHeight;
+  }
+
+  getChatActionIcon(type) {
+    const icons = {
+      'navigate': '📍',
+      'add-to-trip': '➕',
+      'save': '❤️',
+      'search': '🔍',
+      'call': '📞',
+      'share': '📤',
+      'book': '🎫'
+    };
+    return icons[type] || '▶️';
+  }
+
+  handleChatAction(actionType, data) {
+    console.log('Chat action:', actionType, data);
+
+    switch (actionType) {
+      case 'navigate':
+        // Open Google Maps with coordinates or address
+        if (data.lat && data.lng) {
+          const url = `https://www.google.com/maps/dir/?api=1&destination=${data.lat},${data.lng}`;
+          window.open(url, '_blank');
+          this.showToast(this.t('chat.opening_maps') || 'Opening Google Maps...', 'info');
+        } else if (data.address) {
+          const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(data.address)}`;
+          window.open(url, '_blank');
+          this.showToast(this.t('chat.opening_maps') || 'Opening Google Maps...', 'info');
+        } else {
+          this.showToast(this.t('chat.no_location') || 'No location available', 'warning');
+        }
+        break;
+
+      case 'add-to-trip':
+        // Add place to trip queue
+        if (data.place) {
+          const tripQueue = TenantStorage.get('trip-queue', []);
+          const placeId = data.place.placeId || data.place.id || `chat-${Date.now()}`;
+
+          // Check if already in queue
+          if (tripQueue.some(p => p.id === placeId)) {
+            this.showToast(this.t('trip.already_in_queue') || 'Already in trip queue', 'info');
+            return;
+          }
+
+          tripQueue.push({
+            id: placeId,
+            name: data.place.name,
+            address: data.place.address,
+            lat: data.place.lat,
+            lng: data.place.lng,
+            rating: data.place.rating,
+            addedAt: Date.now()
+          });
+          TenantStorage.set('trip-queue', tripQueue);
+          this.showToast(this.t('trip.added_to_queue') || 'Added to trip!', 'success');
+        } else {
+          this.showToast(this.t('chat.no_place_data') || 'Cannot add - no place data', 'error');
+        }
+        break;
+
+      case 'save':
+        // Save place to favorites
+        if (data.place) {
+          const savedPlaces = TenantStorage.get('saved-places', []);
+          const placeId = data.place.placeId || data.place.id || `chat-${Date.now()}`;
+
+          // Check if already saved
+          if (savedPlaces.some(p => p.id === placeId)) {
+            this.showToast(this.t('places.already_saved') || 'Already saved', 'info');
+            return;
+          }
+
+          savedPlaces.push({
+            id: placeId,
+            name: data.place.name,
+            address: data.place.address,
+            lat: data.place.lat,
+            lng: data.place.lng,
+            rating: data.place.rating,
+            savedAt: Date.now()
+          });
+          TenantStorage.set('saved-places', savedPlaces);
+          this.showToast(this.t('places.saved_success') || 'Saved to favorites!', 'success');
+        } else {
+          this.showToast(this.t('chat.no_place_data') || 'Cannot save - no place data', 'error');
+        }
+        break;
+
+      case 'search':
+        // Perform search with the query
+        if (data.query) {
+          this.showView('search');
+          const searchInput = document.getElementById('freeText');
+          if (searchInput) {
+            searchInput.value = data.query;
+            setTimeout(() => this.performSearch(), 100);
+          }
+        }
+        break;
+
+      case 'call':
+        // Open phone dialer
+        if (data.phone) {
+          window.open(`tel:${data.phone}`, '_self');
+        }
+        break;
+
+      case 'share':
+        // Share content
+        if (navigator.share && data.text) {
+          navigator.share({
+            title: data.title || 'RoamWise',
+            text: data.text,
+            url: data.url
+          }).catch(() => {});
+        } else {
+          // Fallback: copy to clipboard
+          if (data.text) {
+            navigator.clipboard?.writeText(data.text);
+            this.showToast(this.t('common.copied') || 'Copied to clipboard', 'success');
+          }
+        }
+        break;
+
+      default:
+        console.log('Unknown chat action:', actionType);
+    }
   }
 
   showTypingIndicator() {
