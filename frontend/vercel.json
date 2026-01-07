@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build:simple",
+  "buildCommand": "npm run build:prod",
   "outputDirectory": "dist",
   "framework": null,
   "trailingSlash": false,
